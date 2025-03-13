@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Asset</title>
+</head>
+<body>
+  <h1>Create New Asset (SPV)</h1>
+  <form action="/assets" method="POST">
+    <label>Asset Name:</label>
+    <input type="text" name="name" required><br>
+    <label>Description:</label>
+    <textarea name="description"></textarea><br>
+    <label>Location:</label>
+    <input type="text" name="location"><br>
+    <label>Asset Type:</label>
+    <input type="text" name="type" required><br>
+    <label>Floor:</label>
+    <input type="text" name="floor"><br>
+    <label>Zone:</label>
+    <input type="text" name="zone"><br>
+    <button type="submit">Create Asset</button>
+  </form>
+  <a href="/spv/dashboard">Back to Dashboard</a>
+</body>
+</html>

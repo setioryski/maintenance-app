@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Checklist</title>
+  <script>
+    function addTask() {
+      const tasksDiv = document.getElementById('tasks');
+      const taskDiv = document.createElement('div');
+      taskDiv.innerHTML = `
+        <label>Task Description:</label>
+        <input type="text" name="taskDescriptions" required><br>
+        <label>Input Type:</label>
+        <select name="taskInputTypes">
+          <option value="voltage">Voltage</option>
+          <option value="pressure">Pressure</option>
+          <option value="temperature">Temperature</option>
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="other">Other</option>
+        </select><br>
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br><br>
+      `;
+      tasksDiv.appendChild(taskDiv);
+    }
+  </script>
+</head>
+<body>
+  <h1>Create New Checklist (SPV)</h1>
+  <form action="/checklists" method="POST">
+    <label>Checklist Title:</label>
+    <input type="text" name="title" required><br>
+    <label>Select Asset:</label>
+    <select name="asset" required>
+      <% assets.forEach(function(asset) { %>
+        <option value="<%= asset._id %>"><%= asset.name %></option>
+      <% }); %>
+    </select><br>
+    <div id="tasks">
+      <div>
+        <label>Task Description:</label>
+        <input type="text" name="taskDescriptions" required><br>
+        <label>Input Type:</label>
+        <select name="taskInputTypes">
+          <option value="voltage">Voltage</option>
+          <option value="pressure">Pressure</option>
+          <option value="temperature">Temperature</option>
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="other">Other</option>
+        </select><br>
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br><br>
+      </div>
+    </div>
+    <button type="button" onclick="addTask()">Add Another Task</button><br><br>
+    <button type="submit">Create Checklist</button>
+  </form>
+  <a href="/spv/dashboard">Back to Dashboard</a>
+</body>
+</html>

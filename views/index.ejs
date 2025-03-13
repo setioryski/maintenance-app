@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Home - Maintenance App</title>
+</head>
+<body>
+  <h1>Maintenance Asset Engineering App</h1>
+  <% if (user && user.userId) { %>
+    <p>Logged in as: <%= user.userRole %></p>
+    <p><a href="/logout">Logout</a></p>
+    <% if (user.userRole === 'superuser') { %>
+      <ul>
+        <li><a href="/superuser/dashboard">Superuser Dashboard</a></li>
+      </ul>
+    <% } %>
+  <% } else { %>
+    <p><a href="/login">Login</a></p>
+  <% } %>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    socket.on('checklistCreated', data => { console.log('New checklist created:', data); });
+    socket.on('checklistUpdated', data => { console.log('Checklist updated:', data); });
+  </script>
+</body>
+</html>

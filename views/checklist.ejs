@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checklist Details</title>
+</head>
+<body>
+  <h1>Checklist: <%= checklist.title %></h1>
+  <h3>Aset: <%= checklist.asset ? checklist.asset.name : "N/A" %></h3>
+  <ul>
+    <% checklist.tasks.forEach(function(task) { %>
+      <li>
+        <strong><%= task.description %></strong> (Tipe: <%= task.inputType %>
+          <% if(task.expectedUnit){ %> - Satuan: <%= task.expectedUnit %><% } %>)<br>
+        Nilai Aktual: <%= task.actualValue ? task.actualValue : 'N/A' %><br>
+        Catatan: <%= task.note %><br>
+        Material: <%= task.materialUsed %><br>
+        Status: <%= task.status %><br>
+        <% if(task.photos && task.photos.length > 0) { %>
+          <p>Foto Dokumentasi:</p>
+          <% task.photos.forEach(function(photo) { %>
+            <img src="<%= photo %>" alt="Dokumentasi" style="width:150px; height:auto; margin:5px;">
+          <% }); %>
+        <% } %>
+        <% if(user.userRole === 'technician') { %>
+          <form action="/checklists/<%= checklist._id %>/tasks/<%= task._id %>" method="POST" enctype="multipart/form-data">
+            <label>Nilai Aktual:</label>
+            <input type="number" name="actualValue" step="any" value="<%= task.actualValue %>"><br>
+            <label>Catatan:</label>
+            <input type="text" name="note" value="<%= task.note %>"><br>
+            <label>Material:</label>
+            <input type="text" name="materialUsed" value="<%= task.materialUsed %>"><br>
+            <label>Status:</label>
+            <select name="status">
+              <option value="pending" <%= task.status === 'pending' ? 'selected' : '' %>>Pending</option>
+              <option value="completed" <%= task.status === 'completed' ? 'selected' : '' %>>Completed</option>
+            </select><br>
+            <label>Unggah Foto (Multiple):</label>
+            <input type="file" name="photos" multiple><br>
+            <button type="submit">Update Task</button>
+          </form>
+        <% } %>
+      </li>
+      <hr>
+    <% }); %>
+  </ul>
+  <a href="/">Back to Home</a>
+</body>
+</html>

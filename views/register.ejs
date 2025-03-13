@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register</title>
+</head>
+<body>
+  <h1>Register</h1>
+  <form action="/register" method="POST">
+    <label>Name:</label>
+    <input type="text" name="name" required><br>
+    <label>Email:</label>
+    <input type="email" name="email" required><br>
+    <label>Password:</label>
+    <input type="password" name="password" required><br>
+    <label>Role:</label>
+    <select name="role" required>
+      <option value="superuser">Superuser</option>
+      <option value="manager">Manager</option>
+      <option value="spv">Supervisor (SPV)</option>
+      <option value="technician">Technician</option>
+    </select><br>
+    <label>Division (Optional):</label>
+    <input type="text" name="division"><br>
+    <button type="submit">Register</button>
+  </form>
+  <a href="/login">Login</a>
+</body>
+</html>

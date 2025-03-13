@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Checklist</title>
+  <script>
+    function addTask() {
+      const tasksDiv = document.getElementById('tasks');
+      const taskDiv = document.createElement('div');
+      taskDiv.innerHTML = `
+        <label>Task Description:</label>
+        <input type="text" name="taskDescriptions" required><br>
+        <label>Input Type:</label>
+        <select name="taskInputTypes">
+          <option value="voltage">Voltage</option>
+          <option value="pressure">Pressure</option>
+          <option value="temperature">Temperature</option>
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="other">Other</option>
+        </select><br>
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br><br>
+      `;
+      tasksDiv.appendChild(taskDiv);
+    }
+  </script>
+</head>
+<body>
+  <h1>Edit Checklist</h1>
+  <form action="/checklists/<%= checklist._id %>/edit" method="POST">
+    <label>Checklist Title:</label>
+    <input type="text" name="title" value="<%= checklist.title %>" required><br>
+    <h3>Tasks</h3>
+    <div id="tasks">
+      <% checklist.tasks.forEach(function(task) { %>
+        <div>
+          <label>Task Description:</label>
+          <input type="text" name="taskDescriptions" value="<%= task.description %>" required><br>
+          <label>Input Type:</label>
+          <select name="taskInputTypes">
+            <option value="voltage" <%= task.inputType === 'voltage' ? 'selected' : '' %>>Voltage</option>
+            <option value="pressure" <%= task.inputType === 'pressure' ? 'selected' : '' %>>Pressure</option>
+            <option value="temperature" <%= task.inputType === 'temperature' ? 'selected' : '' %>>Temperature</option>
+            <option value="text" <%= task.inputType === 'text' ? 'selected' : '' %>>Text</option>
+            <option value="number" <%= task.inputType === 'number' ? 'selected' : '' %>>Number</option>
+            <option value="other" <%= task.inputType === 'other' ? 'selected' : '' %>>Other</option>
+          </select><br>
+          <label>Expected Unit:</label>
+          <input type="text" name="taskExpectedUnits" value="<%= task.expectedUnit %>"><br><br>
+        </div>
+      <% }); %>
+    </div>
+    <button type="button" onclick="addTask()">Add Another Task</button><br><br>
+    <button type="submit">Update Checklist</button>
+  </form>
+  <a href="/spv/dashboard">Back to Dashboard</a>
+</body>
+</html>
