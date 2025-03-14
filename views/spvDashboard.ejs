@@ -1,27 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>SPV Dashboard</title>
-</head>
-<body>
-  <h1>SPV Dashboard</h1>
-  <ul>
-    <li><a href="/assets/new">Create New Asset</a></li>
-    <li><a href="/checklists/new">Create New Checklist</a></li>
-  </ul>
-  <h2>Your Checklists</h2>
-  <ul>
-    <% checklists.forEach(function(checklist) { %>
-      <li>
-        <strong><%= checklist.title %></strong>
-        <% if (checklist.asset) { %>
-          (Asset: <%= checklist.asset.name %>)
-        <% } %>
-        - <a href="/checklists/<%= checklist._id %>/edit">Edit</a>
-      </li>
-    <% }); %>
-  </ul>
-  <a href="/">Back to Home</a>
-  <a href="/logout">Logout</a>
-</body>
-</html>
+
+<h2>SPV Dashboard</h2>
+<ul>
+  <li><a href="/assets/new">Create New Asset</a></li>
+  <li><a href="/checklists/new">Create New Checklist</a></li>
+  <li><a href="/spv/assets">Asset List (Assign Checklists)</a></li>
+</ul>
+<h3>Your Checklists</h3>
+<ul>
+  <% checklists.forEach(function(checklist) { %>
+    <li>
+      <strong><%= checklist.title %></strong>
+      <% if (checklist.assets && checklist.assets.length > 0) { %>
+        (Assigned to assets: <%= checklist.assets.join(', ') %>)
+      <% } %>
+      - <a href="/checklists/<%= checklist._id %>/edit">Edit</a>
+    </li>
+  <% }); %>
+</ul>
+<a href="/">Back to Home</a>
+<a href="/logout">Logout</a>

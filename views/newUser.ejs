@@ -1,46 +1,40 @@
-<html>
-<head>
-  <title>Create New User</title>
-  <script>
-    function toggleDivision() {
-      const roleSelect = document.getElementById('roleSelect');
-      const divisionField = document.getElementById('divisionField');
-      if (roleSelect.value === 'spv' || roleSelect.value === 'technician') {
-        divisionField.style.display = 'block';
-      } else {
-        divisionField.style.display = 'none';
-      }
-    }
-    window.onload = toggleDivision;
-  </script>
-</head>
-<body>
-  <h1>Create New User (Superuser Only)</h1>
-  <form action="/admin/users" method="POST">
-    <label>Name:</label>
-    <input type="text" name="name" required><br>
-    <label>Email:</label>
-    <input type="email" name="email" required><br>
-    <label>Password:</label>
-    <input type="password" name="password" required><br>
-    <label>Role:</label>
-    <select id="roleSelect" name="role" required onchange="toggleDivision()">
-      <option value="manager">Manager</option>
-      <option value="superuser">Superuser</option>
-      <option value="spv">Supervisor (SPV)</option>
-      <option value="technician">Technician</option>
+
+<h2>Create New User (Superuser Only)</h2>
+<form action="/admin/users" method="POST">
+  <label>Name:</label>
+  <input type="text" name="name" required><br>
+  <label>Email:</label>
+  <input type="email" name="email" required><br>
+  <label>Password:</label>
+  <input type="password" name="password" required><br>
+  <label>Role:</label>
+  <select id="roleSelect" name="role" required onchange="toggleDivision()">
+    <option value="manager">Manager</option>
+    <option value="superuser">Superuser</option>
+    <option value="spv">Supervisor (SPV)</option>
+    <option value="technician">Technician</option>
+  </select><br>
+  <div id="divisionField" style="display:none;">
+    <label>Division:</label>
+    <select name="division">
+      <option value="">Select Division</option>
+      <% divisions.forEach(function(division) { %>
+        <option value="<%= division._id %>"><%= division.name %></option>
+      <% }); %>
     </select><br>
-    <div id="divisionField" style="display:none;">
-      <label>Division:</label>
-      <select name="division">
-        <option value="">Select Division</option>
-        <% divisions.forEach(function(division) { %>
-          <option value="<%= division._id %>"><%= division.name %></option>
-        <% }); %>
-      </select><br>
-    </div>
-    <button type="submit">Create User</button>
-  </form>
-  <a href="/superuser/dashboard">Back to Dashboard</a>
-</body>
-</html>
+  </div>
+  <button type="submit">Create User</button>
+</form>
+<script>
+  function toggleDivision() {
+    const roleSelect = document.getElementById('roleSelect');
+    const divisionField = document.getElementById('divisionField');
+    if (roleSelect.value === 'spv' || roleSelect.value === 'technician') {
+      divisionField.style.display = 'block';
+    } else {
+      divisionField.style.display = 'none';
+    }
+  }
+  window.onload = toggleDivision;
+</script>
+<a href="/superuser/dashboard">Back to Dashboard</a>

@@ -1,0 +1,10 @@
+<h2>Asset List</h2>
+<ul>
+  <% assets.forEach(function(asset) { %>
+    <li>
+      <strong><%= asset.name %></strong> (Type: <%= asset.type %>, Floor: <%= asset.floor %>, Zone: <%= asset.zone %>)
+      - <a href="/assets/<%= asset._id %>/assign-checklist">Assign Checklist</a>
+    </li>
+  <% }); %>
+</ul>
+<a href="/spv/dashboard">Back to Dashboard</a>

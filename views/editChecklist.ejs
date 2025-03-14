@@ -1,58 +1,100 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Edit Checklist</title>
-  <script>
-    function addTask() {
-      const tasksDiv = document.getElementById('tasks');
-      const taskDiv = document.createElement('div');
-      taskDiv.innerHTML = `
+
+<h2>Edit Checklist</h2>
+<form action="/checklists/<%= checklist._id %>/edit" method="POST">
+  <label>Checklist Title:</label>
+  <input type="text" name="title" value="<%= checklist.title %>" required><br>
+  
+  <h3>Tasks</h3>
+  <div id="tasks">
+    <% checklist.tasks.forEach(function(task, index) { %>
+      <div class="taskBlock">
         <label>Task Description:</label>
-        <input type="text" name="taskDescriptions" required><br>
+        <input type="text" name="taskDescriptions" value="<%= task.description %>" required><br>
+        
         <label>Input Type:</label>
-        <select name="taskInputTypes">
-          <option value="voltage">Voltage</option>
-          <option value="pressure">Pressure</option>
-          <option value="temperature">Temperature</option>
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="other">Other</option>
+        <select name="taskInputTypes" onchange="toggleApproval(this)">
+          <option value="voltage" <%= task.inputType === 'voltage' ? 'selected' : '' %>>Voltage</option>
+          <option value="pressure" <%= task.inputType === 'pressure' ? 'selected' : '' %>>Pressure</option>
+          <option value="temperature" <%= task.inputType === 'temperature' ? 'selected' : '' %>>Temperature</option>
+          <option value="text" <%= task.inputType === 'text' ? 'selected' : '' %>>Text</option>
+          <option value="number" <%= task.inputType === 'number' ? 'selected' : '' %>>Number</option>
+          <option value="other" <%= task.inputType === 'other' ? 'selected' : '' %>>Other</option>
+          <option value="approval" <%= task.inputType === 'approval' ? 'selected' : '' %>>Approval</option>
         </select><br>
-        <label>Expected Unit:</label>
-        <input type="text" name="taskExpectedUnits"><br><br>
-      `;
-      tasksDiv.appendChild(taskDiv);
-    }
-  </script>
-</head>
-<body>
-  <h1>Edit Checklist</h1>
-  <form action="/checklists/<%= checklist._id %>/edit" method="POST">
-    <label>Checklist Title:</label>
-    <input type="text" name="title" value="<%= checklist.title %>" required><br>
-    <h3>Tasks</h3>
-    <div id="tasks">
-      <% checklist.tasks.forEach(function(task) { %>
-        <div>
-          <label>Task Description:</label>
-          <input type="text" name="taskDescriptions" value="<%= task.description %>" required><br>
-          <label>Input Type:</label>
-          <select name="taskInputTypes">
-            <option value="voltage" <%= task.inputType === 'voltage' ? 'selected' : '' %>>Voltage</option>
-            <option value="pressure" <%= task.inputType === 'pressure' ? 'selected' : '' %>>Pressure</option>
-            <option value="temperature" <%= task.inputType === 'temperature' ? 'selected' : '' %>>Temperature</option>
-            <option value="text" <%= task.inputType === 'text' ? 'selected' : '' %>>Text</option>
-            <option value="number" <%= task.inputType === 'number' ? 'selected' : '' %>>Number</option>
-            <option value="other" <%= task.inputType === 'other' ? 'selected' : '' %>>Other</option>
-          </select><br>
-          <label>Expected Unit:</label>
-          <input type="text" name="taskExpectedUnits" value="<%= task.expectedUnit %>"><br><br>
+        
+        <div class="approvalOptions">
+          <label>
+            <input type="radio" name="taskApprovalValues[]" value="approve" <%= task.actualValue === 'approve' ? 'checked' : '' %>> Approve
+          </label>
+          <label>
+            <input type="radio" name="taskApprovalValues[]" value="not approve" <%= task.actualValue === 'not approve' ? 'checked' : '' %>> Not Approve
+          </label>
         </div>
-      <% }); %>
-    </div>
-    <button type="button" onclick="addTask()">Add Another Task</button><br><br>
-    <button type="submit">Update Checklist</button>
-  </form>
-  <a href="/spv/dashboard">Back to Dashboard</a>
-</body>
-</html>
+        
+        <div class="expectedUnitContainer">
+          <label>Expected Unit:</label>
+          <input type="text" name="taskExpectedUnits" value="<%= task.expectedUnit %>"><br>
+        </div>
+        
+        <label>Note:</label>
+        <input type="text" name="taskNotes" value="<%= task.note %>"><br><br>
+      </div>
+    <% }); %>
+  </div>
+  <button type="button" onclick="addTask()">Add Another Task</button><br><br>
+  <button type="submit">Update Checklist</button>
+</form>
+<a href="/spv/dashboard">Back to Dashboard</a>
+<script>
+  function toggleApproval(selectElem) {
+    const taskBlock = selectElem.parentElement;
+    const approvalDiv = taskBlock.querySelector('.approvalOptions');
+    const expectedUnitContainer = taskBlock.querySelector('.expectedUnitContainer');
+    if (selectElem.value === 'approval') {
+      approvalDiv.style.display = 'block';
+      expectedUnitContainer.style.display = 'none';
+    } else {
+      approvalDiv.style.display = 'none';
+      expectedUnitContainer.style.display = 'block';
+    }
+  }
+  
+  function addTask() {
+    const tasksDiv = document.getElementById('tasks');
+    const taskBlock = document.createElement('div');
+    taskBlock.className = 'taskBlock';
+    taskBlock.innerHTML = `
+      <label>Task Description:</label>
+      <input type="text" name="taskDescriptions" required><br>
+      
+      <label>Input Type:</label>
+      <select name="taskInputTypes" onchange="toggleApproval(this)">
+        <option value="voltage">Voltage</option>
+        <option value="pressure">Pressure</option>
+        <option value="temperature">Temperature</option>
+        <option value="text">Text</option>
+        <option value="number">Number</option>
+        <option value="other">Other</option>
+        <option value="approval">Approval</option>
+      </select><br>
+      
+      <div class="approvalOptions" style="display: none;">
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="approve" checked> Approve
+        </label>
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="not approve"> Not Approve
+        </label>
+      </div>
+      
+      <div class="expectedUnitContainer">
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br>
+      </div>
+      
+      <label>Note:</label>
+      <input type="text" name="taskNotes"><br><br>
+    `;
+    tasksDiv.appendChild(taskBlock);
+  }
+</script>

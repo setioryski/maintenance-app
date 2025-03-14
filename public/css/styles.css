@@ -1,0 +1,162 @@
+/* Enhanced Minimalist CSS for Maintenance Asset Engineering */
+
+/* Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+}
+
+body {
+  background: #f7f7f7;
+  color: #333;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  background: #222;
+  color: #fff;
+  padding: 15px 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+header h1 {
+  font-size: 26px;
+  margin: 0;
+  font-weight: 600;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+nav ul li {
+  margin-right: 20px;
+}
+
+nav ul li a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+  color: #f39c12;
+}
+
+/* Main Content */
+main {
+  margin: 30px auto;
+  max-width: 800px;
+  padding: 30px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Forms */
+form label {
+  display: block;
+  font-weight: 600;
+  margin: 10px 0 5px;
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"],
+form input[type="number"],
+form textarea,
+form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 10px;
+  transition: border-color 0.3s ease;
+}
+
+form input[type="text"]:focus,
+form input[type="email"]:focus,
+form input[type="password"]:focus,
+form input[type="number"]:focus,
+form textarea:focus,
+form select:focus {
+  border-color: #3498db;
+  outline: none;
+}
+
+form button {
+  background: #3498db;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-top: 10px;
+}
+
+form button:hover {
+  background: #2980b9;
+}
+
+/* Task Block (for checklist forms) */
+.taskBlock {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.taskBlock label {
+  font-weight: 500;
+}
+
+/* Links */
+a {
+  color: #3498db;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #2980b9;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 14px;
+  color: #777;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+  header h1 {
+    font-size: 22px;
+  }
+  nav ul {
+    flex-direction: column;
+  }
+  nav ul li {
+    margin-bottom: 10px;
+    margin-right: 0;
+  }
+  main {
+    padding: 20px;
+  }
+}

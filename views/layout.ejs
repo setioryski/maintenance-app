@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %> - Maintenance Asset Engineering</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <% var user = typeof user !== 'undefined' ? user : {}; %>
+  <header>
+    <h1>Maintenance Asset Engineering</h1>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <% if (user && user.userId) { %>
+          <% if (user.userRole === 'superuser') { %>
+            <li><a href="/superuser/dashboard">Dashboard</a></li>
+          <% } else if (user.userRole === 'spv') { %>
+            <li><a href="/spv/dashboard">Dashboard</a></li>
+          <% } else if (user.userRole === 'manager') { %>
+            <li><a href="/manager/dashboard">Dashboard</a></li>
+          <% } else if (user.userRole === 'technician') { %>
+            <li><a href="/technician/dashboard">Dashboard</a></li>
+          <% } %>
+          <li><a href="/logout">Logout</a></li>
+        <% } else { %>
+          <li><a href="/login">Login</a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </header>
+  
+  <main>
+    <%- body %>
+  </main>
+  
+  <footer>
+    <p>&copy; <%= new Date().getFullYear() %> Maintenance Asset Engineering</p>
+  </footer>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    socket.on('checklistCreated', (data) => console.log('Checklist created:', data.checklistId));
+    socket.on('checklistUpdated', (data) => console.log('Checklist updated:', data));
+  </script>
+</body>
+</html>

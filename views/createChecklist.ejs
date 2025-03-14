@@ -1,61 +1,109 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Create Checklist</title>
-  <script>
-    function addTask() {
-      const tasksDiv = document.getElementById('tasks');
-      const taskDiv = document.createElement('div');
-      taskDiv.innerHTML = `
-        <label>Task Description:</label>
-        <input type="text" name="taskDescriptions" required><br>
-        <label>Input Type:</label>
-        <select name="taskInputTypes">
-          <option value="voltage">Voltage</option>
-          <option value="pressure">Pressure</option>
-          <option value="temperature">Temperature</option>
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="other">Other</option>
-        </select><br>
-        <label>Expected Unit:</label>
-        <input type="text" name="taskExpectedUnits"><br><br>
-      `;
-      tasksDiv.appendChild(taskDiv);
-    }
-  </script>
-</head>
-<body>
-  <h1>Create New Checklist (SPV)</h1>
-  <form action="/checklists" method="POST">
-    <label>Checklist Title:</label>
-    <input type="text" name="title" required><br>
-    <label>Select Asset:</label>
-    <select name="asset" required>
-      <% assets.forEach(function(asset) { %>
-        <option value="<%= asset._id %>"><%= asset.name %></option>
-      <% }); %>
-    </select><br>
-    <div id="tasks">
-      <div>
-        <label>Task Description:</label>
-        <input type="text" name="taskDescriptions" required><br>
-        <label>Input Type:</label>
-        <select name="taskInputTypes">
-          <option value="voltage">Voltage</option>
-          <option value="pressure">Pressure</option>
-          <option value="temperature">Temperature</option>
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="other">Other</option>
-        </select><br>
-        <label>Expected Unit:</label>
-        <input type="text" name="taskExpectedUnits"><br><br>
+
+<h2>Create New Checklist (SPV)</h2>
+<form action="/checklists" method="POST">
+  <label>Checklist Title:</label>
+  <input type="text" name="title" required><br>
+  
+  <label>Select Assets (hold Ctrl/Command to select multiple):</label>
+  <select name="assets" multiple required>
+    <% assets.forEach(function(asset) { %>
+      <option value="<%= asset._id %>"><%= asset.name %></option>
+    <% }); %>
+  </select><br>
+  
+  <div id="tasks">
+    <div class="taskBlock">
+      <label>Task Description:</label>
+      <input type="text" name="taskDescriptions" required><br>
+      
+      <label>Input Type:</label>
+      <select name="taskInputTypes" onchange="toggleApproval(this)">
+        <option value="approval">Approval</option>
+        <option value="voltage">Voltage</option>
+        <option value="pressure">Pressure</option>
+        <option value="temperature">Temperature</option>
+`       <option value="number">Number</option>
+        <option value="text">Text</option>
+        <option value="other">Other</option>
+
+      </select><br>
+      
+      <!-- Approval Options -->
+      <div class="approvalOptions" style="display: none;">
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="approve" checked> Approve
+        </label>
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="not approve"> Not Approve
+        </label>
       </div>
+      
+      <!-- Expected Unit Container -->
+      <div class="expectedUnitContainer">
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br>
+      </div>
+      
+      <!-- Note field for every task -->
+      <label>Note:</label>
+      <input type="text" name="taskNotes"><br><br>
     </div>
-    <button type="button" onclick="addTask()">Add Another Task</button><br><br>
-    <button type="submit">Create Checklist</button>
-  </form>
-  <a href="/spv/dashboard">Back to Dashboard</a>
-</body>
-</html>
+  </div>
+  
+  <button type="button" onclick="addTask()">Add Another Task</button><br><br>
+  <button type="submit">Create Checklist</button>
+</form>
+<a href="/spv/dashboard">Back to Dashboard</a>
+<script>
+  function toggleApproval(selectElem) {
+    const taskBlock = selectElem.parentElement;
+    const approvalDiv = taskBlock.querySelector('.approvalOptions');
+    const expectedUnitContainer = taskBlock.querySelector('.expectedUnitContainer');
+    if (selectElem.value === 'approval') {
+      approvalDiv.style.display = 'block';
+      expectedUnitContainer.style.display = 'none';
+    } else {
+      approvalDiv.style.display = 'none';
+      expectedUnitContainer.style.display = 'block';
+    }
+  }
+  
+  function addTask() {
+    const tasksDiv = document.getElementById('tasks');
+    const taskBlock = document.createElement('div');
+    taskBlock.className = 'taskBlock';
+    taskBlock.innerHTML = `
+      <label>Task Description:</label>
+      <input type="text" name="taskDescriptions" required><br>
+      
+      <label>Input Type:</label>
+      <select name="taskInputTypes" onchange="toggleApproval(this)">
+        <option value="voltage">Voltage</option>
+        <option value="pressure">Pressure</option>
+        <option value="temperature">Temperature</option>
+        <option value="text">Text</option>
+        <option value="number">Number</option>
+        <option value="other">Other</option>
+        <option value="approval">Approval</option>
+      </select><br>
+      
+      <div class="approvalOptions" style="display: none;">
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="approve" checked> Approve
+        </label>
+        <label>
+          <input type="radio" name="taskApprovalValues[]" value="not approve"> Not Approve
+        </label>
+      </div>
+      
+      <div class="expectedUnitContainer">
+        <label>Expected Unit:</label>
+        <input type="text" name="taskExpectedUnits"><br>
+      </div>
+      
+      <label>Note:</label>
+      <input type="text" name="taskNotes"><br><br>
+    `;
+    tasksDiv.appendChild(taskBlock);
+  }
+</script>

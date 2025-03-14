@@ -1,0 +1,12 @@
+
+<h2>Assign Checklist to Asset</h2>
+<form action="/assets/<%= assetId %>/assign-checklist" method="POST">
+  <label>Select Checklist:</label>
+  <select name="checklistId" required>
+    <% availableChecklists.forEach(function(chk) { %>
+      <option value="<%= chk._id %>"><%= chk.title %></option>
+    <% }); %>
+  </select><br><br>
+  <button type="submit">Assign Checklist</button>
+</form>
+<a href="/spv/assets">Back to Asset List</a>

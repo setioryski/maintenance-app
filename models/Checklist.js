@@ -6,23 +6,24 @@ const checklistItemSchema = new mongoose.Schema({
   description: { type: String, required: true },
   inputType: {
     type: String,
-    enum: ['voltage', 'pressure', 'temperature', 'text', 'number', 'other'],
+    // Added "approval" as an option
+    enum: ['voltage', 'pressure', 'temperature', 'text', 'number', 'other', 'approval'],
     default: 'other'
   },
   expectedUnit: { type: String, default: '' },
-  actualValue: { type: Number, default: null },
+  actualValue: { type: mongoose.Schema.Types.Mixed, default: null },
   note: { type: String, default: '' },
   materialUsed: { type: String, default: '' },
   status: { type: String, default: 'pending' },
-  photos: [{ type: String }] // Array to store photo file paths or URLs
+  photos: [{ type: String }]
 });
 
-// Main checklist schema
+// Main checklist schema – note "assets" is an array
 const checklistSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
+  assets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
   tasks: [checklistItemSchema],
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // SPV that created the checklist
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now }
 });
 
