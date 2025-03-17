@@ -1,0 +1,35 @@
+app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
+    try {
+      // Example data for demonstration
+      const dailyStats = {
+        todayTasks: 24,
+        inProgress: 8,
+        completed: 12,
+        issues: 4
+      };
+      
+      // Example tasks
+      const tasks = [
+        { title: 'AC Maintenance - Floor 1', time: '10:00 AM', description: 'Periodic check', status: 'In Progress' },
+        { title: 'Lift Inspection - B1', time: '9:30 AM', description: 'Routine inspection', status: 'Completed' },
+        { title: 'CCTV Check - Parking Area', time: '8:45 AM', description: 'Check cameras in parking', status: 'In Progress' },
+      ];
+      
+      // Example live updates
+      const liveUpdates = [
+        { time: '10:45 AM', update: 'Charlie completed CCTV inspection' },
+        { time: '10:30 AM', update: 'Rahmat started AC maintenance' },
+      ];
+      
+      res.render('spvDashboardTailwind', {
+        title: 'Daily Supervision',
+        dailyStats,
+        tasks,
+        liveUpdates,
+        user: req.session  // so we have access to user data in EJS if needed
+      });
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
+  });
+  

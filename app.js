@@ -9,8 +9,9 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 require('dotenv').config();
-
 const app = express();
+const ChecklistAssignment = require('./models/ChecklistAssignment');
+
 
 // Create HTTP server and attach Socket.io
 const server = http.createServer(app);
@@ -198,13 +199,35 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
 });
 
 // SPV can create asset using this route
-app.get('/assets/new', ensureAuthenticated, ensureSpv, (req, res) => {
-  res.render('createAsset');
+app.get('/assets/new', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const assetCategories = await AssetCategory.find({});
+    const floors = await Floor.find({});
+    const zones = await Zone.find({}); // Ensure zones is defined
+    res.render('createAsset', { assetCategories, floors, zones });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 });
+
+
+
 app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    const { name, description, location, type, floor, zone } = req.body;
-    const newAsset = new Asset({ name, description, location, type, floor, zone });
+    const { name, description, location, category, floor, zone } = req.body;
+
+    // If your schema references category as an ObjectId,
+    // you must pass the category._id in the form (which you do if you used `value="<%= category._id %>"`).
+    
+    const newAsset = new Asset({
+      name,
+      description,
+      location,
+      category, // must match the field name in your model
+      floor,
+      zone
+    });
+
     await newAsset.save();
     res.redirect('/spv/dashboard');
   } catch (err) {
@@ -212,41 +235,68 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
   }
 });
 
+
 // ---------- SPV: CREATE CHECKLIST ----------
 // Display form for creating checklist
 app.get('/checklists/new', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    const assets = await Asset.find({});
-    res.render('createChecklist', { assets });
+    // Retrieve all checklists (or filter them if needed)
+    const existingChecklists = await Checklist.find({});
+    res.render('createChecklist', { existingChecklists });
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
+
 // Process checklist creation
 app.post('/checklists', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    const { title, asset, taskDescriptions, taskInputTypes, taskExpectedUnits } = req.body;
+    const { title, templateChecklist, taskDescriptions, taskInputTypes, taskExpectedUnits } = req.body;
+
+    // If you'd like, you can handle logic for the selected template checklist:
+    // e.g., copying tasks from the template if the user wants them, or ignoring if they've been overridden
+
     let tasks = [];
-    if (!Array.isArray(taskDescriptions)) {
+    // If there's only one task, these fields won't be arrays. Convert them to arrays for uniformity:
+    const descArr = Array.isArray(taskDescriptions) ? taskDescriptions : [taskDescriptions];
+    const typeArr = Array.isArray(taskInputTypes) ? taskInputTypes : [taskInputTypes];
+    const unitArr = Array.isArray(taskExpectedUnits) ? taskExpectedUnits : [taskExpectedUnits];
+
+    for (let i = 0; i < descArr.length; i++) {
       tasks.push({
-        description: taskDescriptions,
-        inputType: taskInputTypes,
-        expectedUnit: taskExpectedUnits,
+        description: descArr[i],
+        inputType: typeArr[i],
+        expectedUnit: unitArr[i] || ''
       });
-    } else {
-      for (let i = 0; i < taskDescriptions.length; i++) {
-        tasks.push({
-          description: taskDescriptions[i],
-          inputType: taskInputTypes[i],
-          expectedUnit: taskExpectedUnits[i],
-        });
-      }
     }
-    const newChecklist = new Checklist({ title, asset, tasks, createdBy: req.session.userId });
+
+    // Create the new checklist
+    const newChecklist = new Checklist({
+      title,
+      tasks,
+      createdBy: req.session.userId,
+    });
     await newChecklist.save();
+
+    // Redirect or render success
     res.redirect('/spv/dashboard');
   } catch (err) {
     res.status(500).send(err.message);
+  }
+});
+
+
+app.get('/api/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const checklist = await Checklist.findById(req.params.id);
+    if (!checklist) {
+      return res.status(404).json({ error: 'Checklist not found' });
+    }
+    // Return only the tasks array in JSON
+    res.json(checklist.tasks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -298,6 +348,136 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
 });
 
 
+
+// ---------- SPV: assign CHECKLIST ----------
+
+// GET /checklists/:id/assign
+app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const checklist = await Checklist.findById(req.params.id);
+    if (!checklist) return res.status(404).send('Checklist not found');
+
+    // Get assignments for this checklist from the junction collection
+    const ChecklistAssignment = require('./models/ChecklistAssignment');
+    const assignments = await ChecklistAssignment.find({ checklist: req.params.id });
+    const assignedAssetIds = assignments.map(a => a.asset.toString());
+
+    // Get all assets (or filter as needed)
+    const assets = await Asset.find({});
+
+    res.render('assignChecklist', {
+      checklist,
+      assets,
+      assignedAssetIds
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+
+// POST /checklists/:id/assign
+app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const { assetIds } = req.body; // assetIds can be a single string or an array of strings
+    const checklistId = req.params.id;
+    const ChecklistAssignment = require('./models/ChecklistAssignment');
+
+    // Remove all existing assignments for this checklist
+    await ChecklistAssignment.deleteMany({ checklist: checklistId });
+
+    // Ensure assetIds is an array
+    const assetsToAssign = Array.isArray(assetIds) ? assetIds : (assetIds ? [assetIds] : []);
+
+    // Create a new assignment for each asset
+    const assignments = assetsToAssign.map(assetId => ({
+      checklist: checklistId,
+      asset: assetId
+    }));
+
+    if (assignments.length > 0) {
+      await ChecklistAssignment.insertMany(assignments);
+    }
+
+    res.redirect('/spv/dashboard');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+//assignment count
+app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    // Fetch checklists created by the logged-in SPV
+    const checklists = await Checklist.find({ createdBy: req.session.userId });
+    
+    // For each checklist, count the assignments using the junction collection
+    // Alternatively, you can use an aggregation to do this in one query.
+    const checklistData = await Promise.all(checklists.map(async checklist => {
+      const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
+      // Attach assignmentCount to each checklist
+      return { ...checklist.toObject(), assignmentCount: count };
+    }));
+
+    res.render('spvDashboard', { checklists: checklistData });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+
+
+//initialization
+// In app.js (or a dedicated initialization file)
+const Floor = require('./models/Floor');
+const Zone = require('./models/Zone');
+
+async function initializeFloorsAndZones() {
+  const defaultFloors = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
+  const defaultZones = ['A', 'B', 'C', 'D'];
+
+  for (const floorName of defaultFloors) {
+    let floor = await Floor.findOne({ name: floorName });
+    if (!floor) {
+      floor = await Floor.create({ name: floorName });
+      console.log(`Created floor: ${floorName}`);
+    }
+
+    // For each floor, create default zones if not already created.
+    for (const zoneName of defaultZones) {
+      const zoneExists = await Zone.findOne({ name: zoneName, floor: floor._id });
+      if (!zoneExists) {
+        await Zone.create({ name: zoneName, floor: floor._id });
+        console.log(`Created zone: ${zoneName} for floor: ${floorName}`);
+      }
+    }
+  }
+}
+
+// Call the initialization function after connecting to MongoDB
+initializeFloorsAndZones().catch(err => console.error('Error initializing floors and zones:', err));
+
+const AssetCategory = require('./models/AssetCategory');
+
+async function initializeAssetCategories() {
+  // Define your default categories here. Adjust the list as needed.
+  const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm'];
+
+  for (const categoryName of defaultCategories) {
+    let category = await AssetCategory.findOne({ name: categoryName });
+    if (!category) {
+      await AssetCategory.create({ name: categoryName });
+      console.log(`Created asset category: ${categoryName}`);
+    }
+  }
+}
+
+// Call the initialization function after connecting to MongoDB
+initializeAssetCategories().catch(err =>
+  console.error('Error initializing asset categories:', err)
+);
 
 
 

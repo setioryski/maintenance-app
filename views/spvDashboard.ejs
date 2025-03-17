@@ -1,27 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SPV Dashboard</title>
+  <meta charset="UTF-8">
+  <title>SPV Dashboard - Manajemen Checklist & Asset</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <h1>SPV Dashboard</h1>
-  <ul>
-    <li><a href="/assets/new">Create New Asset</a></li>
-    <li><a href="/checklists/new">Create New Checklist</a></li>
-  </ul>
-  <h2>Your Checklists</h2>
-  <ul>
-    <% checklists.forEach(function(checklist) { %>
-      <li>
-        <strong><%= checklist.title %></strong>
-        <% if (checklist.asset) { %>
-          (Asset: <%= checklist.asset.name %>)
-        <% } %>
-        - <a href="/checklists/<%= checklist._id %>/edit">Edit</a>
-      </li>
-    <% }); %>
-  </ul>
-  <a href="/">Back to Home</a>
-  <a href="/logout">Logout</a>
+<body class="bg-gray-100">
+  <div class="max-w-6xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold">Manajemen Checklist</h1>
+      <div>
+        <a href="/checklists/new" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2">
+          + Buat Checklist Baru
+        </a>
+        <a href="/assets/new" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+          + Buat Asset Baru
+        </a>
+      </div>
+    </div>
+    <!-- Checklist Table -->
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="p-2 border">Nama Checklist</th>
+          <th class="p-2 border">Jumlah Aset Tersassign</th>
+          <th class="p-2 border">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% checklists.forEach(checklist => { %>
+          <tr>
+            <td class="p-2 border"><%= checklist.title %></td>
+            <td class="p-2 border"><%= checklist.assignmentCount || 0 %></td>
+            <td class="p-2 border">
+              <a href="/checklists/<%= checklist._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">
+                Edit
+              </a>
+              <a href="/checklists/<%= checklist._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus checklist ini?')">
+                Hapus
+              </a>
+              <a href="/checklists/<%= checklist._id %>/assign" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded ml-2">
+                Assign
+              </a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Optional Navigation Links -->
+  <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
+    <a href="/" class="text-blue-500 hover:text-blue-700">Dashboard</a>
+    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+  </div>
 </body>
 </html>

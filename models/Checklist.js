@@ -6,15 +6,18 @@ const checklistItemSchema = new mongoose.Schema({
   description: { type: String, required: true },
   inputType: {
     type: String,
-    enum: ['voltage', 'pressure', 'temperature', 'text', 'number', 'other'],
-    default: 'other'
+    enum: ['visual', 'measurement', 'functional'], 
+    // 'visual': Menggunakan foto dokumentasi sebagai bukti kondisi fisik dan visual peralatan.
+    // 'measurement': Menginput nilai hasil pengukuran (seperti suhu, getaran, tekanan) dalam bentuk data numerik.
+    // 'functional': Menilai hasil uji fungsi peralatan dengan metode pass (lulus) atau fail (tidak lulus).
+    required: true
   },
   expectedUnit: { type: String, default: '' },
   actualValue: { type: Number, default: null },
   note: { type: String, default: '' },
   materialUsed: { type: String, default: '' },
   status: { type: String, default: 'pending' },
-  photos: [{ type: String }] // Array to store photo file paths or URLs
+  photos: [{ type: String }]
 });
 
 // Main checklist schema

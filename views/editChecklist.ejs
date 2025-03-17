@@ -1,58 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Edit Checklist</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script>
-    function addTask() {
-      const tasksDiv = document.getElementById('tasks');
-      const taskDiv = document.createElement('div');
-      taskDiv.innerHTML = `
-        <label>Task Description:</label>
-        <input type="text" name="taskDescriptions" required><br>
-        <label>Input Type:</label>
-        <select name="taskInputTypes">
-          <option value="voltage">Voltage</option>
-          <option value="pressure">Pressure</option>
-          <option value="temperature">Temperature</option>
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="other">Other</option>
-        </select><br>
-        <label>Expected Unit:</label>
-        <input type="text" name="taskExpectedUnits"><br><br>
+    // Toggle "Expected Unit" field based on input type selection
+    function toggleExpectedUnit(selectElem, rowElem) {
+      const expectedUnitInput = rowElem.querySelector('input[name="taskExpectedUnits"]');
+      if (selectElem.value === 'measurement') {
+        expectedUnitInput.classList.remove('hidden');
+      } else {
+        expectedUnitInput.classList.add('hidden');
+        expectedUnitInput.value = '';
+      }
+    }
+
+    // Remove a task row from the form
+    function removeTask(button) {
+      const row = button.closest('.task-row');
+      row.remove();
+    }
+
+    // Create a new task row element (optionally pre-filled with task data)
+    function createTaskRow(task = {}) {
+      const desc = task.description || '';
+      const type = task.inputType || 'visual';
+      const expUnit = task.expectedUnit || '';
+      const row = document.createElement('div');
+      row.className = "task-row flex items-center gap-2 mb-2";
+      row.innerHTML = `
+        <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="${desc}" required />
+        <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required>
+          <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
+          <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
+          <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+        </select>
+        <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 ${type === 'measurement' ? '' : 'hidden'}" value="${expUnit}" />
+        <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
       `;
-      tasksDiv.appendChild(taskDiv);
+      const selectElem = row.querySelector('select[name="taskInputTypes"]');
+      selectElem.addEventListener('change', () => toggleExpectedUnit(selectElem, row));
+      return row;
+    }
+
+    // Add a blank new task row
+    function addTask() {
+      const taskList = document.getElementById('taskList');
+      const row = createTaskRow();
+      taskList.appendChild(row);
     }
   </script>
 </head>
-<body>
-  <h1>Edit Checklist</h1>
-  <form action="/checklists/<%= checklist._id %>/edit" method="POST">
-    <label>Checklist Title:</label>
-    <input type="text" name="title" value="<%= checklist.title %>" required><br>
-    <h3>Tasks</h3>
-    <div id="tasks">
-      <% checklist.tasks.forEach(function(task) { %>
-        <div>
-          <label>Task Description:</label>
-          <input type="text" name="taskDescriptions" value="<%= task.description %>" required><br>
-          <label>Input Type:</label>
-          <select name="taskInputTypes">
-            <option value="voltage" <%= task.inputType === 'voltage' ? 'selected' : '' %>>Voltage</option>
-            <option value="pressure" <%= task.inputType === 'pressure' ? 'selected' : '' %>>Pressure</option>
-            <option value="temperature" <%= task.inputType === 'temperature' ? 'selected' : '' %>>Temperature</option>
-            <option value="text" <%= task.inputType === 'text' ? 'selected' : '' %>>Text</option>
-            <option value="number" <%= task.inputType === 'number' ? 'selected' : '' %>>Number</option>
-            <option value="other" <%= task.inputType === 'other' ? 'selected' : '' %>>Other</option>
-          </select><br>
-          <label>Expected Unit:</label>
-          <input type="text" name="taskExpectedUnits" value="<%= task.expectedUnit %>"><br><br>
-        </div>
-      <% }); %>
-    </div>
-    <button type="button" onclick="addTask()">Add Another Task</button><br><br>
-    <button type="submit">Update Checklist</button>
-  </form>
-  <a href="/spv/dashboard">Back to Dashboard</a>
+<body class="bg-gray-100">
+  <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+    <h1 class="text-xl font-bold mb-6">Edit Checklist</h1>
+    <form action="/checklists/<%= checklist._id %>/edit" method="POST">
+      <!-- Checklist Title -->
+      <div class="mb-4">
+        <label class="block text-gray-700 font-semibold mb-1">Nama Checklist</label>
+        <input type="text" name="title" class="w-full border border-gray-300 rounded p-2" value="<%= checklist.title %>" required />
+      </div>
+      <!-- Header and Add Task Button -->
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-gray-700 font-semibold">Item Inspeksi</label>
+        <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
+      </div>
+      <!-- Task Rows Container -->
+      <div id="taskList" class="mb-4">
+        <% checklist.tasks.forEach(function(task) { %>
+          <div class="task-row flex items-center gap-2 mb-2">
+            <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="<%= task.description %>" required />
+            <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required onchange="toggleExpectedUnit(this, this.closest('.task-row'))">
+              <option value="visual" <%= task.inputType === 'visual' ? 'selected' : '' %>>Visual Check</option>
+              <option value="measurement" <%= task.inputType === 'measurement' ? 'selected' : '' %>>Measurement</option>
+              <option value="functional" <%= task.inputType === 'functional' ? 'selected' : '' %>>Functional Test</option>
+            </select>
+            <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 <%= task.inputType === 'measurement' ? '' : 'hidden' %>" value="<%= task.expectedUnit %>" />
+            <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
+          </div>
+        <% }); %>
+      </div>
+      <!-- Submit Button -->
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Update Checklist</button>
+    </form>
+  </div>
 </body>
 </html>

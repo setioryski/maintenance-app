@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Assign Checklist</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+    <h1 class="text-xl font-bold mb-4">Assign Checklist</h1>
+    <p class="mb-4">
+      Checklist: <strong><%= checklist.title %></strong>
+    </p>
+
+    <form action="/checklists/<%= checklist._id %>/assign" method="POST">
+      <h2 class="text-md font-semibold mb-2">Pilih Asset:</h2>
+      <div class="mb-4">
+        <% assets.forEach(asset => { %>
+          <div class="flex items-center mb-1">
+            <!-- 
+              Check the box if this asset is already assigned. 
+              'assignedAssetIds' is an array of IDs as strings
+            -->
+            <input
+              type="checkbox"
+              name="assetIds"
+              value="<%= asset._id %>"
+              id="asset-<%= asset._id %>"
+              <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %>
+              class="mr-2"
+            />
+            <label for="asset-<%= asset._id %>">
+              <%= asset.name %> - <span class="text-gray-600"><%= asset.type %></span>
+            </label>
+          </div>
+        <% }); %>
+      </div>
+
+      <button
+        type="submit"
+        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+      >
+        Simpan
+      </button>
+      <a
+        href="/spv/dashboard"
+        class="ml-4 text-blue-500 hover:text-blue-700"
+      >
+        Batal
+      </a>
+    </form>
+  </div>
+</body>
+</html>
