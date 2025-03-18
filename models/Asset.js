@@ -8,7 +8,8 @@ const assetSchema = new mongoose.Schema({
   location: String,
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetCategory', required: true },
   floor: { type: mongoose.Schema.Types.ObjectId, ref: 'Floor' },
-  zone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone' }
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone' },
+  division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' }
 });
 
 module.exports = mongoose.model('Asset', assetSchema);

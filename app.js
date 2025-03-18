@@ -74,6 +74,25 @@ function ensureTechnician(req, res, next) {
   if (req.session && req.session.userRole === 'technician') return next();
   res.send('Access denied: Only technicians allowed');
 }
+// Middleware untuk memastikan asset yang diakses milik divisi user
+async function ensureAssetBelongsToUser(req, res, next) {
+  try {
+    const asset = await Asset.findById(req.params.id);
+    if (!asset) {
+      return res.status(404).send('Asset tidak ditemukan');
+    }
+    // Bandingkan asset.division dengan req.session.userDivision (yang diset saat login)
+    if (asset.division.toString() !== req.session.userDivision) {
+      return res.status(403).send('Akses ditolak: Aset ini tidak berada pada divisi Anda');
+    }
+    // Jika valid, simpan asset di req agar bisa dipakai di route berikutnya
+    req.asset = asset;
+    next();
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
+
 
 // Socket.io connection event
 io.on('connection', (socket) => {
@@ -184,19 +203,36 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 
 // (Other routes such as Manager Dashboard, SPV checklist creation, and Technician update would be implemented in a full version)
 // Get the checklist edit form (only accessible by SPV who created the checklist)
-// ---------- SPV: CREATE ASSET ----------
+
 
 // SPV dashboard: list checklists created by the logged-in SPV
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    // Find checklists created by the logged-in SPV and populate asset details
-    const checklists = await Checklist.find({ createdBy: req.session.userId }).populate('asset');
-    // Pass the checklists variable to the view
-    res.render('spvDashboard', { checklists });
+    // Fetch checklists created by the logged-in SPV
+    const checklists = await Checklist.find({ createdBy: req.session.userId });
+    const checklistData = await Promise.all(checklists.map(async checklist => {
+      const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
+      return { ...checklist.toObject(), assignmentCount: count };
+    }));
+
+    // Fetch assets belonging to the SPV's division
+    const assets = await Asset.find({ division: req.session.userDivision })
+                              .populate('category')
+                              .populate('floor')
+                              .populate('zone');
+
+    // Pass both checklists and assets to the view
+    res.render('spvDashboard', { checklists: checklistData, assets });
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
+
+
+
+
+// ---------- SPV: CREATE ASSET ----------//
 
 // SPV can create asset using this route
 app.get('/assets/new', ensureAuthenticated, ensureSpv, async (req, res) => {
@@ -210,7 +246,17 @@ app.get('/assets/new', ensureAuthenticated, ensureSpv, async (req, res) => {
   }
 });
 
+// Contoh filter di route
+app.get('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    // Hanya ambil aset yang division-nya sama dengan SPV
+    const assets = await Asset.find({ division: req.session.userDivision });
+    res.render('spvDashboard', { assets, checklists });
 
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
@@ -225,7 +271,8 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
       location,
       category, // must match the field name in your model
       floor,
-      zone
+      zone,
+      division: req.session.userDivision // Set division to the SPV's division
     });
 
     await newAsset.save();
@@ -234,6 +281,40 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
     res.status(500).send(err.message);
   }
 });
+
+// ---------- SPV: EDIT ASET-------//
+// GET route: Render the edit asset form
+app.get('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
+  try {
+    // Fetch data needed for dropdowns
+    const assetCategories = await AssetCategory.find({});
+    const floors = await Floor.find({});
+    const zones = await Zone.find({});
+    // req.asset was populated in ensureAssetBelongsToUser middleware
+    res.render('editAsset', { asset: req.asset, assetCategories, floors, zones });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// POST route: Handle edit asset submission
+app.post('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
+  try {
+    const { name, description, location, category, floor, zone } = req.body;
+    // Update the asset that was already validated
+    req.asset.name = name;
+    req.asset.description = description;
+    req.asset.location = location;
+    req.asset.category = category;
+    req.asset.floor = floor;
+    req.asset.zone = zone;
+    await req.asset.save();
+    res.redirect('/spv/dashboard');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 
 
 // ---------- SPV: CREATE CHECKLIST ----------
@@ -420,7 +501,8 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
       return { ...checklist.toObject(), assignmentCount: count };
     }));
 
-    res.render('spvDashboard', { checklists: checklistData });
+    res.render('spvDashboard', { checklists: checklistData, assets: assets || [] });
+
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -463,7 +545,7 @@ const AssetCategory = require('./models/AssetCategory');
 
 async function initializeAssetCategories() {
   // Define your default categories here. Adjust the list as needed.
-  const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm'];
+  const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm', 'Panoramic'];
 
   for (const categoryName of defaultCategories) {
     let category = await AssetCategory.findOne({ name: categoryName });

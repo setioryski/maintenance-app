@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Asset</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+    <h1 class="text-xl font-bold mb-6">Edit Asset</h1>
+    <form action="/assets/<%= asset._id %>/edit" method="POST">
+      <!-- Asset Name -->
+      <div class="mb-4">
+        <label for="name" class="block text-gray-700 font-semibold mb-1">Nama Asset</label>
+        <input type="text" name="name" id="name" class="w-full border border-gray-300 rounded p-2" value="<%= asset.name %>" required>
+      </div>
+      
+      <!-- Description -->
+      <div class="mb-4">
+        <label for="description" class="block text-gray-700 font-semibold mb-1">Deskripsi</label>
+        <textarea name="description" id="description" class="w-full border border-gray-300 rounded p-2"><%= asset.description %></textarea>
+      </div>
+      
+      <!-- Location -->
+      <div class="mb-4">
+        <label for="location" class="block text-gray-700 font-semibold mb-1">Lokasi</label>
+        <input type="text" name="location" id="location" class="w-full border border-gray-300 rounded p-2" value="<%= asset.location %>">
+      </div>
+      
+      <!-- Category -->
+      <div class="mb-4">
+        <label for="category" class="block text-gray-700 font-semibold mb-1">Kategori Asset</label>
+        <select name="category" id="category" class="w-full border border-gray-300 rounded p-2" required>
+          <option value="" disabled>-- Pilih Kategori --</option>
+          <% assetCategories.forEach(function(cat) { %>
+            <option value="<%= cat._id %>" <%= asset.category.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      
+      <!-- Floor -->
+      <div class="mb-4">
+        <label for="floor" class="block text-gray-700 font-semibold mb-1">Lantai</label>
+        <select name="floor" id="floor" class="w-full border border-gray-300 rounded p-2" required>
+          <option value="">-- Pilih Lantai --</option>
+          <% floors.forEach(function(fl) { %>
+            <option value="<%= fl._id %>" <%= asset.floor && asset.floor.toString() === fl._id.toString() ? 'selected' : '' %>><%= fl.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      
+      <!-- Zone (Populated Dynamically) -->
+      <div class="mb-4">
+        <label for="zone" class="block text-gray-700 font-semibold mb-1">Zona</label>
+        <select name="zone" id="zone" class="w-full border border-gray-300 rounded p-2" required>
+          <option value="">-- Pilih Zona --</option>
+        </select>
+      </div>
+      
+      <!-- Submit Button -->
+      <div class="flex justify-end">
+        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+          Update Asset
+        </button>
+      </div>
+    </form>
+  </div>
+  
+  <script>
+    // Inject zones data as a JSON string then parse it.
+    var zonesData = '<%- JSON.stringify(zones || []) %>';
+    const zones = JSON.parse(zonesData);
+
+    const floorDropdown = document.getElementById('floor');
+    const zoneDropdown = document.getElementById('zone');
+
+    // Function to populate zone dropdown based on selected floor and optionally preselect a zone.
+    function populateZones(selectedFloorId, preselectedZoneId) {
+      zoneDropdown.innerHTML = '<option value="">-- Pilih Zona --</option>';
+      zones.forEach(function(zone) {
+        if (zone.floor.toString() === selectedFloorId) {
+          const option = document.createElement('option');
+          option.value = zone._id;
+          option.textContent = zone.name;
+          if (preselectedZoneId && zone._id.toString() === preselectedZoneId.toString()) {
+            option.selected = true;
+          }
+          zoneDropdown.appendChild(option);
+        }
+      });
+    }
+
+    // When the floor selection changes, repopulate the zone dropdown.
+    floorDropdown.addEventListener('change', function() {
+      populateZones(this.value);
+    });
+
+    // On page load, if a floor is already selected, populate zones accordingly.
+    window.addEventListener('DOMContentLoaded', function() {
+      const selectedFloorId = floorDropdown.value;
+      if (selectedFloorId) {
+        populateZones(selectedFloorId, '<%= asset.zone ? asset.zone.toString() : "" %>');
+      }
+    });
+  </script>
+</body>
+</html>
