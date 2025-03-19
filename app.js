@@ -481,7 +481,7 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
     const assignedAssetIds = assignments.map(a => a.asset.toString());
 
     // Get all assets (or filter as needed)
-    const assets = await Asset.find({});
+    const assets = await Asset.find({ division: req.session.userDivision });
 
     res.render('assignChecklist', {
       checklist,
