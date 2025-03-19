@@ -97,6 +97,9 @@
                 <a href="/assets/<%= asset._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">
                   Edit
                 </a>
+                <a href="/assets/<%= asset._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus asset ini?')">
+                  Hapus
+                </a>
               </td>
             </tr>
           <% }); %>
@@ -108,7 +111,7 @@
   
   <!-- Optional Navigation Links -->
   <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
-    <a href="/" class="text-blue-500 hover:text-blue-700">Dashboard</a>
+    <a href="/spv/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 </body>

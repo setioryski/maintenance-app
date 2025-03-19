@@ -93,6 +93,25 @@ async function ensureAssetBelongsToUser(req, res, next) {
   }
 }
 
+async function ensureChecklistBelongsToUser(req, res, next) {
+  try {
+    const checklist = await Checklist.findById(req.params.id);
+    if (!checklist) {
+      return res.status(404).send('Checklist not found');
+    }
+    // Check if the logged-in user's ID matches the checklist's creator
+    if (checklist.createdBy.toString() !== req.session.userId) {
+      return res.status(403).send('Access denied: You are not authorized to modify this checklist');
+    }
+    // Optionally, attach the checklist to the request for later use:
+    req.checklist = checklist;
+    next();
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
+
+
 
 // Socket.io connection event
 io.on('connection', (socket) => {
@@ -432,6 +451,17 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
 
 // ---------- SPV: assign CHECKLIST ----------
 
+//deleting an asset
+app.get('/assets/:id/delete', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
+  try {
+    await Asset.findByIdAndDelete(req.params.id);
+    res.redirect('/spv/dashboard');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
 // GET /checklists/:id/assign
 app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
@@ -486,6 +516,21 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
     res.status(500).send(err.message);
   }
 });
+
+//spv delet checklist
+
+// DELETE Checklist Route
+app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
+  try {
+    await Checklist.findByIdAndDelete(req.params.id);
+    // Optionally: Remove related records from the ChecklistAssignment collection if needed.
+    res.redirect('/spv/dashboard');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
 
 //assignment count
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
