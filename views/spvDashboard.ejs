@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <title>SPV Dashboard - Manajemen Checklist & Asset</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .cursor-move { cursor: move; }
+    .dragging { opacity: 0.5; }
+  </style>
 </head>
 <body class="bg-gray-100">
   <div class="max-w-6xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
@@ -31,21 +35,16 @@
             <th class="p-2 border">Aksi</th>
           </tr>
         </thead>
-        <tbody>
+        <!-- Make tbody draggable by giving it an id -->
+        <tbody id="checklist-tbody">
           <% checklists.forEach(checklist => { %>
-            <tr>
-              <td class="p-2 border"><%= checklist.title %></td>
+            <tr data-id="<%= checklist._id %>">
+              <td class="p-2 border cursor-move"><%= checklist.title %></td>
               <td class="p-2 border"><%= checklist.assignmentCount || 0 %></td>
               <td class="p-2 border">
-                <a href="/checklists/<%= checklist._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">
-                  Edit
-                </a>
-                <a href="/checklists/<%= checklist._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus checklist ini?')">
-                  Hapus
-                </a>
-                <a href="/checklists/<%= checklist._id %>/assign" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded ml-2">
-                  Assign
-                </a>
+                <a href="/checklists/<%= checklist._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Edit</a>
+                <a href="/checklists/<%= checklist._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus checklist ini?')">Hapus</a>
+                <a href="/checklists/<%= checklist._id %>/assign" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded ml-2">Assign</a>
               </td>
             </tr>
           <% }); %>
@@ -53,9 +52,20 @@
       </table>
     </div>
     
-    <!-- Asset Management Table -->
+    <!-- Asset Management Section with Filter -->
     <div>
       <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
+      <!-- Filter Dropdown for Asset Category -->
+      <div class="mb-4">
+        <label for="asset-category-filter" class="block text-gray-700 font-semibold mb-1">Filter by Kategori Asset:</label>
+        <select id="asset-category-filter" class="w-full border border-gray-300 rounded p-2">
+          <option value="all">Semua</option>
+          <% assetCategories.forEach(function(cat) { %>
+            <option value="<%= cat._id %>"><%= cat.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-gray-200">
@@ -67,9 +77,9 @@
             <th class="p-2 border">Aksi</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="asset-tbody">
           <% assets.forEach(asset => { %>
-            <tr>
+            <tr data-category="<%= asset.category ? asset.category._id.toString() : '' %>">
               <td class="p-2 border"><%= asset.name %></td>
               <td class="p-2 border">
                 <% if(asset.category && asset.category.name) { %>
@@ -94,12 +104,8 @@
                 <% } %>
               </td>
               <td class="p-2 border">
-                <a href="/assets/<%= asset._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">
-                  Edit
-                </a>
-                <a href="/assets/<%= asset._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus asset ini?')">
-                  Hapus
-                </a>
+                <a href="/assets/<%= asset._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Edit</a>
+                <a href="/assets/<%= asset._id %>/delete" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2" onclick="return confirm('Yakin ingin menghapus asset ini?')">Hapus</a>
               </td>
             </tr>
           <% }); %>
@@ -111,8 +117,52 @@
   
   <!-- Optional Navigation Links -->
   <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
-    <a href="/spv/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
+    <a href="/" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
+  
+  <!-- Include SortableJS from CDN for drag-and-drop in checklists -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+  <script>
+    // Make the checklist table's tbody sortable
+    var checklistTbody = document.getElementById('checklist-tbody');
+    Sortable.create(checklistTbody, {
+      animation: 150,
+      ghostClass: 'dragging',
+      onEnd: function(evt) {
+        var order = [];
+        checklistTbody.querySelectorAll('tr').forEach(function(row) {
+          order.push(row.getAttribute('data-id'));
+        });
+        console.log('New order:', order);
+        // Send the new order to the server via AJAX:
+        fetch('/checklists/sort', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: order })
+        })
+        .then(response => response.json())
+        .then(data => console.log(data.message))
+        .catch(err => console.error(err));
+      }
+    });
+    
+    // Asset filter by category
+    const assetFilter = document.getElementById('asset-category-filter');
+    const assetTbody = document.getElementById('asset-tbody');
+    
+    assetFilter.addEventListener('change', function() {
+      const selectedCategory = this.value;
+      assetTbody.querySelectorAll('tr').forEach(row => {
+        // Each row has data-category attribute
+        const rowCategory = row.getAttribute('data-category');
+        if (selectedCategory === 'all' || selectedCategory === rowCategory) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  </script>
 </body>
 </html>

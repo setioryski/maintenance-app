@@ -22,6 +22,10 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
+//Parsing JSON Requests
+app.use(express.json());
+
+
 // Configure body parser and session
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
@@ -227,25 +231,28 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 // SPV dashboard: list checklists created by the logged-in SPV
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    // Fetch checklists created by the logged-in SPV
-    const checklists = await Checklist.find({ createdBy: req.session.userId });
+    // Get checklists created by this SPV and calculate assignment count.
+    const checklists = await Checklist.find({ createdBy: req.session.userId }).sort({ order: 1 });
     const checklistData = await Promise.all(checklists.map(async checklist => {
       const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
       return { ...checklist.toObject(), assignmentCount: count };
     }));
 
-    // Fetch assets belonging to the SPV's division
+    // Fetch assets belonging to the SPV's division.
     const assets = await Asset.find({ division: req.session.userDivision })
                               .populate('category')
                               .populate('floor')
                               .populate('zone');
+    
+    // Also fetch asset categories
+    const assetCategories = await AssetCategory.find({});
 
-    // Pass both checklists and assets to the view
-    res.render('spvDashboard', { checklists: checklistData, assets });
+    res.render('spvDashboard', { checklists: checklistData, assets, assetCategories });
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
 
 
 
@@ -517,7 +524,7 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
   }
 });
 
-//spv delet checklist
+//spv delete checklist
 
 // DELETE Checklist Route
 app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
@@ -530,13 +537,28 @@ app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklis
   }
 });
 
+//spv sort checklist
+app.post('/checklists/sort', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const { order } = req.body; // Expects an array of checklist IDs in the new order
+    // Loop through each checklist ID and update its order field
+    for (let i = 0; i < order.length; i++) {
+      await Checklist.findByIdAndUpdate(order[i], { order: i });
+    }
+    res.status(200).json({ message: 'Checklist order updated successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 
 //assignment count
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
     // Fetch checklists created by the logged-in SPV
-    const checklists = await Checklist.find({ createdBy: req.session.userId });
+    const checklists = await Checklist.find({ createdBy: req.session.userId }).sort({ order: 1 });
     
     // For each checklist, count the assignments using the junction collection
     // Alternatively, you can use an aggregation to do this in one query.
