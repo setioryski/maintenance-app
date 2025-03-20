@@ -24,6 +24,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //Parsing JSON Requests
 app.use(express.json());
+// Middleware to parse URL-encoded bodies (for forms)
+app.use(express.urlencoded({ extended: true }));
 
 
 // Configure body parser and session
@@ -46,10 +48,10 @@ const Checklist = require('./models/Checklist');
 const User = require('./models/User');
 const Division = require('./models/Division');
 
-// Configure Multer for file uploads
+// Configure Multer to store uploaded files in a folder
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
-    cb(null, 'public/uploads/');
+    cb(null, path.join(__dirname, 'public/uploads'));
   },
   filename: function(req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
@@ -57,27 +59,79 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Middleware for authentication and role-checking
+// Middleware for authentication
 function ensureAuthenticated(req, res, next) {
-  if (req.session && req.session.userId) return next();
-  res.redirect('/login');
+  if (req.session && req.session.userId) {
+    return next();
+  }
+  res.redirect('/login'); // Redirect unauthenticated users to login
 }
-function ensureSuperuser(req, res, next) {
-  if (req.session && req.session.userRole === 'superuser') return next();
-  res.send('Access denied: Only superusers allowed');
+
+// General role-based middleware to reduce redundancy
+function ensureRole(role) {
+  return (req, res, next) => {
+    if (req.session && req.session.userRole === role) {
+      return next();
+    }
+    console.warn(`Unauthorized access attempt by user ${req.session.userId} (Role: ${req.session.userRole})`);
+    res.status(403).send(`Access denied: Only ${role}s allowed`);
+  };
 }
-function ensureManager(req, res, next) {
-  if (req.session && req.session.userRole === 'manager') return next();
-  res.send('Access denied: Only managers allowed');
+
+// Specific role-based middlewares using the generic function
+const ensureSuperuser = ensureRole('superuser');
+const ensureManager = ensureRole('manager');
+const ensureSpv = ensureRole('spv');
+const ensureTechnician = ensureRole('technician');
+
+// Middleware to ensure the asset belongs to the user’s division
+async function ensureAssetBelongsToUser(req, res, next) {
+  try {
+    const asset = await Asset.findById(req.params.id);
+    if (!asset) {
+      return res.status(404).json({ error: 'Asset not found' });
+    }
+
+    if (asset.division.toString() !== req.session.userDivision) {
+      console.warn(`Unauthorized asset access attempt by ${req.session.userId}`);
+      return res.status(403).json({ error: 'Access denied: Asset is not in your division' });
+    }
+
+    req.asset = asset; // Store asset in request for further processing
+    next();
+  } catch (error) {
+    console.error(`Error in ensureAssetBelongsToUser: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
 }
-function ensureSpv(req, res, next) {
-  if (req.session && req.session.userRole === 'spv') return next();
-  res.send('Access denied: Only supervisors allowed');
+
+// Middleware to ensure the checklist belongs to the logged-in user
+async function ensureChecklistBelongsToUser(req, res, next) {
+  try {
+    // Find the checklist by its ID from the database
+    const checklist = await Checklist.findById(req.params.id);
+
+    // If the checklist is not found, return a 404 error
+    if (!checklist) {
+      return res.status(404).json({ error: 'Checklist not found' });
+    }
+
+    // Check if the logged-in user is the checklist creator
+    if (checklist.createdBy.toString() !== req.session.userId) {
+      console.warn(`Unauthorized checklist modification attempt by ${req.session.userId}`);
+      return res.status(403).json({ error: 'Access denied: You are not authorized to modify this checklist' });
+    }
+
+    // Attach the checklist to the request for further processing
+    req.checklist = checklist;
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    console.error(`Error in ensureChecklistBelongsToUser: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
 }
-function ensureTechnician(req, res, next) {
-  if (req.session && req.session.userRole === 'technician') return next();
-  res.send('Access denied: Only technicians allowed');
-}
+
+
 // Middleware untuk memastikan asset yang diakses milik divisi user
 async function ensureAssetBelongsToUser(req, res, next) {
   try {
@@ -115,6 +169,38 @@ async function ensureChecklistBelongsToUser(req, res, next) {
   }
 }
 
+async function ensureTechnicianCanFillChecklist(req, res, next) {
+  try {
+    const checklist = await Checklist.findById(req.params.id);
+
+    if (!checklist) {
+      return res.status(404).json({ error: 'Checklist not found' });
+    }
+
+    // If the user is a technician, restrict editable fields
+    if (req.session.userRole === 'technician') {
+      const allowedFields = ['functionalTest', 'measurement', 'visualCheck'];
+      const submittedFields = Object.keys(req.body);
+
+      // Check if the technician is only modifying allowed fields
+      const isValidUpdate = submittedFields.every((field) => allowedFields.includes(field));
+
+      if (!isValidUpdate) {
+        return res.status(403).json({ error: 'Access denied: You can only modify Functional Test, Measurement, and Visual Check' });
+      }
+    }
+
+    // Attach checklist to the request
+    req.checklist = checklist;
+    next();
+
+  } catch (error) {
+    console.error(`Error in ensureTechnicianCanFillChecklist: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+
 
 
 // Socket.io connection event
@@ -129,10 +215,34 @@ io.on('connection', (socket) => {
 // ROUTES (Superuser, Manager, etc.)
 // ------------------------------
 
-// Home page
+// Home page redirect to dashboard
 app.get('/', (req, res) => {
-  res.render('index', { user: req.session });
+  if (req.session && req.session.userId) {
+    // Log user access attempt
+    console.log(`User ID: ${req.session.userId}, Role: ${req.session.userRole}`);
+
+    // Redirect based on user role
+    const dashboardRoutes = {
+      superuser: '/superuser/dashboard',
+      manager: '/manager/dashboard',
+      spv: '/spv/dashboard',
+      technician: '/technician/dashboard'
+    };
+
+    const userDashboard = dashboardRoutes[req.session.userRole];
+
+    if (userDashboard) {
+      return res.redirect(userDashboard);
+    } else {
+      console.warn(`Unknown role encountered: ${req.session.userRole}`);
+      return res.redirect('/error?msg=Unknown+role'); // Better error handling
+    }
+  }
+
+  // User is not logged in; redirect to login page
+  res.redirect('/login');
 });
+
 
 // ----- AUTHENTICATION ROUTES -----
 // Login
@@ -575,6 +685,128 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
   }
 });
 
+// ---------- technician ----------//
+//technician dashboard
+app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (req, res) => {
+  try {
+    // Get assets in the technician's division
+    const assets = await Asset.find({ division: req.session.userDivision });
+    const assetIds = assets.map(a => a._id);
+    
+    // Get all checklist assignments for those assets (complete or not)
+    const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
+      .populate('checklist')
+      .populate('asset');
+    
+    res.render('technicianDashboard', { assignments });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
+  try {
+    // Find the checklist assignment by its ID and populate related checklist and asset data.
+    const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
+      .populate('checklist')
+      .populate('asset');
+
+    if (!assignment) {
+      return res.status(404).send('Checklist assignment not found.');
+    }
+
+    // Render the technician checklist view with the assignment details.
+    res.render('technicianChecklist', {
+      assignment,
+      checklist: assignment.checklist,
+      asset: assignment.asset
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+
+app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensureTechnician, upload.any(), async (req, res) => {
+  try {
+    const assignmentId = req.params.assignmentId;
+    
+    // For tasks with functional & measurement inputs,
+    // the form sends values in req.body.results (an object keyed by task ID)
+    const resultsFromBody = req.body.results || {};
+    
+    // Build a responses object from req.body
+    const responses = { ...resultsFromBody };
+    
+    // For visual tasks, file uploads are handled by Multer.
+    // The field name is in the format "results[<taskId>]"
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        // Extract taskId from field name using a regex
+        const match = file.fieldname.match(/results\[(.+)\]/);
+        if (match && match[1]) {
+          const taskId = match[1];
+          // Save the file path (or URL) as the response for that task
+          responses[taskId] = file.path; // you can adjust if you need to serve the file URL instead
+        }
+      });
+    }
+    
+    // Find the checklist assignment and update it with responses
+    const assignment = await ChecklistAssignment.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).send('Checklist assignment not found.');
+    }
+    
+    assignment.responses = responses;
+    assignment.completedAt = new Date();
+    await assignment.save();
+    
+    // Redirect back to the technician dashboard
+    res.redirect('/technician/dashboard');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+});
+
+
+//tehnician report
+app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
+  try {
+    const assets = await Asset.find({ division: req.session.userDivision });
+    const assetIds = assets.map(a => a._id);
+    
+    // Find assignments that are completed (completedAt exists)
+    const assignments = await ChecklistAssignment.find({
+      asset: { $in: assetIds },
+      completedAt: { $ne: null }
+    })
+      .populate('checklist')
+      .populate('asset');
+    
+    res.render('technicianReport', { assignments });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
+  try {
+    const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
+      .populate('checklist')
+      .populate('asset');
+    if (!assignment || !assignment.completedAt) {
+      return res.status(404).send('Completed checklist not found.');
+    }
+    res.render('technicianChecklistReportDetail', { assignment });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 
 
