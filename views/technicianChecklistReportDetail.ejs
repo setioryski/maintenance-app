@@ -12,13 +12,13 @@
     <!-- Report Header -->
     <div class="mb-4">
       <p class="mb-1">Asset: <strong><%= assignment.asset.name %></strong></p>
-      <p class="mb-1">Checklist: <strong><%= assignment.checklist.title %></strong></p>
+      <p class="mb-1">Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong></p>
       <p class="mb-1">
         Submitted on: <strong>
-          <%= new Date(assignment.completedAt).toLocaleDateString() %>
-          at <%= new Date(assignment.completedAt).toLocaleTimeString() %>
+          <%= new Date(assignment.completedAt).toLocaleDateString() %> at <%= new Date(assignment.completedAt).toLocaleTimeString() %>
         </strong>
       </p>
+      <p class="mb-1">Technician: <strong><%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></strong></p>
     </div>
     
     <!-- Task Responses -->
@@ -31,17 +31,20 @@
         </tr>
       </thead>
       <tbody>
-        <% assignment.checklist.tasks.forEach(function(task) { 
-             // Get the response for the task from the responses object
-             var response = assignment.responses[task._id];
-        %>
-          <tr class="border-b">
-            <td class="p-2 border"><%= task.description %></td>
-            <td class="p-2 border">
-              <%= response ? response : 'No response provided' %>
-            </td>
+        <% if (assignment.checklist && assignment.checklist.tasks) { %>
+          <% assignment.checklist.tasks.forEach(function(task) { 
+               var response = assignment.responses[task._id];
+          %>
+            <tr class="border-b">
+              <td class="p-2 border"><%= task.description %></td>
+              <td class="p-2 border"><%= response ? response : 'No response provided' %></td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td class="p-2 border" colspan="2">No checklist tasks available.</td>
           </tr>
-        <% }); %>
+        <% } %>
       </tbody>
     </table>
     

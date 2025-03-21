@@ -5,7 +5,10 @@ const checklistAssignmentSchema = new mongoose.Schema({
   asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
   assignedAt: { type: Date, default: Date.now },
   responses: { type: Object }, // Will store responses keyed by taskId
-  completedAt: { type: Date }
+  completedAt: { type: Date },
+  submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+
+
 });
 
 module.exports = mongoose.model('ChecklistAssignment', checklistAssignmentSchema);

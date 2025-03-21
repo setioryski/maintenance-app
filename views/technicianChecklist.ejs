@@ -8,41 +8,53 @@
 <body class="bg-gray-100">
   <div class="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-md rounded">
     <h1 class="text-2xl font-bold mb-4 text-center">Do Checklist</h1>
-    <p class="mb-2">Asset: <strong><%= asset.name %></strong></p>
-    <p class="mb-4">Checklist: <strong><%= checklist.title %></strong></p>
+    <p class="mb-2">Asset: <strong><%= assignment.asset.name %></strong></p>
+    <p class="mb-4">Checklist: <strong>
+      <%= assignment.checklist ? assignment.checklist.title : 'N/A' %>
+    </strong></p>
     
     <form action="/technician/checklist/<%= assignment._id %>/submit" method="POST" enctype="multipart/form-data">
-      <% checklist.tasks.forEach(function(task) { %>
-        <div class="mb-6 border p-4 rounded">
-          <!-- Hidden field to keep track of the task ID -->
-          <input type="hidden" name="taskIds[]" value="<%= task._id %>">
-          <label class="block text-gray-700 font-bold mb-2">
-            <%= task.description %>
-          </label>
-          
-          <% if(task.inputType === 'functional') { %>
-            <div class="flex space-x-6">
-              <label class="inline-flex items-center">
-                <input type="radio" name="results[<%= task._id %>]" value="pass" required>
-                <span class="ml-2">Pass</span>
-              </label>
-              <label class="inline-flex items-center">
-                <input type="radio" name="results[<%= task._id %>]" value="fail" required>
-                <span class="ml-2">Fail</span>
-              </label>
-            </div>
-          <% } else if(task.inputType === 'measurement') { %>
-            <div class="flex items-center">
-              <input type="number" name="results[<%= task._id %>]" placeholder="Masukkan nilai" class="shadow border rounded w-full py-2 px-3" required>
-              <% if(task.expectedUnit) { %>
-                <span class="ml-2 text-gray-600"><%= task.expectedUnit %></span>
-              <% } %>
-            </div>
-          <% } else if(task.inputType === 'visual') { %>
-            <input type="file" name="results[<%= task._id %>]" accept="image/*" required>
-          <% } %>
-        </div>
-      <% }); %>
+      <% 
+         // Safely get tasks array (default to empty array if not available)
+         const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
+      %>
+      <% if (tasks.length > 0) { %>
+        <% tasks.forEach(function(task) { 
+             var response = assignment.responses ? assignment.responses[task._id] : null;
+        %>
+          <div class="mb-6 border p-4 rounded">
+            <!-- Hidden field to keep track of the task ID -->
+            <input type="hidden" name="taskIds[]" value="<%= task._id %>">
+            <label class="block text-gray-700 font-bold mb-2">
+              <%= task.description %>
+            </label>
+            
+            <% if(task.inputType === 'functional') { %>
+              <div class="flex space-x-6">
+                <label class="inline-flex items-center">
+                  <input type="radio" name="results[<%= task._id %>]" value="pass" required>
+                  <span class="ml-2">Pass</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" name="results[<%= task._id %>]" value="fail" required>
+                  <span class="ml-2">Fail</span>
+                </label>
+              </div>
+            <% } else if(task.inputType === 'measurement') { %>
+              <div class="flex items-center">
+                <input type="number" name="results[<%= task._id %>]" placeholder="Masukkan nilai" class="shadow border rounded w-full py-2 px-3" required>
+                <% if(task.expectedUnit) { %>
+                  <span class="ml-2 text-gray-600"><%= task.expectedUnit %></span>
+                <% } %>
+              </div>
+            <% } else if(task.inputType === 'visual') { %>
+              <input type="file" name="results[<%= task._id %>]" accept="image/*" required>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <p class="text-gray-600">No tasks available for this checklist.</p>
+      <% } %>
       
       <div class="flex justify-end">
         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">

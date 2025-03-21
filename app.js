@@ -689,15 +689,15 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
 //technician dashboard
 app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
-    // Get assets in the technician's division
     const assets = await Asset.find({ division: req.session.userDivision });
     const assetIds = assets.map(a => a._id);
-    
-    // Get all checklist assignments for those assets (complete or not)
-    const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
+    const assignments = await ChecklistAssignment.find({
+      asset: { $in: assetIds },
+      isTemplate: true
+    })
       .populate('checklist')
-      .populate('asset');
-    
+      .populate('asset');    
+      
     res.render('technicianDashboard', { assignments });
   } catch (err) {
     res.status(500).send(err.message);
@@ -705,23 +705,20 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
 });
 
 
+
+
+
+
+
 app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
-    // Find the checklist assignment by its ID and populate related checklist and asset data.
     const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
       .populate('checklist')
       .populate('asset');
-
     if (!assignment) {
       return res.status(404).send('Checklist assignment not found.');
     }
-
-    // Render the technician checklist view with the assignment details.
-    res.render('technicianChecklist', {
-      assignment,
-      checklist: assignment.checklist,
-      asset: assignment.asset
-    });
+    res.render('technicianChecklist', { assignment });
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -729,42 +726,48 @@ app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechni
 
 
 
+
 app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensureTechnician, upload.any(), async (req, res) => {
   try {
-    const assignmentId = req.params.assignmentId;
+    const originalAssignmentId = req.params.assignmentId;
     
-    // For tasks with functional & measurement inputs,
-    // the form sends values in req.body.results (an object keyed by task ID)
+    // Find the original assignment (to copy checklist and asset references)
+    const originalAssignment = await ChecklistAssignment.findById(originalAssignmentId)
+      .populate('checklist')
+      .populate('asset');
+    
+    if (!originalAssignment) {
+      return res.status(404).send('Checklist assignment not found.');
+    }
+    
+    // Build the responses object from form fields and file uploads.
     const resultsFromBody = req.body.results || {};
-    
-    // Build a responses object from req.body
     const responses = { ...resultsFromBody };
     
-    // For visual tasks, file uploads are handled by Multer.
-    // The field name is in the format "results[<taskId>]"
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
-        // Extract taskId from field name using a regex
         const match = file.fieldname.match(/results\[(.+)\]/);
         if (match && match[1]) {
           const taskId = match[1];
-          // Save the file path (or URL) as the response for that task
-          responses[taskId] = file.path; // you can adjust if you need to serve the file URL instead
+          // Save file path (or URL) as the response for that task
+          responses[taskId] = file.path;
         }
       });
     }
     
-    // Find the checklist assignment and update it with responses
-    const assignment = await ChecklistAssignment.findById(assignmentId);
-    if (!assignment) {
-      return res.status(404).send('Checklist assignment not found.');
-    }
+    // Create a new ChecklistAssignment record for this submission.
+    const newAssignment = new ChecklistAssignment({
+      checklist: originalAssignment.checklist._id,
+      asset: originalAssignment.asset._id,
+      // Optionally, you may choose to keep the original assignedAt date or use the current date.
+      assignedAt: originalAssignment.assignedAt,
+      responses: responses,
+      completedAt: new Date(), // mark this new record as completed now
+      submittedBy: req.session.userId  // record the technician who submitted it
+    });
     
-    assignment.responses = responses;
-    assignment.completedAt = new Date();
-    await assignment.save();
+    await newAssignment.save();
     
-    // Redirect back to the technician dashboard
     res.redirect('/technician/dashboard');
   } catch (err) {
     console.error(err);
@@ -773,19 +776,21 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 });
 
 
+
+
 //tehnician report
 app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
     const assets = await Asset.find({ division: req.session.userDivision });
     const assetIds = assets.map(a => a._id);
     
-    // Find assignments that are completed (completedAt exists)
     const assignments = await ChecklistAssignment.find({
       asset: { $in: assetIds },
       completedAt: { $ne: null }
     })
       .populate('checklist')
-      .populate('asset');
+      .populate('asset')
+      .populate('submittedBy');
     
     res.render('technicianReport', { assignments });
   } catch (err) {
@@ -794,11 +799,14 @@ app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req,
 });
 
 
+
+
 app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
     const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
       .populate('checklist')
-      .populate('asset');
+      .populate('asset')
+      .populate('submittedBy');
     if (!assignment || !assignment.completedAt) {
       return res.status(404).send('Completed checklist not found.');
     }
@@ -807,6 +815,7 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
     res.status(500).send(err.message);
   }
 });
+
 
 
 
