@@ -2,28 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Do Checklist</title>
+  <title>Do Maintenance Checklist</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-md rounded">
-    <h1 class="text-2xl font-bold mb-4 text-center">Do Checklist</h1>
+  <div class="max-w-3xl mx-auto p-6 bg-white shadow-md rounded">
+    <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
     <p class="mb-2">Asset: <strong><%= assignment.asset.name %></strong></p>
-    <p class="mb-4">Checklist: <strong>
-      <%= assignment.checklist ? assignment.checklist.title : 'N/A' %>
-    </strong></p>
+    <p class="mb-4">Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong></p>
     
     <form action="/technician/checklist/<%= assignment._id %>/submit" method="POST" enctype="multipart/form-data">
       <% 
-         // Safely get tasks array (default to empty array if not available)
+         // Safely get tasks from the checklist; default to empty array if not defined.
          const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
       %>
       <% if (tasks.length > 0) { %>
-        <% tasks.forEach(function(task) { 
-             var response = assignment.responses ? assignment.responses[task._id] : null;
-        %>
+        <% tasks.forEach(function(task) { %>
           <div class="mb-6 border p-4 rounded">
-            <!-- Hidden field to keep track of the task ID -->
+            <!-- Hidden field for task ID -->
             <input type="hidden" name="taskIds[]" value="<%= task._id %>">
             <label class="block text-gray-700 font-bold mb-2">
               <%= task.description %>
@@ -42,7 +38,7 @@
               </div>
             <% } else if(task.inputType === 'measurement') { %>
               <div class="flex items-center">
-                <input type="number" name="results[<%= task._id %>]" placeholder="Masukkan nilai" class="shadow border rounded w-full py-2 px-3" required>
+                <input type="number" name="results[<%= task._id %>]" placeholder="Enter value" class="shadow border rounded w-full py-2 px-3" required>
                 <% if(task.expectedUnit) { %>
                   <span class="ml-2 text-gray-600"><%= task.expectedUnit %></span>
                 <% } %>
@@ -62,6 +58,11 @@
         </button>
       </div>
     </form>
+  </div>
+  
+  <div class="max-w-3xl mx-auto mt-4 flex justify-end space-x-4">
+    <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
+    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 </body>
 </html>

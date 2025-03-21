@@ -4,46 +4,129 @@
   <meta charset="UTF-8">
   <title>Technician Dashboard - Maintenance Templates</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Hide the checklist rows by default */
+    .dropdown-content {
+      display: none;
+    }
+    /* Make header row clickable */
+    .group-header {
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body class="bg-gray-100">
   <div class="max-w-6xl mx-auto p-4">
-    <h1 class="text-3xl font-bold mb-6 text-center">Technician Dashboard</h1>
+    <h1 class="text-3xl font-bold text-center mb-6">Technician Dashboard</h1>
     <h2 class="text-xl font-semibold mb-4">Maintenance Checklist Templates</h2>
     
-    <table class="min-w-full bg-white shadow-md rounded overflow-hidden">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="py-2 px-4">Asset Name</th>
-          <th class="py-2 px-4">Checklist Title</th>
-          <th class="py-2 px-4">Assigned Date</th>
-          <th class="py-2 px-4">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% assignments.forEach(function(assignment) { %>
-          <tr class="border-b">
-            <td class="py-2 px-4"><%= assignment.asset.name %></td>
-            <td class="py-2 px-4">
-              <%= assignment.checklist ? assignment.checklist.title : 'N/A' %>
-            </td>
-            <td class="py-2 px-4">
-              <%= new Date(assignment.assignedAt).toLocaleDateString() %>
-            </td>
-            <td class="py-2 px-4">
-              <a href="/technician/checklist/<%= assignment._id %>" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
-                Do Checklist
-              </a>
+    <!-- Search bar for filtering assets -->
+    <div class="mb-4 flex justify-end">
+      <input type="text" id="searchInput" placeholder="Search asset by name..." class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300">
+    </div>
+    
+    <% if(assignments.length === 0) { %>
+      <p class="text-center text-gray-600">No maintenance checklist templates available.</p>
+    <% } else { %>
+      <table id="assetTable" class="min-w-full bg-white shadow-md rounded overflow-hidden">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="py-2 px-4">Asset Name</th>
+            <th class="py-2 px-4">Checklist Title</th>
+            <th class="py-2 px-4">Assigned Date</th>
+            <th class="py-2 px-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% 
+            // Group assignments by asset name
+            const groupedAssignments = {};
+            assignments.forEach(function(assignment) {
+              const assetName = assignment.asset.name;
+              if (!groupedAssignments[assetName]) {
+                groupedAssignments[assetName] = [];
+              }
+              groupedAssignments[assetName].push(assignment);
+            });
+            
+            // Iterate over each asset group
+            Object.keys(groupedAssignments).forEach(function(assetName) {
+              const group = groupedAssignments[assetName];
+              // Create an ID-friendly string by replacing spaces with dashes
+              const assetId = assetName.replace(/\s+/g, '-');
+          %>
+          <!-- Group header row -->
+          <tr class="bg-gray-100 group-header" onclick="toggleDropdown('<%= assetId %>')">
+            <td class="py-2 px-4 font-semibold" colspan="4">
+              <%= assetName %>
+              <span class="float-right">▼</span>
             </td>
           </tr>
-        <% }); %>
-      </tbody>
-    </table>
+          <!-- Dropdown rows for each checklist in this asset group -->
+          <tbody id="<%= assetId %>" class="dropdown-content">
+            <% group.forEach(function(assignment) { %>
+              <tr class="border-b">
+                <td class="py-2 px-4 pl-8"><%= assignment.asset.name %></td>
+                <td class="py-2 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
+                <td class="py-2 px-4"><%= new Date(assignment.assignedAt).toLocaleDateString() %></td>
+                <td class="py-2 px-4">
+                  <a href="/technician/checklist/<%= assignment._id %>" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
+                    Do Checklist
+                  </a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
   </div>
   
-  <!-- Navigation Links -->
+  <!-- Optional link to view all completed reports -->
+  <div class="mt-4 text-center">
+    <a href="/technician/report" class="text-blue-500 hover:text-blue-700 font-semibold">View All Completed Checklist Reports</a>
+  </div>
+  
   <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
+  
+  <!-- Client-side scripts -->
+  <script>
+    // Toggle dropdown visibility when a group header is clicked
+    function toggleDropdown(id) {
+      var dropdown = document.getElementById(id);
+      if (dropdown.style.display === 'table-row-group') {
+        dropdown.style.display = 'none';
+      } else {
+        dropdown.style.display = 'table-row-group';
+      }
+    }
+    
+    // Search filtering for grouped assets
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('keyup', function() {
+      const filter = searchInput.value.toLowerCase();
+      const headers = document.getElementsByClassName('group-header');
+      for (let i = 0; i < headers.length; i++) {
+        // The asset name is in the text of the header cell (ignoring the arrow)
+        const assetName = headers[i].textContent.replace('▼', '').trim().toLowerCase();
+        // Extract the ID from the onclick attribute
+        const match = headers[i].getAttribute('onclick').match(/toggleDropdown\('([^']+)'\)/);
+        const dropdownId = match ? match[1] : '';
+        const dropdown = document.getElementById(dropdownId);
+        
+        if (assetName.includes(filter)) {
+          headers[i].style.display = '';
+          if(dropdown) dropdown.style.display = '';
+        } else {
+          headers[i].style.display = 'none';
+          if(dropdown) dropdown.style.display = 'none';
+        }
+      }
+    });
+  </script>
 </body>
 </html>

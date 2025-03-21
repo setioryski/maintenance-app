@@ -344,7 +344,7 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
     // Get checklists created by this SPV and calculate assignment count.
     const checklists = await Checklist.find({ createdBy: req.session.userId }).sort({ order: 1 });
     const checklistData = await Promise.all(checklists.map(async checklist => {
-      const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
+      const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id, isTemplate: true });
       return { ...checklist.toObject(), assignmentCount: count };
     }));
 
@@ -604,7 +604,6 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
 });
 
 
-
 // POST /checklists/:id/assign
 app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
@@ -612,16 +611,17 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
     const checklistId = req.params.id;
     const ChecklistAssignment = require('./models/ChecklistAssignment');
 
-    // Remove all existing assignments for this checklist
+    // Remove existing assignments for this checklist (if you want to replace them)
     await ChecklistAssignment.deleteMany({ checklist: checklistId });
 
     // Ensure assetIds is an array
     const assetsToAssign = Array.isArray(assetIds) ? assetIds : (assetIds ? [assetIds] : []);
 
-    // Create a new assignment for each asset
+    // Create a new assignment for each asset and mark it as a template
     const assignments = assetsToAssign.map(assetId => ({
       checklist: checklistId,
-      asset: assetId
+      asset: assetId,
+      isTemplate: true
     }));
 
     if (assignments.length > 0) {
@@ -689,20 +689,25 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
 //technician dashboard
 app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
+    // Get assets in the technician's division.
     const assets = await Asset.find({ division: req.session.userDivision });
     const assetIds = assets.map(a => a._id);
+    
+    // Fetch only checklist assignment templates (isTemplate: true) for those assets.
     const assignments = await ChecklistAssignment.find({
       asset: { $in: assetIds },
       isTemplate: true
     })
       .populate('checklist')
-      .populate('asset');    
-      
+      .populate('asset');
+    
     res.render('technicianDashboard', { assignments });
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
+
 
 
 
@@ -756,14 +761,15 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
     }
     
     // Create a new ChecklistAssignment record for this submission.
+    // IMPORTANT: set isTemplate: false so it will not appear as a template.
     const newAssignment = new ChecklistAssignment({
       checklist: originalAssignment.checklist._id,
       asset: originalAssignment.asset._id,
-      // Optionally, you may choose to keep the original assignedAt date or use the current date.
       assignedAt: originalAssignment.assignedAt,
       responses: responses,
       completedAt: new Date(), // mark this new record as completed now
-      submittedBy: req.session.userId  // record the technician who submitted it
+      submittedBy: req.session.userId,  // record the technician who submitted it
+      isTemplate: false // mark this record as a submission, not as a template
     });
     
     await newAssignment.save();
@@ -774,6 +780,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
     res.status(500).send(err.message);
   }
 });
+
 
 
 
