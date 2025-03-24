@@ -32,9 +32,10 @@
       row.innerHTML = `
         <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="${desc}" required />
         <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required>
-          <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
-          <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
-          <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+                    <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+                    <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
+                    <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
+
         </select>
         <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 ${type === 'measurement' ? '' : 'hidden'}" value="${expUnit}" />
         <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
@@ -85,5 +86,13 @@
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Update Checklist</button>
     </form>
   </div>
+</body>    <!-- Back to Dashboard Button -->
+<div class="mt-4 text-center">
+  <a href="/spv/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block">
+    Back to Dashboard
+  </a>
+</div>
+</div>
 </body>
+</html>
 </html>

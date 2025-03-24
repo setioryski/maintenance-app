@@ -32,7 +32,7 @@
 
       // We'll read these from 'task' if present, otherwise use defaults
       const desc = task.description || '';
-      const type = task.inputType || 'visual';
+      const type = task.inputType || 'functional';
       const expUnit = task.expectedUnit || '';
 
       row.innerHTML = `
@@ -50,9 +50,11 @@
           class="border border-gray-300 rounded p-2"
           required
         >
-          <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
-          <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
-          <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+                  <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+                  <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
+                  <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
+
+
         </select>
 
         <input
@@ -185,9 +187,11 @@
             onchange="toggleExpectedUnit(this, this.closest('.task-row'))"
             required
           >
+          <option value="functional">Functional Test</option>
+          <option value="measurement">Measurement</option>
             <option value="visual">Visual Check</option>
-            <option value="measurement">Measurement</option>
-            <option value="functional">Functional Test</option>
+            
+            
           </select>
           <input
             type="text"
@@ -213,6 +217,16 @@
         Simpan Checklist
       </button>
     </form>
+  </div>
+</body>
+</html>
+
+    <!-- Back to Dashboard Button -->
+    <div class="mt-4 text-center">
+      <a href="/spv/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block">
+        Back to Dashboard
+      </a>
+    </div>
   </div>
 </body>
 </html>
