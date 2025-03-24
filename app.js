@@ -8,6 +8,9 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const asyncLib = require('async');
+const sharp = require('sharp');
+const fs = require('fs');
 require('dotenv').config();
 const app = express();
 const ChecklistAssignment = require('./models/ChecklistAssignment');
@@ -200,6 +203,31 @@ async function ensureTechnicianCanFillChecklist(req, res, next) {
   }
 }
 
+// Image Compression
+const imageProcessingQueue = asyncLib.queue((task, callback) => {
+  sharp(task.filePath)
+    .resize({ width: 800, withoutEnlargement: true })
+    .jpeg({ quality: 70 })
+    .toFile(`processed/${path.basename(task.filePath)}`)
+    .then(() => {
+      // Delete the original file
+      fs.unlink(task.filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error('Error deleting original file:', unlinkErr);
+        }
+        callback(null);
+      });
+    })
+    .catch((error) => {
+      console.error('Image processing error:', error);
+      callback(error);
+    });
+}, 2); // Limit concurrency to 2
+
+const processedDir = path.join(__dirname, 'processed');
+if (!fs.existsSync(processedDir)) {
+  fs.mkdirSync(processedDir, { recursive: true });
+}
 
 
 
@@ -736,7 +764,6 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
   try {
     const originalAssignmentId = req.params.assignmentId;
     
-    // Find the original assignment (to copy checklist and asset references)
     const originalAssignment = await ChecklistAssignment.findById(originalAssignmentId)
       .populate('checklist')
       .populate('asset');
@@ -745,31 +772,50 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
       return res.status(404).send('Checklist assignment not found.');
     }
     
-    // Build the responses object from form fields and file uploads.
     const resultsFromBody = req.body.results || {};
     const responses = { ...resultsFromBody };
     
     if (req.files && req.files.length > 0) {
+      // Group files by task ID.
+      const filesByTask = {};
       req.files.forEach(file => {
         const match = file.fieldname.match(/results\[(.+)\]/);
         if (match && match[1]) {
           const taskId = match[1];
-          // Save file path (or URL) as the response for that task
-          responses[taskId] = file.path;
+          if (!filesByTask[taskId]) {
+            filesByTask[taskId] = [];
+          }
+          filesByTask[taskId].push(file.path);
         }
       });
+
+      // Process each file for each task using the imageProcessingQueue
+      const processPromises = Object.entries(filesByTask).map(([taskId, filePaths]) => {
+        return Promise.all(filePaths.map(filePath => {
+          return new Promise((resolve, reject) => {
+            imageProcessingQueue.push({ filePath }, (err) => {
+              if (err) return reject(err);
+              // After processing, assume processed images are saved in the "processed/" folder
+              const processedPath = `processed/${path.basename(filePath)}`;
+              resolve(processedPath);
+            });
+          });
+        })).then(processedPaths => {
+          // Store the array of processed file paths as the response for that task
+          responses[taskId] = processedPaths;
+        });
+      });
+      await Promise.all(processPromises);
     }
     
-    // Create a new ChecklistAssignment record for this submission.
-    // IMPORTANT: set isTemplate: false so it will not appear as a template.
     const newAssignment = new ChecklistAssignment({
       checklist: originalAssignment.checklist._id,
       asset: originalAssignment.asset._id,
       assignedAt: originalAssignment.assignedAt,
       responses: responses,
-      completedAt: new Date(), // mark this new record as completed now
-      submittedBy: req.session.userId,  // record the technician who submitted it
-      isTemplate: false // mark this record as a submission, not as a template
+      completedAt: new Date(),
+      submittedBy: req.session.userId,
+      isTemplate: false
     });
     
     await newAssignment.save();
@@ -780,6 +826,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
     res.status(500).send(err.message);
   }
 });
+
 
 
 

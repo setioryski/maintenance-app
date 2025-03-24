@@ -2,67 +2,233 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Do Maintenance Checklist</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <title>Maintenance Checklist</title>
+  <!-- Tailwind CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
 </head>
 <body class="bg-gray-100">
   <div class="max-w-3xl mx-auto p-6 bg-white shadow-md rounded">
     <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
-    <p class="mb-2">Asset: <strong><%= assignment.asset.name %></strong></p>
-    <p class="mb-4">Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong></p>
-    
-    <form action="/technician/checklist/<%= assignment._id %>/submit" method="POST" enctype="multipart/form-data">
+
+    <!-- Show Asset and Checklist info -->
+    <p class="mb-2">
+      Asset: <strong><%= assignment.asset.name %></strong>
+    </p>
+    <p class="mb-4">
+      Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong>
+    </p>
+
+    <!-- Form start -->
+    <form
+      action="/technician/checklist/<%= assignment._id %>/submit"
+      method="POST"
+      enctype="multipart/form-data"
+    >
       <% 
-         // Safely get tasks from the checklist; default to empty array if not defined.
-         const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
+        // Safely get tasks; default to an empty array if not defined.
+        const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
       %>
+
       <% if (tasks.length > 0) { %>
         <% tasks.forEach(function(task) { %>
           <div class="mb-6 border p-4 rounded">
-            <!-- Hidden field for task ID -->
+            <!-- Hidden field for task ID (if needed) -->
             <input type="hidden" name="taskIds[]" value="<%= task._id %>">
+
+            <!-- Task description -->
             <label class="block text-gray-700 font-bold mb-2">
               <%= task.description %>
             </label>
-            
-            <% if(task.inputType === 'functional') { %>
+
+            <!-- FUNCTIONAL task: pass/fail radio -->
+            <% if (task.inputType === 'functional') { %>
               <div class="flex space-x-6">
                 <label class="inline-flex items-center">
-                  <input type="radio" name="results[<%= task._id %>]" value="pass" required>
+                  <input
+                    type="radio"
+                    name="results[<%= task._id %>]"
+                    value="pass"
+                    required
+                  />
                   <span class="ml-2">Pass</span>
                 </label>
                 <label class="inline-flex items-center">
-                  <input type="radio" name="results[<%= task._id %>]" value="fail" required>
+                  <input
+                    type="radio"
+                    name="results[<%= task._id %>]"
+                    value="fail"
+                    required
+                  />
                   <span class="ml-2">Fail</span>
                 </label>
               </div>
-            <% } else if(task.inputType === 'measurement') { %>
+
+            <!-- MEASUREMENT task: numeric input -->
+            <% } else if (task.inputType === 'measurement') { %>
               <div class="flex items-center">
-                <input type="number" name="results[<%= task._id %>]" placeholder="Enter value" class="shadow border rounded w-full py-2 px-3" required>
-                <% if(task.expectedUnit) { %>
-                  <span class="ml-2 text-gray-600"><%= task.expectedUnit %></span>
+                <input
+                  type="number"
+                  name="results[<%= task._id %>]"
+                  placeholder="Enter value"
+                  class="shadow border rounded w-full py-2 px-3"
+                  required
+                />
+                <% if (task.expectedUnit) { %>
+                  <span class="ml-2 text-gray-600">
+                    <%= task.expectedUnit %>
+                  </span>
                 <% } %>
               </div>
-            <% } else if(task.inputType === 'visual') { %>
-              <input type="file" name="results[<%= task._id %>]" accept="image/*" required>
+
+            <!-- VISUAL task: green button + previews -->
+            <% } else if (task.inputType === 'visual') { %>
+              <!-- "Add Images" button -->
+              <button
+                type="button"
+                id="addImagesBtn-<%= task._id %>"
+                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+              >
+                Add Images
+              </button>
+
+              <!-- Hidden file input (multiple images) -->
+              <input
+                type="file"
+                id="imageInput-<%= task._id %>"
+                name="results[<%= task._id %>]"
+                accept="image/*"
+                multiple
+                class="hidden"
+              />
+
+              <!-- Preview container for thumbnails -->
+              <div
+                id="previewContainer-<%= task._id %>"
+                class="mt-4 flex flex-wrap gap-2"
+              ></div>
             <% } %>
           </div>
         <% }); %>
       <% } else { %>
         <p class="text-gray-600">No tasks available for this checklist.</p>
       <% } %>
-      
+
+      <!-- Submit button -->
       <div class="flex justify-end">
-        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+        <button
+          type="submit"
+          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+        >
           Submit Checklist
         </button>
       </div>
     </form>
+    <!-- Form end -->
   </div>
-  
+
+  <!-- Navigation links -->
   <div class="max-w-3xl mx-auto mt-4 flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
+
+  <!-- Inline scripts for each visual task -->
+  <% tasks.forEach(function(task) { 
+    if (task.inputType === 'visual') {
+  %>
+  <script>
+    (function() {
+      const taskId = "<%= task._id %>";
+      const addImagesBtn = document.getElementById('addImagesBtn-' + taskId);
+      const imageInput = document.getElementById('imageInput-' + taskId);
+      const previewContainer = document.getElementById('previewContainer-' + taskId);
+
+      // A DataTransfer object to hold selected files for this specific task
+      const dt = new DataTransfer();
+
+      // Clicking "Add Images" opens the hidden file input
+      addImagesBtn.addEventListener('click', () => {
+        imageInput.click();
+      });
+
+      // When new files are selected
+      imageInput.addEventListener('change', () => {
+        // Add newly selected files to DataTransfer
+        for (let i = 0; i < imageInput.files.length; i++) {
+          dt.items.add(imageInput.files[i]);
+        }
+        // Update the file input's FileList
+        imageInput.files = dt.files;
+        // Re-render previews
+        renderPreview();
+      });
+
+      function renderPreview() {
+        // Clear existing thumbnails
+        previewContainer.innerHTML = '';
+
+        // Loop through the DataTransfer items
+        for (let i = 0; i < dt.items.length; i++) {
+          const file = dt.items[i].getAsFile();
+          const fileReader = new FileReader();
+
+          fileReader.onload = (e) => {
+            // Create a container for the thumbnail + remove button
+            const wrapper = document.createElement('div');
+            wrapper.classList.add(
+              'relative',
+              'w-20',
+              'h-20',
+              'border',
+              'rounded',
+              'overflow-hidden'
+            );
+
+            // Thumbnail image
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.classList.add('w-full', 'h-full', 'object-cover');
+
+            // Remove button (the red "X")
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.classList.add(
+              'absolute',
+              'top-0',
+              'right-0',
+              'bg-red-500',
+              'text-white',
+              'rounded-full',
+              'w-5',
+              'h-5',
+              'text-xs',
+              'flex',
+              'items-center',
+              'justify-center'
+            );
+            removeBtn.innerHTML = '&times;';
+            removeBtn.addEventListener('click', () => {
+              // Remove the file from DataTransfer
+              dt.items.remove(i);
+              // Update the file input
+              imageInput.files = dt.files;
+              // Re-render
+              renderPreview();
+            });
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(removeBtn);
+            previewContainer.appendChild(wrapper);
+          };
+
+          fileReader.readAsDataURL(file);
+        }
+      }
+    })();
+  </script>
+  <% } }); %>
 </body>
 </html>
