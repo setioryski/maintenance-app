@@ -77,17 +77,48 @@
     <!-- Manajemen Asset -->
     <div>
       <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
-      <div class="mb-4">
-        <label for="asset-category-filter" class="block text-gray-700 font-semibold mb-1">
-          Filter by Kategori Asset:
-        </label>
-        <select id="asset-category-filter" class="w-full border border-gray-300 rounded p-2">
-          <option value="all">Semua</option>
-          <% assetCategories.forEach(function(cat) { %>
-            <option value="<%= cat._id %>"><%= cat.name %></option>
-          <% }); %>
-        </select>
+      
+      <!-- New Filter Controls: Horizontal on Desktop, Stacked on Mobile -->
+      <div class="mb-4 flex flex-col sm:flex-row sm:space-x-4">
+        <div class="flex-1">
+          <label for="asset-search" class="block text-gray-700 font-semibold mb-1">
+            Search Asset:
+          </label>
+          <input 
+            type="text" 
+            id="asset-search" 
+            class="w-full border border-gray-300 rounded p-2" 
+            placeholder="Enter asset name..."
+          >
+        </div>
+        <div class="flex-1">
+          <label for="asset-floor-filter" class="block text-gray-700 font-semibold mb-1">
+            Filter by Floor:
+          </label>
+          <select 
+            id="asset-floor-filter" 
+            class="w-full border border-gray-300 rounded p-2"
+          >
+            <option value="all">All Floors</option>
+            <% floors.forEach(function(floor) { %>
+              <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="flex-1">
+          <label for="asset-category-filter" class="block text-gray-700 font-semibold mb-1">
+            Filter by Kategori Asset:
+          </label>
+          <select id="asset-category-filter" class="w-full border border-gray-300 rounded p-2">
+            <option value="all">Semua</option>
+            <% assetCategories.forEach(function(cat) { %>
+              <option value="<%= cat._id %>"><%= cat.name %></option>
+            <% }); %>
+          </select>
+        </div>
       </div>
+      
+      <!-- Asset Table -->
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
@@ -102,7 +133,10 @@
           </thead>
           <tbody id="asset-tbody">
             <% assets.forEach(asset => { %>
-              <tr data-category="<%= asset.category ? asset.category._id.toString() : '' %>">
+              <tr 
+                data-category="<%= asset.category ? asset.category._id.toString() : '' %>" 
+                data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>"
+              >
                 <td class="p-2 border"><%= asset.name %></td>
                 <td class="p-2 border">
                   <% if(asset.category && asset.category.name) { %>
@@ -127,7 +161,6 @@
                   <% } %>
                 </td>
                 <td class="p-2 border">
-                  <!-- Wrap asset action buttons similarly -->
                   <div class="flex flex-col sm:flex-row gap-2">
                     <a href="/assets/<%= asset._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
                       Edit
@@ -156,7 +189,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
   <script>
-    // Enable sortable only for non-smartphone viewports (min-width 640px)
+    // Enable sortable for checklist table (desktop)
     if (window.innerWidth >= 640) {
       var checklistTbody = document.getElementById('checklist-tbody');
       Sortable.create(checklistTbody, {
@@ -179,16 +212,40 @@
       });
     }
     
-    // Asset category filter functionality
-    const assetFilter = document.getElementById('asset-category-filter');
+    // Filtering for asset table
+    const assetSearch = document.getElementById('asset-search');
+    const assetFloorFilter = document.getElementById('asset-floor-filter');
+    const assetCategoryFilter = document.getElementById('asset-category-filter');
     const assetTbody = document.getElementById('asset-tbody');
-    assetFilter.addEventListener('change', function() {
-      const selectedCategory = this.value;
-      assetTbody.querySelectorAll('tr').forEach(row => {
-        const rowCategory = row.getAttribute('data-category');
-        row.style.display = (selectedCategory === 'all' || selectedCategory === rowCategory) ? '' : 'none';
+
+    function filterAssets() {
+      const searchTerm = assetSearch.value.toLowerCase();
+      const selectedFloor = assetFloorFilter.value;
+      const selectedCategory = assetCategoryFilter.value;
+      const rows = assetTbody.querySelectorAll('tr');
+      
+      rows.forEach(row => {
+        const assetName = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+        const assetFloor = row.getAttribute('data-floor');
+        const assetCategory = row.getAttribute('data-category');
+        
+        let show = true;
+        if (searchTerm && !assetName.includes(searchTerm)) {
+          show = false;
+        }
+        if (selectedFloor !== 'all' && assetFloor !== selectedFloor) {
+          show = false;
+        }
+        if (selectedCategory !== 'all' && assetCategory !== selectedCategory) {
+          show = false;
+        }
+        row.style.display = show ? '' : 'none';
       });
-    });
+    }
+
+    assetSearch.addEventListener('input', filterAssets);
+    assetFloorFilter.addEventListener('change', filterAssets);
+    assetCategoryFilter.addEventListener('change', filterAssets);
   </script>
 </body>
 </html>

@@ -393,8 +393,9 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
     
     // Also fetch asset categories
     const assetCategories = await AssetCategory.find({});
+    const floors = await Floor.find({});
+    res.render('spvDashboard', { checklists: checklistData, assets, assetCategories, floors });
 
-    res.render('spvDashboard', { checklists: checklistData, assets, assetCategories });
   } catch (err) {
     res.status(500).send(err.message);
   }
