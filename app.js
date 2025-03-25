@@ -16,6 +16,7 @@ const app = express();
 const ChecklistAssignment = require('./models/ChecklistAssignment');
 
 
+
 // Create HTTP server and attach Socket.io
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -815,27 +816,28 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
       });
       await Promise.all(processPromises);
     }
+     // Capture the overall note from the form submission
+     const maintenanceNote = req.body.note || '';
     
-    const newAssignment = new ChecklistAssignment({
-      checklist: originalAssignment.checklist._id,
-      asset: originalAssignment.asset._id,
-      assignedAt: originalAssignment.assignedAt,
-      responses: responses,
-      completedAt: new Date(),
-      submittedBy: req.session.userId,
-      isTemplate: false
-    });
-    
-    await newAssignment.save();
-    
-    res.redirect('/technician/dashboard');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err.message);
-  }
-});
-
-
+     const newAssignment = new ChecklistAssignment({
+       checklist: originalAssignment.checklist._id,
+       asset: originalAssignment.asset._id,
+       assignedAt: originalAssignment.assignedAt,
+       responses: responses,
+       completedAt: new Date(),
+       submittedBy: req.session.userId,
+       isTemplate: false,
+       note: maintenanceNote   // <-- Save the note here
+     });
+     
+     await newAssignment.save();
+     
+     res.redirect('/technician/dashboard');
+   } catch (err) {
+     console.error(err);
+     res.status(500).send(err.message);
+   }
+ });
 
 
 

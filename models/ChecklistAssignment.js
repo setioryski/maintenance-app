@@ -5,11 +5,11 @@ const checklistAssignmentSchema = new mongoose.Schema({
   checklist: { type: mongoose.Schema.Types.ObjectId, ref: 'Checklist', required: true },
   asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
   assignedAt: { type: Date, default: Date.now },
-  responses: { type: Object },  // Menyimpan jawaban teknisi, keyed by taskId
+  responses: { type: Object },
   completedAt: { type: Date },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  // Flag untuk menandai record sebagai template (dibuat oleh SPV) atau submission (hasil pengisian teknisi)
-  isTemplate: { type: Boolean, default: true }
+  isTemplate: { type: Boolean, default: true },
+  note: { type: String, default: '' }  // <-- NEW FIELD FOR OVERALL NOTE
 });
 
 module.exports = mongoose.model('ChecklistAssignment', checklistAssignmentSchema);

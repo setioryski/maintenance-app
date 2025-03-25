@@ -117,6 +117,17 @@
         <p class="text-gray-600">No tasks available for this checklist.</p>
       <% } %>
 
+      <div class="mb-6">
+        <label class="block text-gray-700 font-bold mb-2" for="note">Maintenance Note</label>
+        <textarea
+          id="note"
+          name="note"
+          rows="3"
+          class="w-full border border-gray-300 rounded p-2"
+          placeholder="Enter any maintenance note here..."
+        ></textarea>
+      </div>
+      
       <!-- Submit button -->
       <div class="flex justify-end">
         <button
@@ -126,6 +137,7 @@
           Submit Checklist
         </button>
       </div>
+
     </form>
     <!-- Form end -->
   </div>
