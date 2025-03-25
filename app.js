@@ -206,9 +206,15 @@ async function ensureTechnicianCanFillChecklist(req, res, next) {
 // Image Compression
 const imageProcessingQueue = asyncLib.queue((task, callback) => {
   sharp(task.filePath)
-    .resize({ width: 800, withoutEnlargement: true })
-    .jpeg({ quality: 70 })
-    .toFile(`processed/${path.basename(task.filePath)}`)
+  .rotate()
+  .withMetadata()
+  .resize({ width: 600, withoutEnlargement: true })
+  .jpeg({
+    quality: 80,
+    progressive: true,   // Progressive JPEG can sometimes help
+    mozjpeg: true        // Use mozjpeg-based compression if available
+  })
+  .toFile(`processed/${path.basename(task.filePath)}`)
     .then(() => {
       // Delete the original file
       fs.unlink(task.filePath, (unlinkErr) => {
@@ -230,6 +236,8 @@ if (!fs.existsSync(processedDir)) {
 }
 
 
+// Serve the processed images folder as static
+app.use('/processed', express.static(path.join(__dirname, 'processed')));
 
 // Socket.io connection event
 io.on('connection', (socket) => {
