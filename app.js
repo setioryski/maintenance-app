@@ -727,7 +727,9 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
 app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (req, res) => {
   try {
     // Get assets in the technician's division.
-    const assets = await Asset.find({ division: req.session.userDivision });
+    const assets = await Asset.find({ division: req.session.userDivision })
+      .populate('floor')
+      .populate('category');
     const assetIds = assets.map(a => a._id);
     
     // Fetch only checklist assignment templates (isTemplate: true) for those assets.
@@ -736,9 +738,13 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
       isTemplate: true
     })
       .populate('checklist')
-      .populate('asset');
+      .populate({ path: 'asset', populate: ['floor', 'category'] });    
     
-    res.render('technicianDashboard', { assignments });
+    // Fetch floors and categories for filtering
+    const floors = await Floor.find({});
+    const assetCategories = await AssetCategory.find({});
+
+    res.render('technicianDashboard', { assignments, floors, assetCategories });
   } catch (err) {
     res.status(500).send(err.message);
   }

@@ -25,69 +25,38 @@
     <h1 class="text-3xl font-bold text-center mb-6">Technician Dashboard</h1>
     <h2 class="text-xl font-semibold mb-4">Maintenance Checklist Templates</h2>
     
-    <!-- Enhanced Search Bar -->
-    <div class="mb-4 flex justify-center">
-      <div class="relative w-full sm:w-1/2">
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="Search asset by name..." 
-          class="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
-        >
-        <!-- Clear button for search -->
-        <button 
-          id="clearSearch" 
-          class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-        >
-          &times;
-        </button>
-      </div>
+    <!-- Search & Filter Bar -->
+    <div class="mb-4 flex flex-col sm:flex-row sm:space-x-4">
+      <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="Search asset by name..." 
+        class="w-full sm:flex-1 border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
+      >
+      <select 
+        id="floorFilter" 
+        class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
+      >
+        <option value="">All Floors</option>
+        <% floors.forEach(function(floor) { %>
+          <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
+        <% }); %>
+      </select>
+      <select 
+        id="categoryFilter" 
+        class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
+      >
+        <option value="">All Categories</option>
+        <% assetCategories.forEach(function(cat) { %>
+          <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
+        <% }); %>
+      </select>
+      <!-- Clear button for search can be added if needed -->
     </div>
     
     <% if(assignments.length === 0) { %>
       <p class="text-center text-gray-600">No maintenance checklist templates available.</p>
     <% } else { %>
-      <!-- Mobile Layout: Card-based view for smartphone users -->
-      <div class="sm:hidden space-y-4">
-        <% 
-          const groupedAssignments = {};
-          assignments.forEach(function(assignment) {
-            const assetName = assignment.asset.name;
-            if (!groupedAssignments[assetName]) {
-              groupedAssignments[assetName] = [];
-            }
-            groupedAssignments[assetName].push(assignment);
-          });
-          Object.keys(groupedAssignments).forEach(function(assetName) {
-            const group = groupedAssignments[assetName];
-            const assetId = assetName.replace(/\s+/g, '-');
-        %>
-          <div class="border rounded-lg shadow bg-white">
-            <!-- Group header card with a clear tap target -->
-            <div class="bg-gray-100 px-4 py-3 font-semibold flex justify-between items-center transition-dropdown" 
-                 onclick="toggleDropdownMobile('<%= assetId %>')">
-              <span><%= assetName %></span>
-              <span id="arrow-<%= assetId %>" class="transition-transform duration-200">▼</span>
-            </div>
-            <!-- Group content card -->
-            <div id="<%= assetId %>-mobile" class="dropdown-content transition-dropdown">
-              <% group.forEach(function(assignment) { %>
-                <div class="px-4 py-3 border-t">
-                  <p class="text-sm font-bold"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
-                  <p class="text-xs text-gray-600"><%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
-                  <a 
-                    href="/technician/checklist/<%= assignment._id %>" 
-                    class="block mt-2 bg-blue-500 hover:bg-blue-600 text-white text-center py-2 rounded"
-                  >
-                    Do Checklist
-                  </a>
-                </div>
-              <% }); %>
-            </div>
-          </div>
-        <% }); %>
-      </div>
-      
       <!-- Desktop Layout: Table view for larger screens -->
       <div class="hidden sm:block overflow-x-auto">
         <table id="assetTable" class="min-w-full bg-white shadow-md rounded overflow-hidden">
@@ -101,27 +70,32 @@
           </thead>
           <tbody>
             <% 
-              const groupedAssignmentsDesktop = {};
+              // Group assignments by asset name.
+              const groupedAssignments = {};
               assignments.forEach(function(assignment) {
                 const assetName = assignment.asset.name;
-                if (!groupedAssignmentsDesktop[assetName]) {
-                  groupedAssignmentsDesktop[assetName] = [];
+                if (!groupedAssignments[assetName]) {
+                  groupedAssignments[assetName] = [];
                 }
-                groupedAssignmentsDesktop[assetName].push(assignment);
+                groupedAssignments[assetName].push(assignment);
               });
-              Object.keys(groupedAssignmentsDesktop).forEach(function(assetName) {
-                const group = groupedAssignmentsDesktop[assetName];
+              Object.keys(groupedAssignments).forEach(function(assetName) {
+                const group = groupedAssignments[assetName];
+                // Create an ID-friendly string by replacing spaces with dashes
                 const assetId = assetName.replace(/\s+/g, '-');
             %>
-            <!-- Clickable group header row -->
+            <!-- Group header row with data attributes for filtering -->
             <tr class="bg-gray-100 group-header transition-dropdown" 
+                data-group="<%= assetId %>" 
+                data-floor="<%= group[0].asset.floor && group[0].asset.floor.name ? group[0].asset.floor.name.toLowerCase() : '' %>"
+                data-category="<%= group[0].asset.category && group[0].asset.category.name ? group[0].asset.category.name.toLowerCase() : '' %>"
                 onclick="toggleDropdown('<%= assetId %>')">
               <td class="py-3 px-4 font-semibold" colspan="4">
                 <%= assetName %>
                 <span class="float-right">▼</span>
               </td>
             </tr>
-            <!-- Dropdown rows for each checklist -->
+            <!-- Dropdown rows for each checklist in this asset group -->
             <tbody id="<%= assetId %>" class="dropdown-content transition-dropdown">
               <% group.forEach(function(assignment) { %>
                 <tr class="border-b">
@@ -129,10 +103,8 @@
                   <td class="py-3 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
                   <td class="py-3 px-4"><%= new Date(assignment.assignedAt).toLocaleDateString() %></td>
                   <td class="py-3 px-4">
-                    <a 
-                      href="/technician/checklist/<%= assignment._id %>" 
-                      class="block bg-blue-500 hover:bg-blue-600 text-white text-center py-2 px-4 rounded"
-                    >
+                    <a href="/technician/checklist/<%= assignment._id %>" 
+                       class="block bg-blue-500 hover:bg-blue-600 text-white text-center py-2 px-4 rounded">
                       Do Checklist
                     </a>
                   </td>
@@ -142,6 +114,47 @@
             <% }); %>
           </tbody>
         </table>
+      </div>
+      
+      <!-- Mobile Layout: Card-based view for smartphone users -->
+      <div class="sm:hidden space-y-4">
+        <% 
+          const groupedAssignmentsMobile = {};
+          assignments.forEach(function(assignment) {
+            const assetName = assignment.asset.name;
+            if (!groupedAssignmentsMobile[assetName]) {
+              groupedAssignmentsMobile[assetName] = [];
+            }
+            groupedAssignmentsMobile[assetName].push(assignment);
+          });
+          Object.keys(groupedAssignmentsMobile).forEach(function(assetName) {
+            const group = groupedAssignmentsMobile[assetName];
+            const assetId = assetName.replace(/\s+/g, '-');
+        %>
+          <div class="border rounded-lg shadow bg-white" 
+          data-floor="<%= group[0].asset.floor && group[0].asset.floor.name ? group[0].asset.floor.name.toLowerCase() : '' %>"
+          data-category="<%= group[0].asset.category && group[0].asset.category.name ? group[0].asset.category.name.toLowerCase() : '' %>"
+            <!-- Group header card -->
+            <div class="bg-gray-100 px-4 py-3 font-semibold flex justify-between items-center transition-dropdown" 
+                 id="header-<%= assetId %>" onclick="toggleDropdownMobile('<%= assetId %>')">
+              <span><%= assetName %></span>
+              <span id="arrow-<%= assetId %>" class="transition-transform duration-200">▼</span>
+            </div>
+            <!-- Group content card -->
+            <div id="<%= assetId %>-mobile" class="dropdown-content transition-dropdown">
+              <% group.forEach(function(assignment) { %>
+                <div class="px-4 py-3 border-t">
+                  <p class="text-sm font-bold"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
+                  <p class="text-xs text-gray-600"><%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
+                  <a href="/technician/checklist/<%= assignment._id %>" 
+                     class="block mt-2 bg-blue-500 hover:bg-blue-600 text-white text-center py-2 rounded">
+                    Do Checklist
+                  </a>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% }); %>
       </div>
     <% } %>
   </div>
@@ -162,49 +175,91 @@
     <div class="flex justify-around py-2">
       <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"></path>
         </svg>
         <span class="text-xs">Dashboard</span>
       </a>
       <a href="/technician/report" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path>
         </svg>
         <span class="text-xs">Reports</span>
       </a>
       <a href="/logout" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M17 16l4-4m0 0l-4-4m4 4H7"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
         </svg>
         <span class="text-xs">Logout</span>
       </a>
     </div>
   </div>
   
-  <!-- Client-side scripts -->
+  <!-- Client-side scripts for filtering -->
   <script>
-    // Desktop dropdown toggle
+    // Filter function for desktop and mobile group headers
+    function filterTable() {
+      const searchValue = document.getElementById('searchInput').value.toLowerCase();
+      const floorValue = document.getElementById('floorFilter').value;
+      const categoryValue = document.getElementById('categoryFilter').value;
+      
+      const headers = document.getElementsByClassName('group-header');
+      for (let i = 0; i < headers.length; i++) {
+        const header = headers[i];
+        const assetName = header.textContent.replace('▼', '').trim().toLowerCase();
+        const assetFloor = header.getAttribute('data-floor') || "";
+        const assetCategory = header.getAttribute('data-category') || "";
+        
+        // Check filters: if search string is found in asset name, and floor and category match (or filter is empty)
+        if (
+          assetName.includes(searchValue) &&
+          (floorValue === "" || assetFloor === floorValue) &&
+          (categoryValue === "" || assetCategory === categoryValue)
+        ) {
+          header.style.display = "";
+          // Also show corresponding group body for desktop
+          const groupId = header.getAttribute('data-group');
+          if (groupId) {
+            document.getElementById(groupId).style.display = "";
+          }
+        } else {
+          header.style.display = "none";
+          const groupId = header.getAttribute('data-group');
+          if (groupId) {
+            document.getElementById(groupId).style.display = "none";
+          }
+        }
+      }
+      
+      // Also filter mobile cards
+      const mobileCards = document.querySelectorAll('[data-floor][data-category]');
+      mobileCards.forEach(card => {
+        const cardFloor = card.getAttribute('data-floor') || "";
+        const cardCategory = card.getAttribute('data-category') || "";
+        // We assume the asset name is inside a child element; adjust as necessary
+        const cardAssetName = card.querySelector('.font-semibold') ? card.querySelector('.font-semibold').textContent.toLowerCase() : "";
+        
+        if (
+          cardAssetName.includes(searchValue) &&
+          (floorValue === "" || cardFloor === floorValue) &&
+          (categoryValue === "" || cardCategory === categoryValue)
+        ) {
+          card.style.display = "";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    }
+    
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('floorFilter').addEventListener('change', filterTable);
+    document.getElementById('categoryFilter').addEventListener('change', filterTable);
+    
+    // Dropdown toggle functions (existing)
     function toggleDropdown(id) {
       var dropdown = document.getElementById(id);
       dropdown.style.display = (dropdown.style.display === 'table-row-group') ? 'none' : 'table-row-group';
     }
     
-    // Mobile dropdown toggle with arrow rotation for clarity
     function toggleDropdownMobile(id) {
       var dropdown = document.getElementById(id + '-mobile');
       var arrow = document.getElementById('arrow-' + id);
@@ -214,36 +269,6 @@
       } else {
         dropdown.style.display = 'block';
         arrow.style.transform = 'rotate(180deg)';
-      }
-    }
-    
-    // Search filtering for desktop view (table-based)
-    const searchInput = document.getElementById('searchInput');
-    const clearSearch = document.getElementById('clearSearch');
-    clearSearch.addEventListener('click', () => {
-      searchInput.value = '';
-      filterGroups('');
-    });
-    searchInput.addEventListener('keyup', function() {
-      filterGroups(searchInput.value.toLowerCase());
-    });
-    
-    function filterGroups(filter) {
-      const headers = document.getElementsByClassName('group-header');
-      for (let i = 0; i < headers.length; i++) {
-        // Extract asset name from header text (ignoring the arrow)
-        const assetName = headers[i].textContent.replace('▼', '').trim().toLowerCase();
-        const match = headers[i].getAttribute('onclick').match(/toggleDropdown\('([^']+)'\)/);
-        const dropdownId = match ? match[1] : '';
-        const dropdown = document.getElementById(dropdownId);
-        
-        if (assetName.includes(filter)) {
-          headers[i].style.display = '';
-          if(dropdown) dropdown.style.display = '';
-        } else {
-          headers[i].style.display = 'none';
-          if(dropdown) dropdown.style.display = 'none';
-        }
       }
     }
   </script>
