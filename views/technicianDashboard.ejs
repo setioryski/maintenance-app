@@ -1,119 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Technician Dashboard - Maintenance Templates</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    /* Hide the checklist rows by default */
+    /* Hide dropdown content by default */
     .dropdown-content {
       display: none;
     }
-    /* Make header row clickable */
+    /* Cursor pointer for clickable headers */
     .group-header {
       cursor: pointer;
     }
+    /* Smooth transition for dropdowns */
+    .transition-dropdown {
+      transition: all 0.3s ease;
+    }
   </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
   <div class="max-w-6xl mx-auto p-4">
     <h1 class="text-3xl font-bold text-center mb-6">Technician Dashboard</h1>
     <h2 class="text-xl font-semibold mb-4">Maintenance Checklist Templates</h2>
     
-    <!-- Search bar for filtering assets -->
-    <div class="mb-4 flex justify-end">
-      <input type="text" id="searchInput" placeholder="Search asset by name..." class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300">
+    <!-- Enhanced Search Bar -->
+    <div class="mb-4 flex justify-center">
+      <div class="relative w-full sm:w-1/2">
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Search asset by name..." 
+          class="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
+        >
+        <!-- Clear button for search -->
+        <button 
+          id="clearSearch" 
+          class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+        >
+          &times;
+        </button>
+      </div>
     </div>
     
     <% if(assignments.length === 0) { %>
       <p class="text-center text-gray-600">No maintenance checklist templates available.</p>
     <% } else { %>
-      <table id="assetTable" class="min-w-full bg-white shadow-md rounded overflow-hidden">
-        <thead>
-          <tr class="bg-gray-200">
-            <th class="py-2 px-4">Asset Name</th>
-            <th class="py-2 px-4">Checklist Title</th>
-            <th class="py-2 px-4">Assigned Date</th>
-            <th class="py-2 px-4">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% 
-            // Group assignments by asset name
-            const groupedAssignments = {};
-            assignments.forEach(function(assignment) {
-              const assetName = assignment.asset.name;
-              if (!groupedAssignments[assetName]) {
-                groupedAssignments[assetName] = [];
-              }
-              groupedAssignments[assetName].push(assignment);
-            });
-            
-            // Iterate over each asset group
-            Object.keys(groupedAssignments).forEach(function(assetName) {
-              const group = groupedAssignments[assetName];
-              // Create an ID-friendly string by replacing spaces with dashes
-              const assetId = assetName.replace(/\s+/g, '-');
-          %>
-          <!-- Group header row -->
-          <tr class="bg-gray-100 group-header" onclick="toggleDropdown('<%= assetId %>')">
-            <td class="py-2 px-4 font-semibold" colspan="4">
-              <%= assetName %>
-              <span class="float-right">▼</span>
-            </td>
-          </tr>
-          <!-- Dropdown rows for each checklist in this asset group -->
-          <tbody id="<%= assetId %>" class="dropdown-content">
-            <% group.forEach(function(assignment) { %>
-              <tr class="border-b">
-                <td class="py-2 px-4 pl-8"><%= assignment.asset.name %></td>
-                <td class="py-2 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
-                <td class="py-2 px-4"><%= new Date(assignment.assignedAt).toLocaleDateString() %></td>
-                <td class="py-2 px-4">
-                  <a href="/technician/checklist/<%= assignment._id %>" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
+      <!-- Mobile Layout: Card-based view for smartphone users -->
+      <div class="sm:hidden space-y-4">
+        <% 
+          const groupedAssignments = {};
+          assignments.forEach(function(assignment) {
+            const assetName = assignment.asset.name;
+            if (!groupedAssignments[assetName]) {
+              groupedAssignments[assetName] = [];
+            }
+            groupedAssignments[assetName].push(assignment);
+          });
+          Object.keys(groupedAssignments).forEach(function(assetName) {
+            const group = groupedAssignments[assetName];
+            const assetId = assetName.replace(/\s+/g, '-');
+        %>
+          <div class="border rounded-lg shadow bg-white">
+            <!-- Group header card with a clear tap target -->
+            <div class="bg-gray-100 px-4 py-3 font-semibold flex justify-between items-center transition-dropdown" 
+                 onclick="toggleDropdownMobile('<%= assetId %>')">
+              <span><%= assetName %></span>
+              <span id="arrow-<%= assetId %>" class="transition-transform duration-200">▼</span>
+            </div>
+            <!-- Group content card -->
+            <div id="<%= assetId %>-mobile" class="dropdown-content transition-dropdown">
+              <% group.forEach(function(assignment) { %>
+                <div class="px-4 py-3 border-t">
+                  <p class="text-sm font-bold"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
+                  <p class="text-xs text-gray-600"><%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
+                  <a 
+                    href="/technician/checklist/<%= assignment._id %>" 
+                    class="block mt-2 bg-blue-500 hover:bg-blue-600 text-white text-center py-2 rounded"
+                  >
                     Do Checklist
                   </a>
-                </td>
-              </tr>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+      
+      <!-- Desktop Layout: Table view for larger screens -->
+      <div class="hidden sm:block overflow-x-auto">
+        <table id="assetTable" class="min-w-full bg-white shadow-md rounded overflow-hidden">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="py-3 px-4">Asset Name</th>
+              <th class="py-3 px-4">Checklist Title</th>
+              <th class="py-3 px-4">Assigned Date</th>
+              <th class="py-3 px-4">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% 
+              const groupedAssignmentsDesktop = {};
+              assignments.forEach(function(assignment) {
+                const assetName = assignment.asset.name;
+                if (!groupedAssignmentsDesktop[assetName]) {
+                  groupedAssignmentsDesktop[assetName] = [];
+                }
+                groupedAssignmentsDesktop[assetName].push(assignment);
+              });
+              Object.keys(groupedAssignmentsDesktop).forEach(function(assetName) {
+                const group = groupedAssignmentsDesktop[assetName];
+                const assetId = assetName.replace(/\s+/g, '-');
+            %>
+            <!-- Clickable group header row -->
+            <tr class="bg-gray-100 group-header transition-dropdown" 
+                onclick="toggleDropdown('<%= assetId %>')">
+              <td class="py-3 px-4 font-semibold" colspan="4">
+                <%= assetName %>
+                <span class="float-right">▼</span>
+              </td>
+            </tr>
+            <!-- Dropdown rows for each checklist -->
+            <tbody id="<%= assetId %>" class="dropdown-content transition-dropdown">
+              <% group.forEach(function(assignment) { %>
+                <tr class="border-b">
+                  <td class="py-3 px-4 pl-8"><%= assignment.asset.name %></td>
+                  <td class="py-3 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
+                  <td class="py-3 px-4"><%= new Date(assignment.assignedAt).toLocaleDateString() %></td>
+                  <td class="py-3 px-4">
+                    <a 
+                      href="/technician/checklist/<%= assignment._id %>" 
+                      class="block bg-blue-500 hover:bg-blue-600 text-white text-center py-2 px-4 rounded"
+                    >
+                      Do Checklist
+                    </a>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
             <% }); %>
           </tbody>
-          <% }); %>
-        </tbody>
-      </table>
+        </table>
+      </div>
     <% } %>
   </div>
   
-  <!-- Optional link to view all completed reports -->
-  <div class="mt-4 text-center">
-    <a href="/technician/report" class="text-blue-500 hover:text-blue-700 font-semibold">View All Completed Checklist Reports</a>
+  <!-- DESKTOP-ONLY LINKS for "Reports" and "Logout" -->
+  <div class="mt-4 text-center hidden sm:block">
+    <a href="/technician/report" class="text-blue-500 hover:text-blue-700 font-semibold">
+      View All Completed Checklist Reports
+    </a>
   </div>
-  
-  <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
+  <div class="max-w-6xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+  </div>
+
+  <!-- Fixed Bottom Navigation for Mobile -->
+  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow sm:hidden">
+    <div class="flex justify-around py-2">
+      <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"
+          ></path>
+        </svg>
+        <span class="text-xs">Dashboard</span>
+      </a>
+      <a href="/technician/report" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"
+          ></path>
+        </svg>
+        <span class="text-xs">Reports</span>
+      </a>
+      <a href="/logout" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M17 16l4-4m0 0l-4-4m4 4H7"
+          ></path>
+        </svg>
+        <span class="text-xs">Logout</span>
+      </a>
+    </div>
   </div>
   
   <!-- Client-side scripts -->
   <script>
-    // Toggle dropdown visibility when a group header is clicked
+    // Desktop dropdown toggle
     function toggleDropdown(id) {
       var dropdown = document.getElementById(id);
-      if (dropdown.style.display === 'table-row-group') {
+      dropdown.style.display = (dropdown.style.display === 'table-row-group') ? 'none' : 'table-row-group';
+    }
+    
+    // Mobile dropdown toggle with arrow rotation for clarity
+    function toggleDropdownMobile(id) {
+      var dropdown = document.getElementById(id + '-mobile');
+      var arrow = document.getElementById('arrow-' + id);
+      if (dropdown.style.display === 'block') {
         dropdown.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
       } else {
-        dropdown.style.display = 'table-row-group';
+        dropdown.style.display = 'block';
+        arrow.style.transform = 'rotate(180deg)';
       }
     }
     
-    // Search filtering for grouped assets
+    // Search filtering for desktop view (table-based)
     const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    clearSearch.addEventListener('click', () => {
+      searchInput.value = '';
+      filterGroups('');
+    });
     searchInput.addEventListener('keyup', function() {
-      const filter = searchInput.value.toLowerCase();
+      filterGroups(searchInput.value.toLowerCase());
+    });
+    
+    function filterGroups(filter) {
       const headers = document.getElementsByClassName('group-header');
       for (let i = 0; i < headers.length; i++) {
-        // The asset name is in the text of the header cell (ignoring the arrow)
+        // Extract asset name from header text (ignoring the arrow)
         const assetName = headers[i].textContent.replace('▼', '').trim().toLowerCase();
-        // Extract the ID from the onclick attribute
         const match = headers[i].getAttribute('onclick').match(/toggleDropdown\('([^']+)'\)/);
         const dropdownId = match ? match[1] : '';
         const dropdown = document.getElementById(dropdownId);
@@ -126,7 +245,7 @@
           if(dropdown) dropdown.style.display = 'none';
         }
       }
-    });
+    }
   </script>
 </body>
 </html>

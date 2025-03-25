@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Checklist Report Detail</title>
   <!-- Tailwind CSS -->
@@ -8,8 +9,6 @@
     href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
     rel="stylesheet"
   />
-
-  
 </head>
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded">
@@ -116,10 +115,52 @@
     </div>
   </div>
   
-  <!-- Optional Navigation Links -->
-  <div class="max-w-4xl mx-auto mt-4 flex justify-end space-x-4">
+  <!-- DESKTOP-ONLY NAV LINKS -->
+  <div class="max-w-4xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+  </div>
+
+  <!-- FIXED BOTTOM NAV FOR MOBILE -->
+  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow sm:hidden">
+    <div class="flex justify-around py-2">
+      <!-- Dashboard -->
+      <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"
+          ></path>
+        </svg>
+        <span class="text-xs">Dashboard</span>
+      </a>
+      <!-- Reports -->
+      <a href="/technician/report" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"
+          ></path>
+        </svg>
+        <span class="text-xs">Reports</span>
+      </a>
+      <!-- Logout -->
+      <a href="/logout" class="flex flex-col items-center text-blue-500">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M17 16l4-4m0 0l-4-4m4 4H7"
+          ></path>
+        </svg>
+        <span class="text-xs">Logout</span>
+      </a>
+    </div>
   </div>
 
   <!-- GALLERY MODAL: shows all images in a grid -->
@@ -143,7 +184,7 @@
         id="galleryGrid"
         class="grid grid-cols-3 md:grid-cols-4 gap-2"
       >
-        <!-- We fill this with JS -->
+        <!-- Filled via JS -->
       </div>
       <button
         class="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
@@ -154,7 +195,7 @@
     </div>
   </div>
 
-  <!-- ENLARGED MODAL: show a single image in a bigger view -->
+  <!-- ENLARGED MODAL: single big image -->
   <div
     id="enlargedModal"
     class="fixed inset-0 z-50 hidden items-center justify-center"
@@ -190,7 +231,7 @@
      */
     function openGalleryFromImg(imgElement) {
       const images = parseImagesAttr(imgElement);
-      // If there's only 1 image, we can just enlarge it
+      // If there's only 1 image, just enlarge it
       if (images.length === 1) {
         enlargeImage('/' + images[0]);
       } else {

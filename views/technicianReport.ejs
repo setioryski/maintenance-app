@@ -1,27 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Global viewport set to 0.5 -->
+  <meta name="viewport" content="width=device-width, initial-scale=0.5">
   <meta charset="UTF-8">
   <title>Maintenance History</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Hide mobile nav by default */
+    #mobile-nav {
+      display: none;
+    }
+    @media (max-width: 640px) {
+      /* Show mobile nav on small screens */
+      #mobile-nav {
+        display: flex;
+      }
+      /* Container to counteract global 0.5 scale: setting width to 50vw then scaling by 2 */
+      .nav-container {
+        width: 50vw;
+        transform: scale(2);
+        transform-origin: bottom center;
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-100">
+  <!-- Page Content -->
   <div class="max-w-6xl mx-auto p-4">
     <h1 class="text-3xl font-bold mb-6 text-center">Maintenance History</h1>
-    
-    <table class="min-w-full bg-white shadow-md rounded overflow-hidden">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="py-2 px-4">Asset Name</th>
-          <th class="py-2 px-4">Checklist Title</th>
-          <th class="py-2 px-4">Technician</th>
-          <th class="py-2 px-4">Submitted Date</th>
-          <th class="py-2 px-4">Submitted Time</th>
-          <th class="py-2 px-4">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% assignments.forEach(function(assignment) { %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white shadow-md rounded overflow-hidden">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="py-2 px-4">Asset Name</th>
+            <th class="py-2 px-4">Checklist Title</th>
+            <th class="py-2 px-4">Technician</th>
+            <th class="py-2 px-4">Submitted Date</th>
+            <th class="py-2 px-4">Submitted Time</th>
+            <th class="py-2 px-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% assignments.forEach(function(assignment) { %>
           <tr class="border-b">
             <td class="py-2 px-4"><%= assignment.asset.name %></td>
             <td class="py-2 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
@@ -34,15 +55,45 @@
               </a>
             </td>
           </tr>
-        <% }); %>
-      </tbody>
-    </table>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
   </div>
-  
-  <!-- Navigation Links -->
-  <div class="max-w-6xl mx-auto mt-4 flex justify-end space-x-4">
+
+  <!-- Desktop Navigation (visible on screens sm and up) -->
+  <div class="max-w-6xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+  </div>
+
+  <!-- Fixed Bottom Navigation for Mobile -->
+  <div id="mobile-nav" class="fixed bottom-0 inset-x-0 justify-center">
+    <div class="nav-container">
+      <div class="flex justify-around py-2 bg-white border-t shadow">
+        <!-- Dashboard Icon -->
+        <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"></path>
+          </svg>
+        </a>
+        <!-- Reports Icon -->
+        <a href="/technician/report" class="flex flex-col items-center text-blue-500">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path>
+          </svg>
+        </a>
+        <!-- Logout Icon -->
+        <a href="/logout" class="flex flex-col items-center text-blue-500">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
   </div>
 </body>
 </html>
