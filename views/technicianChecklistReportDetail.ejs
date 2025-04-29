@@ -16,25 +16,21 @@
     
     <!-- Report Header -->
     <div class="mb-4">
-      <p class="mb-1">
-        Asset: <strong><%= assignment.asset.name %></strong>
-      </p>
-      <p class="mb-1">
-        Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong>
-      </p>
-      <p class="mb-1">
-        Submitted on: 
-        <strong>
-          <%= new Date(assignment.completedAt).toLocaleDateString() %> 
-          at 
-          <%= new Date(assignment.completedAt).toLocaleTimeString() %>
-        </strong>
-      </p>
-      <p class="mb-1">
-        Technician: 
-        <strong><%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></strong>
+      <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
+      <p><strong>Checklist:</strong> <%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
+      <p><strong>Submitted on:</strong> <%= new Date(assignment.completedAt).toLocaleDateString() %> at <%= new Date(assignment.completedAt).toLocaleTimeString() %></p>
+      <p><strong>Technician:</strong> <%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></p>
+      <p><strong>Verification Status:</strong> 
+        <% if (assignment.verifiedStatus === 'verified') { %>
+          <span class="text-green-600 font-bold">Verified</span>
+        <% } else if (assignment.verifiedStatus === 'rejected') { %>
+          <span class="text-red-600 font-bold">Rejected</span>
+        <% } else { %>
+          <span class="text-yellow-600 font-bold">Pending</span>
+        <% } %>
       </p>
     </div>
+    
     
     <!-- Task Responses -->
     <h2 class="text-xl font-semibold mt-6 mb-4">Task Responses</h2>

@@ -9,7 +9,12 @@ const checklistAssignmentSchema = new mongoose.Schema({
   completedAt: { type: Date },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isTemplate: { type: Boolean, default: true },
-  note: { type: String, default: '' }  // <-- NEW FIELD FOR OVERALL NOTE
+  note: { type: String, default: '' },
+  verifiedStatus: { 
+    type: String, 
+    enum: ['pending', 'verified', 'rejected'], 
+    default: 'pending' 
+  } // <-- NEW
 });
 
 module.exports = mongoose.model('ChecklistAssignment', checklistAssignmentSchema);

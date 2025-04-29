@@ -375,6 +375,64 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 // Get the checklist edit form (only accessible by SPV who created the checklist)
 
 
+// Maintenance History for SPV
+app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const assets = await Asset.find({ division: req.session.userDivision });
+    const assetIds = assets.map(a => a._id);
+    
+    const assignments = await ChecklistAssignment.find({
+      asset: { $in: assetIds },
+      completedAt: { $ne: null }
+    })
+    .populate('checklist')
+    .populate('asset')
+    .populate('submittedBy');
+    
+    res.render('spvReport', { assignments });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Verify checklist
+app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, { verifiedStatus: 'verified' });
+    res.redirect('/spv/report');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Reject checklist
+app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, { verifiedStatus: 'rejected' });
+    res.redirect('/spv/report');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// SPV View Checklist Report Detail
+app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, async (req, res) => {
+  try {
+    const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
+      .populate('checklist')
+      .populate('asset')
+      .populate('submittedBy');
+    if (!assignment || !assignment.completedAt) {
+      return res.status(404).send('Checklist not completed or not found.');
+    }
+    res.render('spvChecklistReportDetail', { assignment });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+
 // SPV dashboard: list checklists created by the logged-in SPV
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
