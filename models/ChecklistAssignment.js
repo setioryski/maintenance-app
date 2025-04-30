@@ -10,11 +10,10 @@ const checklistAssignmentSchema = new mongoose.Schema({
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isTemplate: { type: Boolean, default: true },
   note: { type: String, default: '' },
-  verifiedStatus: { 
-    type: String, 
-    enum: ['pending', 'verified', 'rejected'], 
-    default: 'pending' 
-  } // <-- NEW
+
+  // 🔄 NEW VERIFICATION FIELDS
+  verifiedBySpv: { type: Boolean, default: false },
+  verifiedByManager: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('ChecklistAssignment', checklistAssignmentSchema);

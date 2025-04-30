@@ -1,37 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checklist Report Detail</title>
-  <!-- Tailwind CSS -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded">
     <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
     
     <!-- Report Header -->
-    <div class="mb-4">
+    <div class="mb-4 space-y-2">
       <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
       <p><strong>Checklist:</strong> <%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
-      <p><strong>Submitted on:</strong> <%= new Date(assignment.completedAt).toLocaleDateString() %> at <%= new Date(assignment.completedAt).toLocaleTimeString() %></p>
+      <p>
+        <strong>Submitted On:</strong>
+        <%= new Date(assignment.completedAt).toLocaleDateString() %>
+        at
+        <%= new Date(assignment.completedAt).toLocaleTimeString() %>
+      </p>
       <p><strong>Technician:</strong> <%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></p>
-      <p><strong>Verification Status:</strong> 
-        <% if (assignment.verifiedStatus === 'verified') { %>
-          <span class="text-green-600 font-bold">Verified</span>
-        <% } else if (assignment.verifiedStatus === 'rejected') { %>
-          <span class="text-red-600 font-bold">Rejected</span>
+      <p>
+        <strong>Verified By:</strong>
+        <% if (assignment.verifiedByManager) { %>
+          <span class="text-green-600 font-bold">Manager</span>
+        <% } else if (assignment.verifiedBySpv) { %>
+          <span class="text-blue-600 font-bold">SPV</span>
         <% } else { %>
-          <span class="text-yellow-600 font-bold">Pending</span>
+          <span class="text-yellow-600 font-bold">Not Verified</span>
         <% } %>
       </p>
     </div>
-    
-    
+
     <!-- Task Responses -->
     <h2 class="text-xl font-semibold mt-6 mb-4">Task Responses</h2>
     <table class="w-full text-left border-collapse">
@@ -43,272 +44,141 @@
       </thead>
       <tbody>
         <% if (assignment.checklist && assignment.checklist.tasks) { %>
-          <% assignment.checklist.tasks.forEach(function(task) { 
+          <% assignment.checklist.tasks.forEach(function(task) {
                const response = assignment.responses[task._id];
           %>
             <tr class="border-b">
-              <td class="p-2 border">
-                <%= task.description %>
-              </td>
+              <td class="p-2 border"><%= task.description %></td>
               <td class="p-2 border">
                 <% if (Array.isArray(response)) { %>
-                  <% if (response.length === 0) { %>
-                    No response provided
-                  <% } else if (response.length === 1) { %>
-                    <!-- Exactly one image -->
-                    <img
-                      src="/<%= response[0] %>"
-                      alt="Task Image"
-                      class="w-20 h-20 object-cover cursor-pointer"
-                      data-images="<%= encodeURIComponent(JSON.stringify(response)) %>"
-                      onclick="openGalleryFromImg(this)"
-                    />
+                  <% if (response.length > 0) { %>
+                    <% response.forEach(function(photo) { %>
+                      <img src="/<%= photo %>" alt="Task Image"
+                           class="w-20 h-20 object-cover inline-block mr-2 mb-2 rounded">
+                    <% }); %>
                   <% } else { %>
-                    <!-- More than one image: show first + overlay -->
-                    <div
-                      class="relative inline-block cursor-pointer"
-                      data-images="<%= encodeURIComponent(JSON.stringify(response)) %>"
-                      onclick="openGalleryFromDiv(this)"
-                    >
-                      <img
-                        src="/<%= response[0] %>"
-                        alt="Task Image"
-                        class="w-20 h-20 object-cover"
-                      />
-                      <div class="absolute inset-0 bg-gray-500 bg-opacity-20"></div>
-                      <div
-                        class="absolute bottom-0 right-0 text-white text-sm bg-black bg-opacity-70 px-2 py-1 rounded"
-                      >
-                        +<%= response.length - 1 %>
-                      </div>
-                    </div>
+                    No response provided
                   <% } %>
                 <% } else { %>
-                  <!-- Not an array => pass/fail or measurement -->
-                  <%= response ? response : 'No response provided' %>
+                  <%= response || 'No response provided' %>
                 <% } %>
               </td>
             </tr>
           <% }); %>
         <% } else { %>
           <tr>
-            <td class="p-2 border" colspan="2">
-              No checklist tasks available.
-            </td>
+            <td class="p-2 border" colspan="2">No tasks available.</td>
           </tr>
         <% } %>
       </tbody>
     </table>
 
-      <!-- Maintenance Note (displayed below the responses) -->
-      <div class="mt-4">
-        <h2 class="text-xl font-semibold mb-2">Maintenance Note</h2>
-        <p class="text-gray-700"><%= assignment.note || "No note provided" %></p>
-      </div>
-    
-    <!-- Back Link -->
+    <!-- Maintenance Note -->
     <div class="mt-6">
-      <a
-        href="/technician/report"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-      >
+      <h2 class="text-xl font-semibold mb-2">Maintenance Note</h2>
+      <p class="text-gray-700"><%= assignment.note || "No note provided" %></p>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="mt-6 flex justify-between">
+      <a href="/technician/report" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
         Back to Reports
+      </a>
+      <a href="/technician/dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Dashboard
       </a>
     </div>
   </div>
-  
-  <!-- DESKTOP-ONLY NAV LINKS -->
+
+  <!-- Desktop-Only Links -->
   <div class="max-w-4xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 
-  <!-- FIXED BOTTOM NAV FOR MOBILE -->
+  <!-- Mobile Bottom Nav -->
   <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow sm:hidden">
     <div class="flex justify-around py-2">
-      <!-- Dashboard -->
       <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"/>
         </svg>
         <span class="text-xs">Dashboard</span>
       </a>
-      <!-- Reports -->
       <a href="/technician/report" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"/>
         </svg>
         <span class="text-xs">Reports</span>
       </a>
-      <!-- Logout -->
       <a href="/logout" class="flex flex-col items-center text-blue-500">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M17 16l4-4m0 0l-4-4m4 4H7"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7"/>
         </svg>
         <span class="text-xs">Logout</span>
       </a>
     </div>
   </div>
 
-  <!-- GALLERY MODAL: shows all images in a grid -->
-  <div
-    id="galleryModal"
-    class="fixed inset-0 z-50 hidden items-center justify-center"
-  >
-    <!-- Backdrop -->
-    <div
-      class="absolute inset-0 bg-black bg-opacity-70"
-      onclick="closeGallery()"
-    ></div>
-    
-    <!-- Modal content -->
-    <div
-      class="relative bg-white p-4 rounded max-w-4xl w-full mx-auto mt-10"
-    >
+  <!-- GALLERY MODAL -->
+  <div id="galleryModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black bg-opacity-70" onclick="closeGallery()"></div>
+    <div class="relative bg-white p-4 rounded max-w-4xl w-full mx-auto mt-10">
       <h2 class="text-xl font-bold mb-2">Images</h2>
-      <!-- Grid container for images -->
-      <div
-        id="galleryGrid"
-        class="grid grid-cols-3 md:grid-cols-4 gap-2"
-      >
-        <!-- Filled via JS -->
-      </div>
-      <button
-        class="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-        onclick="closeGallery()"
-      >
-        Close
-      </button>
+      <div id="galleryGrid" class="grid grid-cols-3 md:grid-cols-4 gap-2"></div>
+      <button class="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded" onclick="closeGallery()">Close</button>
     </div>
   </div>
 
-  <!-- ENLARGED MODAL: single big image -->
-  <div
-    id="enlargedModal"
-    class="fixed inset-0 z-50 hidden items-center justify-center"
-  >
-    <!-- Dark backdrop -->
-    <div
-      class="absolute inset-0 bg-black bg-opacity-80"
-      onclick="closeEnlarged()"
-    ></div>
-    <!-- The enlarged image -->
-    <img
-      id="enlargedImg"
-      class="relative max-h-[80vh] mx-auto mt-10 rounded shadow-lg"
-      src=""
-      alt="Enlarged"
-    />
+  <!-- ENLARGED MODAL -->
+  <div id="enlargedModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black bg-opacity-80" onclick="closeEnlarged()"></div>
+    <img id="enlargedImg" class="relative max-h-[80vh] mx-auto mt-10 rounded shadow-lg" src="" alt="Enlarged">
   </div>
 
-  <!-- JavaScript to handle the gallery modals -->
+  <!-- Gallery Script -->
   <script>
-    /**
-     * Helper to parse the data-images attribute (encoded JSON).
-     */
     function parseImagesAttr(element) {
       const encodedJson = element.getAttribute('data-images');
       if (!encodedJson) return [];
-      const decoded = decodeURIComponent(encodedJson);
-      return JSON.parse(decoded);
+      return JSON.parse(decodeURIComponent(encodedJson));
     }
-
-    /**
-     * Called by a single image's onclick.
-     */
-    function openGalleryFromImg(imgElement) {
-      const images = parseImagesAttr(imgElement);
-      // If there's only 1 image, just enlarge it
-      if (images.length === 1) {
-        enlargeImage('/' + images[0]);
-      } else {
-        openGallery(images);
-      }
+    function openGalleryFromImg(imgEl) {
+      const imgs = parseImagesAttr(imgEl);
+      imgs.length === 1 ? enlargeImage('/' + imgs[0]) : openGallery(imgs);
     }
-
-    /**
-     * Called by the "stacked" image div's onclick (multiple images).
-     */
-    function openGalleryFromDiv(divElement) {
-      const images = parseImagesAttr(divElement);
-      openGallery(images);
+    function openGalleryFromDiv(divEl) {
+      openGallery(parseImagesAttr(divEl));
     }
-
-    /**
-     * Opens the gallery modal, displaying all images in a grid.
-     * @param {string[]} images Array of image paths
-     */
     function openGallery(images) {
-      const galleryModal = document.getElementById('galleryModal');
-      const galleryGrid = document.getElementById('galleryGrid');
-      
-      // Clear any old content
-      galleryGrid.innerHTML = '';
-      
-      // Create a thumbnail for each image
-      images.forEach(imgPath => {
+      const modal = document.getElementById('galleryModal');
+      const grid = document.getElementById('galleryGrid');
+      grid.innerHTML = '';
+      images.forEach(path => {
         const img = document.createElement('img');
-        img.src = `/${imgPath}`;
-        img.classList.add(
-          'w-full',
-          'h-32',
-          'object-cover',
-          'cursor-pointer',
-          'border',
-          'border-gray-300'
-        );
-        // Clicking a thumbnail enlarges the image
-        img.onclick = () => enlargeImage(`/${imgPath}`);
-        galleryGrid.appendChild(img);
+        img.src = '/' + path;
+        img.className = 'w-full h-32 object-cover cursor-pointer border border-gray-300';
+        img.onclick = () => enlargeImage('/' + path);
+        grid.appendChild(img);
       });
-      
-      // Show the gallery modal
-      galleryModal.classList.remove('hidden');
-      galleryModal.classList.add('flex');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
     }
-
-    /**
-     * Closes the gallery modal.
-     */
     function closeGallery() {
-      const galleryModal = document.getElementById('galleryModal');
-      galleryModal.classList.add('hidden');
-      galleryModal.classList.remove('flex');
+      const m = document.getElementById('galleryModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
     }
-
-    /**
-     * Opens the enlarged modal with a single big image.
-     */
-    function enlargeImage(imgUrl) {
-      const enlargedModal = document.getElementById('enlargedModal');
-      const enlargedImg = document.getElementById('enlargedImg');
-      enlargedImg.src = imgUrl;
-      enlargedModal.classList.remove('hidden');
-      enlargedModal.classList.add('flex');
+    function enlargeImage(url) {
+      const m = document.getElementById('enlargedModal');
+      const img = document.getElementById('enlargedImg');
+      img.src = url;
+      m.classList.remove('hidden'); m.classList.add('flex');
     }
-
-    /**
-     * Closes the enlarged image modal.
-     */
     function closeEnlarged() {
-      const enlargedModal = document.getElementById('enlargedModal');
-      enlargedModal.classList.add('hidden');
-      enlargedModal.classList.remove('flex');
+      const m = document.getElementById('enlargedModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
     }
   </script>
 </body>

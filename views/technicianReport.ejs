@@ -16,7 +16,7 @@
       #mobile-nav {
         display: flex;
       }
-      /* Container to counteract global 0.5 scale: setting width to 50vw then scaling by 2 */
+      /* Counteract global 0.5 scale: width 50vw then scale 2 */
       .nav-container {
         width: 50vw;
         transform: scale(2);
@@ -33,75 +33,78 @@
       <table class="min-w-full bg-white shadow-md rounded overflow-hidden">
         <thead>
           <tr class="bg-gray-200">
-            <th class="py-2 px-4">Asset Name</th>
-            <th class="py-2 px-4">Checklist Title</th>
-            <th class="py-2 px-4">Technician</th>
-            <th class="py-2 px-4">Submitted Date</th>
-            <th class="py-2 px-4">Submitted Time</th>
-            <th class="py-2 px-4">Verification Status</th>
-            <th class="py-2 px-4">Action</th>
+            <th class="py-2 px-4 border">Asset Name</th>
+            <th class="py-2 px-4 border">Checklist Title</th>
+            <th class="py-2 px-4 border">Technician</th>
+            <th class="py-2 px-4 border">Submitted Date</th>
+            <th class="py-2 px-4 border">Submitted Time</th>
+            <th class="py-2 px-4 border">Verified By</th>
+            <th class="py-2 px-4 border">Action</th>
           </tr>
         </thead>
         <tbody>
           <% assignments.forEach(function(assignment) { %>
           <tr class="border-b">
-            <td class="py-2 px-4"><%= assignment.asset.name %></td>
-            <td class="py-2 px-4"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
-            <td class="py-2 px-4"><%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></td>
-            <td class="py-2 px-4"><%= new Date(assignment.completedAt).toLocaleDateString() %></td>
-            <td class="py-2 px-4"><%= new Date(assignment.completedAt).toLocaleTimeString() %></td>
-            <td class="py-2 px-4">
-              <% if (assignment.verifiedStatus === 'verified') { %>
-                <span class="text-green-600 font-bold">Verified</span>
-              <% } else if (assignment.verifiedStatus === 'rejected') { %>
-                <span class="text-red-600 font-bold">Rejected</span>
+            <td class="py-2 px-4 border"><%= assignment.asset.name %></td>
+            <td class="py-2 px-4 border"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></td>
+            <td class="py-2 px-4 border"><%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></td>
+            <td class="py-2 px-4 border"><%= new Date(assignment.completedAt).toLocaleDateString() %></td>
+            <td class="py-2 px-4 border"><%= new Date(assignment.completedAt).toLocaleTimeString() %></td>
+            <td class="py-2 px-4 border">
+              <% if (assignment.verifiedByManager) { %>
+                <span class="text-green-600 font-bold">Manager</span>
+              <% } else if (assignment.verifiedBySpv) { %>
+                <span class="text-blue-600 font-bold">SPV</span>
               <% } else { %>
-                <span class="text-yellow-600 font-bold">Pending</span>
+                <span class="text-yellow-600 font-bold">Not Verified</span>
               <% } %>
             </td>
-            <td class="py-2 px-4">
-              <a href="/technician/report/<%= assignment._id %>" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
+            <td class="py-2 px-4 border">
+              <a href="/technician/report/<%= assignment._id %>" 
+                 class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm">
                 View Details
               </a>
             </td>
           </tr>
           <% }); %>
         </tbody>
-        
       </table>
     </div>
   </div>
 
-  <!-- Desktop Navigation (visible on screens sm and up) -->
+  <!-- Desktop Navigation -->
   <div class="max-w-6xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 
-  <!-- Fixed Bottom Navigation for Mobile -->
+  <!-- Mobile Navigation -->
   <div id="mobile-nav" class="fixed bottom-0 inset-x-0 justify-center">
     <div class="nav-container">
       <div class="flex justify-around py-2 bg-white border-t shadow">
         <!-- Dashboard Icon -->
         <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"></path>
+                  d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"/>
           </svg>
+          <span class="text-xs">Dashboard</span>
         </a>
         <!-- Reports Icon -->
         <a href="/technician/report" class="flex flex-col items-center text-blue-500">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path>
+                  d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"/>
           </svg>
+          <span class="text-xs">Reports</span>
         </a>
         <!-- Logout Icon -->
         <a href="/logout" class="flex flex-col items-center text-blue-500">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
+                  d="M17 16l4-4m0 0l-4-4m4 4H7"/>
           </svg>
+          <span class="text-xs">Logout</span>
         </a>
       </div>
     </div>

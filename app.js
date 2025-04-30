@@ -374,6 +374,61 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 // (Other routes such as Manager Dashboard, SPV checklist creation, and Technician update would be implemented in a full version)
 // Get the checklist edit form (only accessible by SPV who created the checklist)
 
+// ---------- MANAGER ROUTE ----------//
+
+app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
+  try {
+    const filter = req.query.filter || 'all';
+
+    const matchCondition = { completedAt: { $ne: null } };
+
+    if (filter === 'spv_verified') {
+      matchCondition.verifiedBySpv = true;
+    } else if (filter === 'manager_verified') {
+      matchCondition.verifiedByManager = true;
+    } else if (filter === 'not_verified_spv') {
+      matchCondition.verifiedBySpv = false;
+    }
+
+    const assignments = await ChecklistAssignment.find(matchCondition)
+      .populate('checklist')
+      .populate('asset')
+      .populate('submittedBy');
+
+    res.render('managerDashboard', { assignments, currentFilter: filter });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Manager: Checklist Report Detail (GET)
+app.get(
+  '/manager/report/:assignmentId/detail',
+  ensureAuthenticated,
+  ensureManager,
+  async (req, res) => {
+    try {
+      const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
+        .populate('checklist')
+        .populate('asset')
+        .populate('submittedBy');
+
+      if (!assignment || !assignment.completedAt) {
+        return res.status(404).send('Checklist not found or not completed');
+      }
+
+      res.render('managerChecklistReportDetail', { assignment });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send(err.message);
+    }
+  }
+);
+
+
+
+
+
 
 // Maintenance History for SPV
 app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
@@ -396,14 +451,18 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
 });
 
 // Verify checklist
-app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
-  try {
-    await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, { verifiedStatus: 'verified' });
+// SPV: mark as verified
+app.post('/spv/report/:assignmentId/verify',
+  ensureAuthenticated, ensureSpv,
+  async (req, res) => {
+    await ChecklistAssignment.findByIdAndUpdate(
+      req.params.assignmentId,
+      { verifiedBySpv: true }
+    );
     res.redirect('/spv/report');
-  } catch (err) {
-    res.status(500).send(err.message);
   }
-});
+);
+
 
 // Reject checklist
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
@@ -733,15 +792,21 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
 //spv delete checklist
 
 // DELETE Checklist Route
-app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
-  try {
-    await Checklist.findByIdAndDelete(req.params.id);
-    // Optionally: Remove related records from the ChecklistAssignment collection if needed.
-    res.redirect('/spv/dashboard');
-  } catch (err) {
-    res.status(500).send(err.message);
+// AFTER: use instance.remove() so pre('remove') fires
+app.get(
+  '/checklists/:id/delete',
+  ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser,
+  async (req, res) => {
+    try {
+      // ensureChecklistBelongsToUser already loaded the checklist into req.checklist
+      await req.checklist.remove(); 
+      res.redirect('/spv/dashboard');
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
   }
-});
+);
+
 
 //spv sort checklist
 app.post('/checklists/sort', ensureAuthenticated, ensureSpv, async (req, res) => {

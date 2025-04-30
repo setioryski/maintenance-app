@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Manager Checklist Detail</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded">
+    <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
+
+    <!-- Header -->
+    <div class="mb-4 space-y-1">
+      <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
+      <p><strong>Checklist:</strong> <%= assignment.checklist?.title || 'N/A' %></p>
+      <p>
+        <strong>Submitted On:</strong>
+        <%= new Date(assignment.completedAt).toLocaleDateString() %>
+        at
+        <%= new Date(assignment.completedAt).toLocaleTimeString() %>
+      </p>
+      <p><strong>Technician:</strong> <%= assignment.submittedBy?.name || 'N/A' %></p>
+      <p><strong>Verified by SPV:</strong>
+        <% if (assignment.verifiedBySpv) { %>
+          <span class="text-blue-600 font-semibold">Yes</span>
+        <% } else { %>
+          <span class="text-yellow-600 font-semibold">No</span>
+        <% } %>
+      </p>
+      <p><strong>Verified by Manager:</strong>
+        <% if (assignment.verifiedByManager) { %>
+          <span class="text-green-600 font-semibold">Yes</span>
+        <% } else { %>
+          <span class="text-yellow-600 font-semibold">No</span>
+        <% } %>
+      </p>
+    </div>
+
+    <!-- Task Responses -->
+    <h2 class="text-xl font-semibold mt-6 mb-3">Task Responses</h2>
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="p-2 border">Task Description</th>
+          <th class="p-2 border">Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (assignment.checklist?.tasks?.length) { %>
+          <% assignment.checklist.tasks.forEach(task => {
+               const resp = assignment.responses[task._id];
+          %>
+            <tr class="border-b">
+              <td class="p-2 border"><%= task.description %></td>
+              <td class="p-2 border">
+                <% if (Array.isArray(resp)) { %>
+                  <% if (resp.length) { %>
+                    <% resp.forEach(photo => { %>
+                      <img src="/<%= photo %>" alt="Photo"
+                           class="w-20 h-20 object-cover inline-block mr-2 mb-2 rounded">
+                    <% }); %>
+                  <% } else { %>
+                    No response
+                  <% } %>
+                <% } else { %>
+                  <%= resp || 'No response' %>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="2" class="p-2 border text-center">No tasks available.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <!-- Note -->
+    <div class="mt-6">
+      <h2 class="text-xl font-semibold mb-2">Maintenance Note</h2>
+      <p class="text-gray-700"><%= assignment.note || 'No note provided' %></p>
+    </div>
+
+    <!-- Back Links -->
+    <div class="mt-6 flex justify-between">
+      <a href="/manager/dashboard" 
+         class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+        Back to Dashboard
+      </a>
+      <a href="/" 
+         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Home
+      </a>
+    </div>
+  </div>
+</body>
+</html>
