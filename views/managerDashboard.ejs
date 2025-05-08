@@ -10,16 +10,35 @@
   <div class="max-w-6xl mx-auto p-6">
     <h1 class="text-3xl font-bold mb-6">Manager Checklist Verification</h1>
 
-    <!-- Filter Dropdown -->
-    <form method="GET" action="/manager/dashboard" class="mb-4">
-      <label class="block text-gray-700 font-semibold mb-2">Filter Reports:</label>
-      <select name="filter" onchange="this.form.submit()" class="w-full sm:w-64 border border-gray-300 rounded p-2">
-        <option value="all"            <%= currentFilter === 'all'            ? 'selected' : '' %>>All Reports</option>
-        <option value="spv_verified"   <%= currentFilter === 'spv_verified'   ? 'selected' : '' %>>Verified by SPV</option>
-        <option value="manager_verified"<%= currentFilter === 'manager_verified'? 'selected' : '' %>>Verified by Manager</option>
-        <option value="not_verified_spv"<%= currentFilter === 'not_verified_spv'? 'selected' : '' %>>Not Verified by SPV</option>
-      </select>
+    <form method="GET" action="/manager/dashboard" class="mb-4 flex flex-col sm:flex-row sm:space-x-4">
+      <!-- Division Filter -->
+      <div class="flex-1">
+        <label class="block text-gray-700 font-semibold mb-1">Filter by Division:</label>
+        <select name="division" onchange="this.form.submit()"
+                class="w-full border border-gray-300 rounded p-2">
+          <option value="all" <%= currentDivision === 'all' ? 'selected' : '' %>>All Divisions</option>
+          <% divisions.forEach(div => { %>
+            <option value="<%= div._id %>"
+              <%= currentDivision === div._id.toString() ? 'selected' : '' %>>
+              <%= div.name %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    
+      <!-- Verification Status Filter -->
+      <div class="flex-1">
+        <label class="block text-gray-700 font-semibold mb-1">Filter Reports:</label>
+        <select name="filter" onchange="this.form.submit()"
+                class="w-full border border-gray-300 rounded p-2">
+          <option value="all"             <%= currentFilter === 'all'             ? 'selected' : '' %>>All Reports</option>
+          <option value="spv_verified"    <%= currentFilter === 'spv_verified'    ? 'selected' : '' %>>Verified by SPV</option>
+          <option value="manager_verified"<%= currentFilter === 'manager_verified'? 'selected' : '' %>>Verified by Manager</option>
+          <option value="not_verified_spv"<%= currentFilter === 'not_verified_spv'? 'selected' : '' %>>Not Verified by SPV</option>
+        </select>
+      </div>
     </form>
+    
 
     <!-- Report Table -->
     <div class="overflow-x-auto">

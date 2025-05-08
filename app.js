@@ -252,6 +252,8 @@ io.on('connection', (socket) => {
 // ROUTES (Superuser, Manager, etc.)
 // ------------------------------
 
+
+
 // Home page redirect to dashboard
 app.get('/', (req, res) => {
   if (req.session && req.session.userId) {
@@ -376,26 +378,63 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 
 // ---------- MANAGER ROUTE ----------//
 
+// Manager: mark a completed checklist as verified by manager
+app.post(
+  '/manager/report/:assignmentId/verify',
+  ensureAuthenticated,
+  ensureManager,
+  async (req, res) => {
+    try {
+      await ChecklistAssignment.findByIdAndUpdate(
+        req.params.assignmentId,
+        { verifiedByManager: true }
+      );
+      // After verifying, redirect back to the filtered manager dashboard
+      res.redirect('/manager/dashboard');
+    } catch (err) {
+      console.error('Error verifying by manager:', err);
+      res.status(500).send(err.message);
+    }
+  }
+);
+
+
 app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
   try {
-    const filter = req.query.filter || 'all';
+    // 1. Read both filters from query
+    const filter          = req.query.filter   || 'all';
+    const currentDivision = req.query.division || 'all';
 
+    // 2. Build match condition for verification statuses
     const matchCondition = { completedAt: { $ne: null } };
+    if (filter === 'spv_verified')     matchCondition.verifiedBySpv     = true;
+    else if (filter === 'manager_verified') matchCondition.verifiedByManager = true;
+    else if (filter === 'not_verified_spv') matchCondition.verifiedBySpv     = false;
 
-    if (filter === 'spv_verified') {
-      matchCondition.verifiedBySpv = true;
-    } else if (filter === 'manager_verified') {
-      matchCondition.verifiedByManager = true;
-    } else if (filter === 'not_verified_spv') {
-      matchCondition.verifiedBySpv = false;
-    }
+    // 3. Fetch all divisions for the dropdown
+    const divisions = await Division.find({});
 
-    const assignments = await ChecklistAssignment.find(matchCondition)
+    // 4. Load assignments and populate necessary refs
+    let assignments = await ChecklistAssignment.find(matchCondition)
       .populate('checklist')
       .populate('asset')
       .populate('submittedBy');
 
-    res.render('managerDashboard', { assignments, currentFilter: filter });
+    // 5. If a specific division was chosen, filter in memory
+    if (currentDivision !== 'all') {
+      assignments = assignments.filter(a =>
+        a.asset.division &&
+        a.asset.division.toString() === currentDivision
+      );
+    }
+
+    // 6. Render template with both filters
+    res.render('managerDashboard', {
+      assignments,
+      currentFilter:  filter,
+      divisions,
+      currentDivision
+    });
   } catch (err) {
     res.status(500).send(err.message);
   }

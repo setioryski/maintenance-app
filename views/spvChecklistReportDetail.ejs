@@ -11,19 +11,24 @@
     <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
     
     <!-- Report Header -->
-    <div class="mb-4">
+    <div class="mb-4 space-y-2">
       <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
       <p><strong>Checklist:</strong> <%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
       <p><strong>Submitted By:</strong> <%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></p>
       <p><strong>Submitted At:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
-      <p>
-        <strong>Verification Status:</strong> 
-        <% if (assignment.verifiedStatus === 'verified') { %>
-          <span class="text-green-600 font-bold">Verified</span>
-        <% } else if (assignment.verifiedStatus === 'rejected') { %>
-          <span class="text-red-600 font-bold">Rejected</span>
+
+      <p><strong>Verified by SPV:</strong>
+        <% if (assignment.verifiedBySpv) { %>
+          <span class="text-blue-600 font-semibold">Yes</span>
         <% } else { %>
-          <span class="text-yellow-600 font-bold">Pending</span>
+          <span class="text-yellow-600 font-semibold">No</span>
+        <% } %>
+      </p>
+      <p><strong>Verified by Manager:</strong>
+        <% if (assignment.verifiedByManager) { %>
+          <span class="text-green-600 font-semibold">Yes</span>
+        <% } else { %>
+          <span class="text-yellow-600 font-semibold">No</span>
         <% } %>
       </p>
     </div>
@@ -39,7 +44,7 @@
       </thead>
       <tbody>
         <% if (assignment.checklist && assignment.checklist.tasks) { %>
-          <% assignment.checklist.tasks.forEach(function(task) { 
+          <% assignment.checklist.tasks.forEach(function(task) {
                const response = assignment.responses[task._id];
           %>
             <tr class="border-b">
@@ -48,13 +53,14 @@
                 <% if (Array.isArray(response)) { %>
                   <% if (response.length > 0) { %>
                     <% response.forEach(function(photo) { %>
-                      <img src="/<%= photo %>" alt="Task Image" class="w-20 h-20 object-cover inline-block mr-2 mb-2">
+                      <img src="/<%= photo %>" alt="Task Image"
+                           class="w-20 h-20 object-cover inline-block mr-2 mb-2 rounded">
                     <% }); %>
                   <% } else { %>
                     No response provided
                   <% } %>
                 <% } else { %>
-                  <%= response ? response : 'No response provided' %>
+                  <%= response || 'No response provided' %>
                 <% } %>
               </td>
             </tr>
@@ -75,8 +81,12 @@
 
     <!-- Navigation Links -->
     <div class="mt-6 flex justify-between">
-      <a href="/spv/report" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Back to Reports</a>
-      <a href="/spv/dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Dashboard</a>
+      <a href="/spv/report" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+        Back to Reports
+      </a>
+      <a href="/spv/dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Dashboard
+      </a>
     </div>
 
   </div>

@@ -21,14 +21,22 @@
         <%= new Date(assignment.completedAt).toLocaleTimeString() %>
       </p>
       <p><strong>Technician:</strong> <%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></p>
+
+      <!-- Verification Statuses -->
       <p>
-        <strong>Verified By:</strong>
-        <% if (assignment.verifiedByManager) { %>
-          <span class="text-green-600 font-bold">Manager</span>
-        <% } else if (assignment.verifiedBySpv) { %>
-          <span class="text-blue-600 font-bold">SPV</span>
+        <strong>Verified by SPV:</strong>
+        <% if (assignment.verifiedBySpv) { %>
+          <span class="text-blue-600 font-semibold">Yes</span>
         <% } else { %>
-          <span class="text-yellow-600 font-bold">Not Verified</span>
+          <span class="text-yellow-600 font-semibold">No</span>
+        <% } %>
+      </p>
+      <p>
+        <strong>Verified by Manager:</strong>
+        <% if (assignment.verifiedByManager) { %>
+          <span class="text-green-600 font-semibold">Yes</span>
+        <% } else { %>
+          <span class="text-yellow-600 font-semibold">No</span>
         <% } %>
       </p>
     </div>
