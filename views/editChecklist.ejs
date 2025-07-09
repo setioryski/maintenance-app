@@ -33,10 +33,9 @@
       row.innerHTML = `
         <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="${desc}" required />
         <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required>
-                    <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
-                    <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
-                    <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
-
+          <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
+          <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
+          <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
         </select>
         <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 ${type === 'measurement' ? '' : 'hidden'}" value="${expUnit}" />
         <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
@@ -55,7 +54,7 @@
   </script>
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+  <div class="max-w-2xl mx-auto mt-8 p-6 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Edit Checklist</h1>
     <form action="/checklists/<%= checklist._id %>/edit" method="POST">
       <!-- Checklist Title -->
@@ -63,11 +62,31 @@
         <label class="block text-gray-700 font-semibold mb-1">Nama Checklist</label>
         <input type="text" name="title" class="w-full border border-gray-300 rounded p-2" value="<%= checklist.title %>" required />
       </div>
+
+      <!-- Assignment Section -->
+      <div class="mb-6">
+        <h2 class="text-gray-700 font-semibold mb-2">Assign Checklist to Assets</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <% assets.forEach(asset => { %>
+            <label class="inline-flex items-center">
+              <input
+                type="checkbox"
+                name="assetIds"
+                value="<%= asset._id %>"
+                class="form-checkbox h-4 w-4 text-blue-600"
+                <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %> />
+              <span class="ml-2"><%= asset.name %></span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+
       <!-- Header and Add Task Button -->
       <div class="flex items-center justify-between mb-2">
         <label class="text-gray-700 font-semibold">Item Inspeksi</label>
         <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
       </div>
+
       <!-- Task Rows Container -->
       <div id="taskList" class="mb-4">
         <% checklist.tasks.forEach(function(task) { %>
@@ -83,17 +102,17 @@
           </div>
         <% }); %>
       </div>
+
       <!-- Submit Button -->
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Update Checklist</button>
     </form>
+
+    <!-- Back to Dashboard Button -->
+    <div class="mt-4 text-center">
+      <a href="/spv/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block">
+        Back to Dashboard
+      </a>
+    </div>
   </div>
-</body>    <!-- Back to Dashboard Button -->
-<div class="mt-4 text-center">
-  <a href="/spv/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block">
-    Back to Dashboard
-  </a>
-</div>
-</div>
 </body>
 </html>
-

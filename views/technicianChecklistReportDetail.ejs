@@ -9,125 +9,80 @@
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded">
     <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
-    
+
     <!-- Report Header -->
-    <div class="mb-4 space-y-2">
+    <div class="mb-6 space-y-1">
       <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
       <p><strong>Checklist:</strong> <%= assignment.checklist ? assignment.checklist.title : 'N/A' %></p>
       <p>
         <strong>Submitted On:</strong>
-        <%= new Date(assignment.completedAt).toLocaleDateString() %>
-        at
-        <%= new Date(assignment.completedAt).toLocaleTimeString() %>
+        <%= assignment.completedAt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) %> at 
+        <%= assignment.completedAt.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) %>
       </p>
       <p><strong>Technician:</strong> <%= assignment.submittedBy ? assignment.submittedBy.name : 'N/A' %></p>
-
-      <!-- Verification Statuses -->
-      <p>
-        <strong>Verified by SPV:</strong>
-        <% if (assignment.verifiedBySpv) { %>
-          <span class="text-blue-600 font-semibold">Yes</span>
-        <% } else { %>
-          <span class="text-yellow-600 font-semibold">No</span>
-        <% } %>
+      <p><strong>Verified by SPV:</strong> 
+        <% if (assignment.verifiedBySpv) { %><span class="text-blue-600 font-semibold">Yes</span><% } else { %><span class="text-yellow-600 font-semibold">No</span><% } %>
       </p>
-      <p>
-        <strong>Verified by Manager:</strong>
-        <% if (assignment.verifiedByManager) { %>
-          <span class="text-green-600 font-semibold">Yes</span>
-        <% } else { %>
-          <span class="text-yellow-600 font-semibold">No</span>
-        <% } %>
+      <p><strong>Verified by Manager:</strong> 
+        <% if (assignment.verifiedByManager) { %><span class="text-green-600 font-semibold">Yes</span><% } else { %><span class="text-yellow-600 font-semibold">No</span><% } %>
       </p>
     </div>
 
     <!-- Task Responses -->
-    <h2 class="text-xl font-semibold mt-6 mb-4">Task Responses</h2>
-    <table class="w-full text-left border-collapse">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="p-2 border">Task Description</th>
-          <th class="p-2 border">Response</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (assignment.checklist && assignment.checklist.tasks) { %>
-          <% assignment.checklist.tasks.forEach(function(task) {
-               const response = assignment.responses[task._id];
-          %>
-            <tr class="border-b">
-              <td class="p-2 border"><%= task.description %></td>
-              <td class="p-2 border">
-                <% if (Array.isArray(response)) { %>
-                  <% if (response.length > 0) { %>
-                    <% response.forEach(function(photo) { %>
-                      <img src="/<%= photo %>" alt="Task Image"
-                           class="w-20 h-20 object-cover inline-block mr-2 mb-2 rounded">
-                    <% }); %>
-                  <% } else { %>
-                    No response provided
-                  <% } %>
-                <% } else { %>
-                  <%= response || 'No response provided' %>
-                <% } %>
-              </td>
-            </tr>
-          <% }); %>
-        <% } else { %>
-          <tr>
-            <td class="p-2 border" colspan="2">No tasks available.</td>
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+    <h2 class="text-xl font-semibold mb-4">Task Responses</h2>
+    <div class="space-y-6">
+      <% 
+        // Determine tasks list (snapshot or fallback)
+        const tasksList = (assignment.tasksSnapshot && assignment.tasksSnapshot.length)
+          ? assignment.tasksSnapshot.map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t.originalTaskId }))
+          : (assignment.checklist && assignment.checklist.tasks)
+            ? assignment.checklist.tasks.map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t._id }))
+            : [];
+      %>
+
+      <% if (!tasksList.length) { %>
+        <p class="text-gray-600">No tasks available for this report.</p>
+      <% } else { %>
+        <% tasksList.forEach(task => {
+             const resp = assignment.responses[task.id] || assignment.responses[task.id.toString()] || '';
+        %>
+          <div class="border-b pb-4">
+            <p class="font-medium"><%= task.desc %></p>
+            <p class="text-sm text-gray-600">
+              Jenis: <%= task.type.charAt(0).toUpperCase() + task.type.slice(1) %>
+              <% if (task.type === 'measurement') { %>&nbsp;(<%= task.unit %>)<% } %>
+            </p>
+            <div class="mt-2">
+              <strong>Response:</strong>
+              <% if (Array.isArray(resp) && resp.length) { %>
+                <!-- gallery container -->
+                <div 
+                  class="flex flex-wrap gap-2 mt-2 cursor-pointer" 
+                  data-images="<%= encodeURIComponent(JSON.stringify(resp)) %>"
+                  onclick="openGalleryFromDiv(this)">
+                  <% resp.forEach(src => { %>
+                    <img src="<%= src %>" alt="Task Image" class="w-24 h-24 object-cover rounded shadow" />
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <span><%= resp || 'No response provided' %></span>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
 
     <!-- Maintenance Note -->
     <div class="mt-6">
       <h2 class="text-xl font-semibold mb-2">Maintenance Note</h2>
-      <p class="text-gray-700"><%= assignment.note || "No note provided" %></p>
+      <p class="text-gray-700"><%= assignment.note || 'No note provided' %></p>
     </div>
 
     <!-- Navigation Links -->
     <div class="mt-6 flex justify-between">
-      <a href="/technician/report" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
-        Back to Reports
-      </a>
-      <a href="/technician/dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-        Dashboard
-      </a>
-    </div>
-  </div>
-
-  <!-- Desktop-Only Links -->
-  <div class="max-w-4xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
-    <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
-    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
-  </div>
-
-  <!-- Mobile Bottom Nav -->
-  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow sm:hidden">
-    <div class="flex justify-around py-2">
-      <a href="/technician/dashboard" class="flex flex-col items-center text-blue-500">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6"/>
-        </svg>
-        <span class="text-xs">Dashboard</span>
-      </a>
-      <a href="/technician/report" class="flex flex-col items-center text-blue-500">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"/>
-        </svg>
-        <span class="text-xs">Reports</span>
-      </a>
-      <a href="/logout" class="flex flex-col items-center text-blue-500">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7"/>
-        </svg>
-        <span class="text-xs">Logout</span>
-      </a>
+      <a href="/technician/report" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Back to Reports</a>
+      <a href="/technician/dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Dashboard</a>
     </div>
   </div>
 
@@ -136,7 +91,7 @@
     <div class="absolute inset-0 bg-black bg-opacity-70" onclick="closeGallery()"></div>
     <div class="relative bg-white p-4 rounded max-w-4xl w-full mx-auto mt-10">
       <h2 class="text-xl font-bold mb-2">Images</h2>
-      <div id="galleryGrid" class="grid grid-cols-3 md:grid-cols-4 gap-2"></div>
+      <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
       <button class="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded" onclick="closeGallery()">Close</button>
     </div>
   </div>
@@ -149,17 +104,16 @@
 
   <!-- Gallery Script -->
   <script>
-    function parseImagesAttr(element) {
-      const encodedJson = element.getAttribute('data-images');
-      if (!encodedJson) return [];
-      return JSON.parse(decodeURIComponent(encodedJson));
+    function parseImagesAttr(el) {
+      try {
+        return JSON.parse(decodeURIComponent(el.getAttribute('data-images')));
+      } catch {
+        return [];
+      }
     }
-    function openGalleryFromImg(imgEl) {
-      const imgs = parseImagesAttr(imgEl);
-      imgs.length === 1 ? enlargeImage('/' + imgs[0]) : openGallery(imgs);
-    }
-    function openGalleryFromDiv(divEl) {
-      openGallery(parseImagesAttr(divEl));
+    function openGalleryFromDiv(div) {
+      const imgs = parseImagesAttr(div);
+      openGallery(imgs);
     }
     function openGallery(images) {
       const modal = document.getElementById('galleryModal');
@@ -167,9 +121,9 @@
       grid.innerHTML = '';
       images.forEach(path => {
         const img = document.createElement('img');
-        img.src = '/' + path;
-        img.className = 'w-full h-32 object-cover cursor-pointer border border-gray-300';
-        img.onclick = () => enlargeImage('/' + path);
+        img.src = path;
+        img.className = 'w-full h-32 object-cover cursor-pointer border rounded';
+        img.onclick = () => enlargeImage(path);
         grid.appendChild(img);
       });
       modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -178,10 +132,10 @@
       const m = document.getElementById('galleryModal');
       m.classList.add('hidden'); m.classList.remove('flex');
     }
-    function enlargeImage(url) {
+    function enlargeImage(src) {
       const m = document.getElementById('enlargedModal');
       const img = document.getElementById('enlargedImg');
-      img.src = url;
+      img.src = src;
       m.classList.remove('hidden'); m.classList.add('flex');
     }
     function closeEnlarged() {

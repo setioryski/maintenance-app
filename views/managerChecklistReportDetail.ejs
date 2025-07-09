@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manager Checklist Detail</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
@@ -11,24 +11,23 @@
     <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
 
     <!-- Header -->
-    <div class="mb-4 space-y-1">
+    <div class="mb-6 space-y-1">
       <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
       <p><strong>Checklist:</strong> <%= assignment.checklist?.title || 'N/A' %></p>
       <p>
         <strong>Submitted On:</strong>
-        <%= new Date(assignment.completedAt).toLocaleDateString() %>
-        at
-        <%= new Date(assignment.completedAt).toLocaleTimeString() %>
+        <%= assignment.completedAt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) %> at
+        <%= assignment.completedAt.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) %>
       </p>
       <p><strong>Technician:</strong> <%= assignment.submittedBy?.name || 'N/A' %></p>
-      <p><strong>Verified by SPV:</strong>
+      <p><strong>Verified by SPV:</strong> 
         <% if (assignment.verifiedBySpv) { %>
           <span class="text-blue-600 font-semibold">Yes</span>
         <% } else { %>
           <span class="text-yellow-600 font-semibold">No</span>
         <% } %>
       </p>
-      <p><strong>Verified by Manager:</strong>
+      <p><strong>Verified by Manager:</strong> 
         <% if (assignment.verifiedByManager) { %>
           <span class="text-green-600 font-semibold">Yes</span>
         <% } else { %>
@@ -38,44 +37,43 @@
     </div>
 
     <!-- Task Responses -->
-    <h2 class="text-xl font-semibold mt-6 mb-3">Task Responses</h2>
-    <table class="w-full border-collapse">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="p-2 border">Task Description</th>
-          <th class="p-2 border">Response</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (assignment.checklist?.tasks?.length) { %>
-          <% assignment.checklist.tasks.forEach(task => {
-               const resp = assignment.responses[task._id];
-          %>
-            <tr class="border-b">
-              <td class="p-2 border"><%= task.description %></td>
-              <td class="p-2 border">
-                <% if (Array.isArray(resp)) { %>
-                  <% if (resp.length) { %>
-                    <% resp.forEach(photo => { %>
-                      <img src="/<%= photo %>" alt="Photo"
-                           class="w-20 h-20 object-cover inline-block mr-2 mb-2 rounded">
-                    <% }); %>
-                  <% } else { %>
-                    No response
-                  <% } %>
-                <% } else { %>
-                  <%= resp || 'No response' %>
-                <% } %>
-              </td>
-            </tr>
-          <% }); %>
-        <% } else { %>
-          <tr>
-            <td colspan="2" class="p-2 border text-center">No tasks available.</td>
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+    <h2 class="text-xl font-semibold mt-6 mb-4">Task Responses</h2>
+    <div class="space-y-6">
+      <% 
+        // Build tasks list from snapshot or fallback
+        const tasksList = (assignment.tasksSnapshot && assignment.tasksSnapshot.length)
+          ? assignment.tasksSnapshot.map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t.originalTaskId }))
+          : (assignment.checklist?.tasks || []).map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t._id }));
+      %>
+
+      <% if (!tasksList.length) { %>
+        <p class="text-gray-600">No tasks available for this report.</p>
+      <% } else { %>
+        <% tasksList.forEach(task => {
+             const resp = assignment.responses[task.id] || assignment.responses[task.id.toString()] || '';
+        %>
+          <div class="border-b pb-4">
+            <p class="font-medium"><%= task.desc %></p>
+            <p class="text-sm text-gray-600">
+              Jenis: <%= task.type.charAt(0).toUpperCase() + task.type.slice(1) %>
+              <% if (task.type === 'measurement') { %>&nbsp;(<%= task.unit %>)<% } %>
+            </p>
+            <div class="mt-2">
+              <strong>Response:</strong>
+              <% if (Array.isArray(resp) && resp.length) { %>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <% resp.forEach(src => { %>
+                    <img src="<%= src %>" alt="Photo" class="w-20 h-20 object-cover rounded shadow" />
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <span><%= resp || 'No response' %></span>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
 
     <!-- Note -->
     <div class="mt-6">
@@ -85,14 +83,8 @@
 
     <!-- Back Links -->
     <div class="mt-6 flex justify-between">
-      <a href="/manager/dashboard" 
-         class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
-        Back to Dashboard
-      </a>
-      <a href="/" 
-         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-        Home
-      </a>
+      <a href="/manager/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Back to Dashboard</a>
+      <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Home</a>
     </div>
   </div>
 </body>

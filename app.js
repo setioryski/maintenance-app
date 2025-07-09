@@ -14,6 +14,7 @@ const fs = require('fs');
 require('dotenv').config();
 const app = express();
 const ChecklistAssignment = require('./models/ChecklistAssignment');
+const router = express.Router();
 
 
 
@@ -88,52 +89,7 @@ const ensureManager = ensureRole('manager');
 const ensureSpv = ensureRole('spv');
 const ensureTechnician = ensureRole('technician');
 
-// Middleware to ensure the asset belongs to the user’s division
-async function ensureAssetBelongsToUser(req, res, next) {
-  try {
-    const asset = await Asset.findById(req.params.id);
-    if (!asset) {
-      return res.status(404).json({ error: 'Asset not found' });
-    }
 
-    if (asset.division.toString() !== req.session.userDivision) {
-      console.warn(`Unauthorized asset access attempt by ${req.session.userId}`);
-      return res.status(403).json({ error: 'Access denied: Asset is not in your division' });
-    }
-
-    req.asset = asset; // Store asset in request for further processing
-    next();
-  } catch (error) {
-    console.error(`Error in ensureAssetBelongsToUser: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
-}
-
-// Middleware to ensure the checklist belongs to the logged-in user
-async function ensureChecklistBelongsToUser(req, res, next) {
-  try {
-    // Find the checklist by its ID from the database
-    const checklist = await Checklist.findById(req.params.id);
-
-    // If the checklist is not found, return a 404 error
-    if (!checklist) {
-      return res.status(404).json({ error: 'Checklist not found' });
-    }
-
-    // Check if the logged-in user is the checklist creator
-    if (checklist.createdBy.toString() !== req.session.userId) {
-      console.warn(`Unauthorized checklist modification attempt by ${req.session.userId}`);
-      return res.status(403).json({ error: 'Access denied: You are not authorized to modify this checklist' });
-    }
-
-    // Attach the checklist to the request for further processing
-    req.checklist = checklist;
-    next(); // Proceed to the next middleware or route handler
-  } catch (error) {
-    console.error(`Error in ensureChecklistBelongsToUser: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
-}
 
 
 // Middleware untuk memastikan asset yang diakses milik divisi user
@@ -713,50 +669,123 @@ app.get('/api/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req,
 
 // ---------- SPV: EDIT CHECKLIST ----------
 // Render form to edit an existing checklist (only if SPV is the creator)
-app.get('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
-  try {
-    const checklist = await Checklist.findById(req.params.id);
-    if (!checklist) return res.send('Checklist not found');
-    if (checklist.createdBy.toString() !== req.session.userId) {
-      return res.send('Access denied: You can only edit your own checklist');
-    }
-    res.render('editChecklist', { checklist });
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
-app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
-  try {
-    const { title, taskDescriptions, taskInputTypes, taskExpectedUnits } = req.body;
-    const checklist = await Checklist.findById(req.params.id);
-    if (!checklist) return res.send('Checklist not found');
-    if (checklist.createdBy.toString() !== req.session.userId) {
-      return res.send('Access denied: You can only edit your own checklist');
-    }
-    checklist.title = title;
-    let tasks = [];
-    if (!Array.isArray(taskDescriptions)) {
-      tasks.push({
-        description: taskDescriptions,
-        inputType: taskInputTypes,
-        expectedUnit: taskExpectedUnits,
+app.get(
+  '/checklists/:id/edit',
+  ensureAuthenticated,
+  ensureSpv,
+  async (req, res) => {
+    try {
+      const checklist = await Checklist.findById(req.params.id);
+      if (!checklist) return res.status(404).send('Checklist not found');
+      if (checklist.createdBy.toString() !== req.session.userId) {
+        return res.status(403).send('Access denied: You can only edit your own checklist');
+      }
+
+      // Fetch all assets and the ones already assigned
+      const assets = await Asset.find(); 
+      const existingAssignments = await ChecklistAssignment.find({
+        checklist: checklist._id
       });
-    } else {
-      for (let i = 0; i < taskDescriptions.length; i++) {
+      const assignedAssetIds = existingAssignments.map(a => a.asset.toString());
+
+      res.render('editChecklist', {
+        checklist,
+        assets,
+        assignedAssetIds
+      });
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
+  }
+);
+// POST the edits
+app.post(
+  '/checklists/:id/edit',
+  ensureAuthenticated,
+  ensureSpv,
+  async (req, res) => {
+    try {
+      const checklistId = req.params.id;
+      const {
+        title,
+        taskDescriptions,
+        taskInputTypes,
+        taskExpectedUnits,
+        assetIds
+      } = req.body;
+
+      // 1) Load & authorize
+      const checklist = await Checklist.findById(checklistId);
+      if (!checklist) {
+        return res.status(404).send('Checklist not found');
+      }
+      if (checklist.createdBy.toString() !== req.session.userId) {
+        return res.status(403).send('Access denied: You can only edit your own checklist');
+      }
+
+      // 2) Update title & tasks
+      checklist.title = title;
+      const tasks = [];
+      // Normalize single vs. array
+      const descArr = Array.isArray(taskDescriptions)
+        ? taskDescriptions
+        : [taskDescriptions];
+      const typeArr = Array.isArray(taskInputTypes)
+        ? taskInputTypes
+        : [taskInputTypes];
+      const unitArr = Array.isArray(taskExpectedUnits)
+        ? taskExpectedUnits
+        : [taskExpectedUnits];
+
+      for (let i = 0; i < descArr.length; i++) {
         tasks.push({
-          description: taskDescriptions[i],
-          inputType: taskInputTypes[i],
-          expectedUnit: taskExpectedUnits[i],
+          description: descArr[i],
+          inputType: typeArr[i],
+          expectedUnit: unitArr[i] || ''
         });
       }
+
+      checklist.tasks = tasks;
+      await checklist.save();
+
+      // 3) If assetIds was submitted, rebuild *only* the template assignments
+      if (Object.prototype.hasOwnProperty.call(req.body, 'assetIds')) {
+        // Remove old template entries, keep completed reports
+        await ChecklistAssignment.deleteMany({
+          checklist: checklistId,
+          isTemplate: true
+        });
+
+        // Normalize to array, filter out empty & invalid IDs
+        let assetsToAssign = Array.isArray(assetIds)
+          ? assetIds
+          : assetIds
+          ? [assetIds]
+          : [];
+        assetsToAssign = assetsToAssign.filter(
+          id => id && mongoose.Types.ObjectId.isValid(id)
+        );
+
+        // Build and insert new template assignments
+        const newTemplates = assetsToAssign.map(assetId => ({
+          checklist: checklistId,
+          asset: assetId,
+          isTemplate: true
+        }));
+        if (newTemplates.length > 0) {
+          await ChecklistAssignment.insertMany(newTemplates);
+        }
+      }
+
+      // 4) Redirect back to SPV dashboard
+      res.redirect('/spv/dashboard');
+    } catch (err) {
+      console.error('Error editing checklist:', err);
+      res.status(500).send(err.message);
     }
-    checklist.tasks = tasks;
-    await checklist.save();
-    res.redirect('/spv/dashboard');
-  } catch (err) {
-    res.status(500).send(err.message);
   }
-});
+);
+
 
 
 
@@ -799,34 +828,58 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
 
 
 // POST /checklists/:id/assign
-app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
-  try {
-    const { assetIds } = req.body; // assetIds can be a single string or an array of strings
-    const checklistId = req.params.id;
-    const ChecklistAssignment = require('./models/ChecklistAssignment');
+// POST /checklists/:id/assign
+app.post(
+  '/checklists/:id/assign',
+  ensureAuthenticated,
+  ensureSpv,
+  async (req, res) => {
+    try {
+      const checklistId = req.params.id;
+      const { assetIds } = req.body;  // May be a string or array of strings
 
-    // Remove existing assignments for this checklist (if you want to replace them)
-    await ChecklistAssignment.deleteMany({ checklist: checklistId });
+      // 1) Verify checklist exists and belongs to this SPV
+      const checklist = await Checklist.findById(checklistId);
+      if (!checklist) {
+        return res.status(404).send('Checklist not found');
+      }
+      if (checklist.createdBy.toString() !== req.session.userId) {
+        return res.status(403).send('Access denied: You can only assign your own checklists');
+      }
 
-    // Ensure assetIds is an array
-    const assetsToAssign = Array.isArray(assetIds) ? assetIds : (assetIds ? [assetIds] : []);
+      // 2) Remove only the “template” assignments (so completed reports stay intact)
+      await ChecklistAssignment.deleteMany({
+        checklist: checklistId,
+        isTemplate: true
+      });
 
-    // Create a new assignment for each asset and mark it as a template
-    const assignments = assetsToAssign.map(assetId => ({
-      checklist: checklistId,
-      asset: assetId,
-      isTemplate: true
-    }));
+      // 3) Normalize assetIds into an array
+      const assetsToAssign = Array.isArray(assetIds)
+        ? assetIds
+        : assetIds
+        ? [assetIds]
+        : [];
 
-    if (assignments.length > 0) {
-      await ChecklistAssignment.insertMany(assignments);
+      // 4) Build new template assignments
+      const newAssignments = assetsToAssign.map(assetId => ({
+        checklist: checklistId,
+        asset: assetId,
+        isTemplate: true
+      }));
+
+      // 5) Insert them (if any)
+      if (newAssignments.length > 0) {
+        await ChecklistAssignment.insertMany(newAssignments);
+      }
+
+      // 6) Redirect back to SPV dashboard
+      res.redirect('/spv/dashboard');
+    } catch (err) {
+      console.error('Error in POST /checklists/:id/assign:', err);
+      res.status(500).send(err.message);
     }
-
-    res.redirect('/spv/dashboard');
-  } catch (err) {
-    res.status(500).send(err.message);
   }
-});
+);
 
 //spv delete checklist
 
@@ -865,25 +918,6 @@ app.post('/checklists/sort', ensureAuthenticated, ensureSpv, async (req, res) =>
 
 
 //assignment count
-app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
-  try {
-    // Fetch checklists created by the logged-in SPV
-    const checklists = await Checklist.find({ createdBy: req.session.userId }).sort({ order: 1 });
-    
-    // For each checklist, count the assignments using the junction collection
-    // Alternatively, you can use an aggregation to do this in one query.
-    const checklistData = await Promise.all(checklists.map(async checklist => {
-      const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
-      // Attach assignmentCount to each checklist
-      return { ...checklist.toObject(), assignmentCount: count };
-    }));
-
-    res.render('spvDashboard', { checklists: checklistData, assets: assets || [] });
-
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
 
 // ---------- technician ----------//
 //technician dashboard
@@ -937,76 +971,94 @@ app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechni
 
 
 
+// POST /technician/checklist/:assignmentId/submit
+app.post(
+  '/technician/checklist/:assignmentId/submit',
+  ensureAuthenticated,
+  ensureTechnician,
+  upload.any(),
+  async (req, res) => {
+    try {
+      const assignmentId = req.params.assignmentId;
 
-app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensureTechnician, upload.any(), async (req, res) => {
-  try {
-    const originalAssignmentId = req.params.assignmentId;
-    
-    const originalAssignment = await ChecklistAssignment.findById(originalAssignmentId)
-      .populate('checklist')
-      .populate('asset');
-    
-    if (!originalAssignment) {
-      return res.status(404).send('Checklist assignment not found.');
-    }
-    
-    const resultsFromBody = req.body.results || {};
-    const responses = { ...resultsFromBody };
-    
-    if (req.files && req.files.length > 0) {
-      // Group files by task ID.
-      const filesByTask = {};
-      req.files.forEach(file => {
-        const match = file.fieldname.match(/results\[(.+)\]/);
-        if (match && match[1]) {
+      // 1) Load the template assignment with checklist & asset
+      const templateAssignment = await ChecklistAssignment.findById(assignmentId)
+        .populate('checklist')
+        .populate('asset');
+      if (!templateAssignment) {
+        return res.status(404).send('Checklist assignment not found.');
+      }
+
+      // 2) Snapshot tasks for this submission
+      const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
+        originalTaskId: t._id,
+        description:    t.description,
+        inputType:      t.inputType,
+        expectedUnit:   t.expectedUnit || ''
+      }));
+
+      // 3) Gather any form-field responses
+      const responses = { ...(req.body.results || {}) };
+
+      // 4) Handle uploaded files: group by taskId, process via your queue, build URLs
+      if (req.files && req.files.length > 0) {
+        const filesByTask = {};
+        req.files.forEach(file => {
+          const match = file.fieldname.match(/^results\[(.+)\]$/);
+          if (!match) return;
           const taskId = match[1];
-          if (!filesByTask[taskId]) {
-            filesByTask[taskId] = [];
-          }
+          filesByTask[taskId] = filesByTask[taskId] || [];
           filesByTask[taskId].push(file.path);
-        }
-      });
-
-      // Process each file for each task using the imageProcessingQueue
-      const processPromises = Object.entries(filesByTask).map(([taskId, filePaths]) => {
-        return Promise.all(filePaths.map(filePath => {
-          return new Promise((resolve, reject) => {
-            imageProcessingQueue.push({ filePath }, (err) => {
-              if (err) return reject(err);
-              // After processing, assume processed images are saved in the "processed/" folder
-              const processedPath = `processed/${path.basename(filePath)}`;
-              resolve(processedPath);
-            });
-          });
-        })).then(processedPaths => {
-          // Store the array of processed file paths as the response for that task
-          responses[taskId] = processedPaths;
         });
+
+        // Process images and collect processed URLs
+        const processingPromises = Object.entries(filesByTask).map(
+          async ([taskId, filePaths]) => {
+            const processedUrls = await Promise.all(
+              filePaths.map(
+                filePath =>
+                  new Promise((resolve, reject) => {
+                    imageProcessingQueue.push({ filePath }, err => {
+                      if (err) return reject(err);
+                      const filename = path.basename(filePath);
+                      // served under /processed
+                      resolve(`/processed/${filename}`);
+                    });
+                  })
+              )
+            );
+            responses[taskId] = processedUrls;
+          }
+        );
+        await Promise.all(processingPromises);
+      }
+
+      // 5) Capture any maintenance note
+      const maintenanceNote = req.body.note || '';
+
+      // 6) Create & save the completed assignment
+      const completedAssignment = new ChecklistAssignment({
+        checklist:     templateAssignment.checklist._id,
+        asset:         templateAssignment.asset._id,
+        assignedAt:    templateAssignment.assignedAt,
+        tasksSnapshot,                     // snapshot of questions
+        responses,                         // text & image URLs
+        completedAt:   new Date(),
+        submittedBy:   req.session.userId,
+        isTemplate:    false,
+        note:          maintenanceNote
       });
-      await Promise.all(processPromises);
+      await completedAssignment.save();
+
+      // 7) Redirect back to technician dashboard
+      res.redirect('/technician/dashboard');
+    } catch (err) {
+      console.error('Error submitting checklist:', err);
+      res.status(500).send(err.message);
     }
-     // Capture the overall note from the form submission
-     const maintenanceNote = req.body.note || '';
-    
-     const newAssignment = new ChecklistAssignment({
-       checklist: originalAssignment.checklist._id,
-       asset: originalAssignment.asset._id,
-       assignedAt: originalAssignment.assignedAt,
-       responses: responses,
-       completedAt: new Date(),
-       submittedBy: req.session.userId,
-       isTemplate: false,
-       note: maintenanceNote   // <-- Save the note here
-     });
-     
-     await newAssignment.save();
-     
-     res.redirect('/technician/dashboard');
-   } catch (err) {
-     console.error(err);
-     res.status(500).send(err.message);
-   }
- });
+  }
+);
+
 
 
 
@@ -1103,7 +1155,7 @@ initializeAssetCategories().catch(err =>
 );
 
 
-
+module.exports = router;
 // ------------------------------
 // START SERVER WITH SOCKET.IO
 // ------------------------------
