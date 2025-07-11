@@ -11,6 +11,9 @@ const checklistItemSchema = new mongoose.Schema({
     required: true
   },
   expectedUnit: { type: String, default: '' },
+  // Add these fields for optional measurement range
+  minRange: { type: Number, default: null },
+  maxRange: { type: Number, default: null },
   actualValue: { type: Number, default: null },
   note: { type: String, default: '' },
   materialUsed: { type: String, default: '' },

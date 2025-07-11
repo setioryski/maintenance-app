@@ -6,30 +6,33 @@
   <title>Edit Checklist</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script>
-    // Toggle "Expected Unit" field based on input type selection
-    function toggleExpectedUnit(selectElem, rowElem) {
-      const expectedUnitInput = rowElem.querySelector('input[name="taskExpectedUnits"]');
+    function toggleMeasurementFields(selectElem, rowElem) {
+      const measurementContainer = rowElem.querySelector('.measurement-container');
       if (selectElem.value === 'measurement') {
-        expectedUnitInput.classList.remove('hidden');
+        measurementContainer.classList.remove('hidden');
       } else {
-        expectedUnitInput.classList.add('hidden');
-        expectedUnitInput.value = '';
+        measurementContainer.classList.add('hidden');
+        // Clear values when hiding
+        rowElem.querySelector('input[name="taskMinRanges"]').value = '';
+        rowElem.querySelector('input[name="taskMaxRanges"]').value = '';
+        rowElem.querySelector('input[name="taskExpectedUnits"]').value = '';
       }
     }
-
-    // Remove a task row from the form
+    
     function removeTask(button) {
       const row = button.closest('.task-row');
       row.remove();
     }
 
-    // Create a new task row element (optionally pre-filled with task data)
     function createTaskRow(task = {}) {
       const desc = task.description || '';
       const type = task.inputType || 'visual';
       const expUnit = task.expectedUnit || '';
+      const minRange = task.minRange || '';
+      const maxRange = task.maxRange || '';
+
       const row = document.createElement('div');
-      row.className = "task-row flex items-center gap-2 mb-2";
+      row.className = "task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2";
       row.innerHTML = `
         <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="${desc}" required />
         <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required>
@@ -37,15 +40,18 @@
           <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
           <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
         </select>
-        <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 ${type === 'measurement' ? '' : 'hidden'}" value="${expUnit}" />
+        <div class="measurement-container flex items-center gap-2 ${type === 'measurement' ? '' : 'hidden'}">
+            <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}" />
+            <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}" />
+            <input type="text" name="taskExpectedUnits" placeholder="Unit" class="border border-gray-300 rounded p-2 w-24" value="${expUnit}" />
+        </div>
         <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
       `;
       const selectElem = row.querySelector('select[name="taskInputTypes"]');
-      selectElem.addEventListener('change', () => toggleExpectedUnit(selectElem, row));
+      selectElem.addEventListener('change', () => toggleMeasurementFields(selectElem, row));
       return row;
     }
 
-    // Add a blank new task row
     function addTask() {
       const taskList = document.getElementById('taskList');
       const row = createTaskRow();
@@ -54,19 +60,17 @@
   </script>
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-2xl mx-auto mt-8 p-6 bg-white shadow-md rounded">
+  <div class="max-w-4xl mx-auto mt-8 p-6 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Edit Checklist</h1>
     <form action="/checklists/<%= checklist._id %>/edit" method="POST">
-      <!-- Checklist Title -->
       <div class="mb-4">
         <label class="block text-gray-700 font-semibold mb-1">Nama Checklist</label>
         <input type="text" name="title" class="w-full border border-gray-300 rounded p-2" value="<%= checklist.title %>" required />
       </div>
 
-      <!-- Assignment Section -->
       <div class="mb-6">
         <h2 class="text-gray-700 font-semibold mb-2">Assign Checklist to Assets</h2>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           <% assets.forEach(asset => { %>
             <label class="inline-flex items-center">
               <input
@@ -75,39 +79,39 @@
                 value="<%= asset._id %>"
                 class="form-checkbox h-4 w-4 text-blue-600"
                 <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %> />
-              <span class="ml-2"><%= asset.name %></span>
+              <span class="ml-2 text-sm"><%= asset.name %></span>
             </label>
           <% }) %>
         </div>
       </div>
 
-      <!-- Header and Add Task Button -->
       <div class="flex items-center justify-between mb-2">
         <label class="text-gray-700 font-semibold">Item Inspeksi</label>
         <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
       </div>
 
-      <!-- Task Rows Container -->
       <div id="taskList" class="mb-4">
         <% checklist.tasks.forEach(function(task) { %>
-          <div class="task-row flex items-center gap-2 mb-2">
+          <div class="task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
             <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="<%= task.description %>" required />
-            <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required onchange="toggleExpectedUnit(this, this.closest('.task-row'))">
+            <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required onchange="toggleMeasurementFields(this, this.closest('.task-row'))">
               <option value="visual" <%= task.inputType === 'visual' ? 'selected' : '' %>>Visual Check</option>
               <option value="measurement" <%= task.inputType === 'measurement' ? 'selected' : '' %>>Measurement</option>
               <option value="functional" <%= task.inputType === 'functional' ? 'selected' : '' %>>Functional Test</option>
             </select>
-            <input type="text" name="taskExpectedUnits" placeholder="Expected Unit" class="border border-gray-300 rounded p-2 w-28 <%= task.inputType === 'measurement' ? '' : 'hidden' %>" value="<%= task.expectedUnit %>" />
+            <div class="measurement-container flex items-center gap-2 <%= task.inputType === 'measurement' ? '' : 'hidden' %>">
+                <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="<%= task.minRange || '' %>" />
+                <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="<%= task.maxRange || '' %>" />
+                <input type="text" name="taskExpectedUnits" placeholder="Unit" class="border border-gray-300 rounded p-2 w-24" value="<%= task.expectedUnit || '' %>" />
+            </div>
             <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
           </div>
         <% }); %>
       </div>
 
-      <!-- Submit Button -->
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Update Checklist</button>
     </form>
 
-    <!-- Back to Dashboard Button -->
     <div class="mt-4 text-center">
       <a href="/spv/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block">
         Back to Dashboard

@@ -52,6 +52,10 @@ const Asset = require('./models/Asset');
 const Checklist = require('./models/Checklist');
 const User = require('./models/User');
 const Division = require('./models/Division');
+const AssetCategory = require('./models/AssetCategory');
+const Floor = require('./models/Floor');
+const Zone = require('./models/Zone');
+
 
 // Configure Multer to store uploaded files in a folder
 const storage = multer.diskStorage({
@@ -199,6 +203,12 @@ app.use('/processed', express.static(path.join(__dirname, 'processed')));
 // Socket.io connection event
 io.on('connection', (socket) => {
   console.log('A user connected');
+
+  socket.on('new-alert', (data) => {
+      // Broadcast to SPVs and Managers
+      io.emit('alert', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
@@ -315,13 +325,17 @@ app.post('/admin/divisions', ensureAuthenticated, ensureSuperuser, async (req, r
 });
 
 // Create Asset (Superuser Only)
-app.get('/admin/assets/new', ensureAuthenticated, ensureSuperuser, (req, res) => {
-  res.render('createAsset');
+app.get('/admin/assets/new', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+  const assetCategories = await AssetCategory.find({});
+  const floors = await Floor.find({});
+  const zones = await Zone.find({});
+  const divisions = await Division.find({});
+  res.render('createAsset', { assetCategories, floors, zones, divisions, user: {role: 'superuser'} });
 });
 app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res) => {
   try {
-    const { name, description, location, type, floor, zone } = req.body;
-    const newAsset = new Asset({ name, description, location, type, floor, zone });
+    const { name, description, location, category, floor, zone, division } = req.body;
+    const newAsset = new Asset({ name, description, location, category, floor, zone, division });
     await newAsset.save();
     res.redirect('/admin/assets/new');
   } catch (err) {
@@ -335,11 +349,7 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 // ---------- MANAGER ROUTE ----------//
 
 // Manager: mark a completed checklist as verified by manager
-app.post(
-  '/manager/report/:assignmentId/verify',
-  ensureAuthenticated,
-  ensureManager,
-  async (req, res) => {
+app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
       await ChecklistAssignment.findByIdAndUpdate(
         req.params.assignmentId,
@@ -366,21 +376,34 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
     if (filter === 'spv_verified')     matchCondition.verifiedBySpv     = true;
     else if (filter === 'manager_verified') matchCondition.verifiedByManager = true;
     else if (filter === 'not_verified_spv') matchCondition.verifiedBySpv     = false;
+    else if (filter === 'has_alert') matchCondition.hasAlert = true;
 
     // 3. Fetch all divisions for the dropdown
     const divisions = await Division.find({});
 
     // 4. Load assignments and populate necessary refs
     let assignments = await ChecklistAssignment.find(matchCondition)
-      .populate('checklist')
-      .populate('asset')
+      .populate({
+        path: 'checklist',
+        populate: {
+          path: 'createdBy'
+        }
+      })
+      .populate({
+          path: 'asset',
+          populate: [
+              { path: 'floor' },
+              { path: 'category' },
+              { path: 'division' }
+          ]
+      })
       .populate('submittedBy');
 
     // 5. If a specific division was chosen, filter in memory
     if (currentDivision !== 'all') {
       assignments = assignments.filter(a =>
         a.asset.division &&
-        a.asset.division.toString() === currentDivision
+        a.asset.division._id.toString() === currentDivision
       );
     }
 
@@ -397,15 +420,14 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
 });
 
 // Manager: Checklist Report Detail (GET)
-app.get(
-  '/manager/report/:assignmentId/detail',
-  ensureAuthenticated,
-  ensureManager,
-  async (req, res) => {
+app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
       const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
         .populate('checklist')
-        .populate('asset')
+        .populate({
+            path: 'asset',
+            populate: ['floor', 'category', 'zone', 'division']
+        })
         .populate('submittedBy');
 
       if (!assignment || !assignment.completedAt) {
@@ -431,15 +453,30 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     const assets = await Asset.find({ division: req.session.userDivision });
     const assetIds = assets.map(a => a._id);
     
-    const assignments = await ChecklistAssignment.find({
-      asset: { $in: assetIds },
-      completedAt: { $ne: null }
-    })
-    .populate('checklist')
-    .populate('asset')
-    .populate('submittedBy');
+    let query = {
+        asset: { $in: assetIds },
+        completedAt: { $ne: null }
+    };
+
+    const filter = req.query.filter || 'all';
+    if (filter === 'has_alert') {
+        query.hasAlert = true;
+    }
+
+    const assignments = await ChecklistAssignment.find(query)
+        .populate({
+            path: 'checklist',
+            populate: {
+                path: 'createdBy'
+            }
+        })
+        .populate({
+            path: 'asset',
+            populate: ['floor', 'category', 'zone']
+        })
+        .populate('submittedBy');
     
-    res.render('spvReport', { assignments });
+    res.render('spvReport', { assignments, currentFilter: filter });
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -447,14 +484,16 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
 
 // Verify checklist
 // SPV: mark as verified
-app.post('/spv/report/:assignmentId/verify',
-  ensureAuthenticated, ensureSpv,
-  async (req, res) => {
-    await ChecklistAssignment.findByIdAndUpdate(
-      req.params.assignmentId,
-      { verifiedBySpv: true }
-    );
-    res.redirect('/spv/report');
+app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
+    try{
+        await ChecklistAssignment.findByIdAndUpdate(
+          req.params.assignmentId,
+          { verifiedBySpv: true }
+        );
+        res.redirect('/spv/report');
+    } catch(err){
+        res.status(500).send(err.message);
+    }
   }
 );
 
@@ -462,7 +501,7 @@ app.post('/spv/report/:assignmentId/verify',
 // Reject checklist
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, { verifiedStatus: 'rejected' });
+    await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, { verifiedStatus: 'rejected', verifiedBySpv: false });
     res.redirect('/spv/report');
   } catch (err) {
     res.status(500).send(err.message);
@@ -473,8 +512,14 @@ app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, asy
 app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
     const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-      .populate('checklist')
-      .populate('asset')
+      .populate({
+          path: 'checklist',
+          populate: { path: 'createdBy' }
+      })
+      .populate({
+        path: 'asset',
+        populate: ['floor', 'category', 'zone']
+      })
       .populate('submittedBy');
     if (!assignment || !assignment.completedAt) {
       return res.status(404).send('Checklist not completed or not found.');
@@ -506,7 +551,7 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
     // Also fetch asset categories
     const assetCategories = await AssetCategory.find({});
     const floors = await Floor.find({});
-    res.render('spvDashboard', { checklists: checklistData, assets, assetCategories, floors });
+    res.render('spvDashboard', { checklists: checklistData, assets, assetCategories, floors, user: req.session });
 
   } catch (err) {
     res.status(500).send(err.message);
@@ -526,7 +571,7 @@ app.get('/assets/new', ensureAuthenticated, ensureSpv, async (req, res) => {
     const assetCategories = await AssetCategory.find({});
     const floors = await Floor.find({});
     const zones = await Zone.find({}); // Ensure zones is defined
-    res.render('createAsset', { assetCategories, floors, zones });
+    res.render('createAsset', { assetCategories, floors, zones, user: req.session });
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -537,6 +582,7 @@ app.get('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
     // Hanya ambil aset yang division-nya sama dengan SPV
     const assets = await Asset.find({ division: req.session.userDivision });
+    const checklists = await Checklist.find({ createdBy: req.session.userId });
     res.render('spvDashboard', { assets, checklists });
 
   } catch (err) {
@@ -619,34 +665,32 @@ app.get('/checklists/new', ensureAuthenticated, ensureSpv, async (req, res) => {
 // Process checklist creation
 app.post('/checklists', ensureAuthenticated, ensureSpv, async (req, res) => {
   try {
-    const { title, templateChecklist, taskDescriptions, taskInputTypes, taskExpectedUnits } = req.body;
-
-    // If you'd like, you can handle logic for the selected template checklist:
-    // e.g., copying tasks from the template if the user wants them, or ignoring if they've been overridden
+    const { title, templateChecklist, taskDescriptions, taskInputTypes, taskExpectedUnits, taskMinRanges, taskMaxRanges } = req.body;
 
     let tasks = [];
-    // If there's only one task, these fields won't be arrays. Convert them to arrays for uniformity:
     const descArr = Array.isArray(taskDescriptions) ? taskDescriptions : [taskDescriptions];
     const typeArr = Array.isArray(taskInputTypes) ? taskInputTypes : [taskInputTypes];
     const unitArr = Array.isArray(taskExpectedUnits) ? taskExpectedUnits : [taskExpectedUnits];
+    const minArr = Array.isArray(taskMinRanges) ? taskMinRanges : [taskMinRanges];
+    const maxArr = Array.isArray(taskMaxRanges) ? taskMaxRanges : [taskMaxRanges];
 
     for (let i = 0; i < descArr.length; i++) {
-      tasks.push({
-        description: descArr[i],
-        inputType: typeArr[i],
-        expectedUnit: unitArr[i] || ''
-      });
+        tasks.push({
+            description: descArr[i],
+            inputType: typeArr[i],
+            expectedUnit: unitArr[i] || '',
+            minRange: minArr[i] ? Number(minArr[i]) : null,
+            maxRange: maxArr[i] ? Number(maxArr[i]) : null,
+        });
     }
-
-    // Create the new checklist
+    
     const newChecklist = new Checklist({
       title,
       tasks,
       createdBy: req.session.userId,
     });
     await newChecklist.save();
-
-    // Redirect or render success
+    
     res.redirect('/spv/dashboard');
   } catch (err) {
     res.status(500).send(err.message);
@@ -669,11 +713,7 @@ app.get('/api/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req,
 
 // ---------- SPV: EDIT CHECKLIST ----------
 // Render form to edit an existing checklist (only if SPV is the creator)
-app.get(
-  '/checklists/:id/edit',
-  ensureAuthenticated,
-  ensureSpv,
-  async (req, res) => {
+app.get('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
       const checklist = await Checklist.findById(req.params.id);
       if (!checklist) return res.status(404).send('Checklist not found');
@@ -682,9 +722,10 @@ app.get(
       }
 
       // Fetch all assets and the ones already assigned
-      const assets = await Asset.find(); 
+      const assets = await Asset.find({ division: req.session.userDivision }); 
       const existingAssignments = await ChecklistAssignment.find({
-        checklist: checklist._id
+        checklist: checklist._id,
+        isTemplate: true
       });
       const assignedAssetIds = existingAssignments.map(a => a.asset.toString());
 
@@ -699,11 +740,7 @@ app.get(
   }
 );
 // POST the edits
-app.post(
-  '/checklists/:id/edit',
-  ensureAuthenticated,
-  ensureSpv,
-  async (req, res) => {
+app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
       const checklistId = req.params.id;
       const {
@@ -711,6 +748,8 @@ app.post(
         taskDescriptions,
         taskInputTypes,
         taskExpectedUnits,
+        taskMinRanges,
+        taskMaxRanges,
         assetIds
       } = req.body;
 
@@ -726,23 +765,22 @@ app.post(
       // 2) Update title & tasks
       checklist.title = title;
       const tasks = [];
-      // Normalize single vs. array
-      const descArr = Array.isArray(taskDescriptions)
-        ? taskDescriptions
-        : [taskDescriptions];
-      const typeArr = Array.isArray(taskInputTypes)
-        ? taskInputTypes
-        : [taskInputTypes];
-      const unitArr = Array.isArray(taskExpectedUnits)
-        ? taskExpectedUnits
-        : [taskExpectedUnits];
+      const descArr = Array.isArray(taskDescriptions) ? taskDescriptions : [taskDescriptions];
+      const typeArr = Array.isArray(taskInputTypes) ? taskInputTypes : [taskInputTypes];
+      const unitArr = Array.isArray(taskExpectedUnits) ? taskExpectedUnits : [taskExpectedUnits];
+      const minArr = Array.isArray(taskMinRanges) ? taskMinRanges : [taskMinRanges];
+      const maxArr = Array.isArray(taskMaxRanges) ? taskMaxRanges : [taskMaxRanges];
 
-      for (let i = 0; i < descArr.length; i++) {
-        tasks.push({
-          description: descArr[i],
-          inputType: typeArr[i],
-          expectedUnit: unitArr[i] || ''
-        });
+      if (descArr) {
+        for (let i = 0; i < descArr.length; i++) {
+          tasks.push({
+            description: descArr[i],
+            inputType: typeArr[i],
+            expectedUnit: unitArr[i] || '',
+            minRange: (minArr[i] !== null && minArr[i] !== '') ? Number(minArr[i]) : null,
+            maxRange: (maxArr[i] !== null && maxArr[i] !== '') ? Number(maxArr[i]) : null,
+          });
+        }
       }
 
       checklist.tasks = tasks;
@@ -809,8 +847,7 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
     if (!checklist) return res.status(404).send('Checklist not found');
 
     // Get assignments for this checklist from the junction collection
-    const ChecklistAssignment = require('./models/ChecklistAssignment');
-    const assignments = await ChecklistAssignment.find({ checklist: req.params.id });
+    const assignments = await ChecklistAssignment.find({ checklist: req.params.id, isTemplate: true });
     const assignedAssetIds = assignments.map(a => a.asset.toString());
 
     // Get all assets (or filter as needed)
@@ -828,12 +865,7 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
 
 
 // POST /checklists/:id/assign
-// POST /checklists/:id/assign
-app.post(
-  '/checklists/:id/assign',
-  ensureAuthenticated,
-  ensureSpv,
-  async (req, res) => {
+app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
       const checklistId = req.params.id;
       const { assetIds } = req.body;  // May be a string or array of strings
@@ -885,13 +917,10 @@ app.post(
 
 // DELETE Checklist Route
 // AFTER: use instance.remove() so pre('remove') fires
-app.get(
-  '/checklists/:id/delete',
-  ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser,
-  async (req, res) => {
+app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
     try {
       // ensureChecklistBelongsToUser already loaded the checklist into req.checklist
-      await req.checklist.remove(); 
+      await Checklist.deleteOne({ _id: req.params.id });
       res.redirect('/spv/dashboard');
     } catch (err) {
       res.status(500).send(err.message);
@@ -959,7 +988,10 @@ app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechni
   try {
     const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
       .populate('checklist')
-      .populate('asset');
+      .populate({
+        path: 'asset',
+        populate: ['floor', 'category', 'zone']
+      });
     if (!assignment) {
       return res.status(404).send('Checklist assignment not found.');
     }
@@ -972,35 +1004,52 @@ app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechni
 
 
 // POST /technician/checklist/:assignmentId/submit
-app.post(
-  '/technician/checklist/:assignmentId/submit',
-  ensureAuthenticated,
-  ensureTechnician,
-  upload.any(),
-  async (req, res) => {
+app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensureTechnician, upload.any(), async (req, res) => {
     try {
       const assignmentId = req.params.assignmentId;
 
-      // 1) Load the template assignment with checklist & asset
       const templateAssignment = await ChecklistAssignment.findById(assignmentId)
         .populate('checklist')
         .populate('asset');
       if (!templateAssignment) {
         return res.status(404).send('Checklist assignment not found.');
       }
+      
+      let hasAlert = false;
 
-      // 2) Snapshot tasks for this submission
       const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
         originalTaskId: t._id,
         description:    t.description,
         inputType:      t.inputType,
-        expectedUnit:   t.expectedUnit || ''
+        expectedUnit:   t.expectedUnit || '',
+        minRange:       t.minRange,
+        maxRange:       t.maxRange,
       }));
 
-      // 3) Gather any form-field responses
       const responses = { ...(req.body.results || {}) };
 
-      // 4) Handle uploaded files: group by taskId, process via your queue, build URLs
+      // Check for any failure condition
+      for (const task of tasksSnapshot) {
+        const response = responses[task.originalTaskId.toString()];
+
+        // Check for functional test failure
+        if (task.inputType === 'functional' && response === 'fail') {
+          hasAlert = true;
+          break; // Alert condition met, no need to check further
+        }
+
+        // Check for out-of-range measurement
+        if (task.inputType === 'measurement') {
+          const responseValue = parseFloat(response);
+          if (!isNaN(responseValue) && task.minRange != null && task.maxRange != null) {
+            if (responseValue < task.minRange || responseValue > task.maxRange) {
+              hasAlert = true;
+              break; // Alert condition met, no need to check further
+            }
+          }
+        }
+      }
+
       if (req.files && req.files.length > 0) {
         const filesByTask = {};
         req.files.forEach(file => {
@@ -1011,7 +1060,6 @@ app.post(
           filesByTask[taskId].push(file.path);
         });
 
-        // Process images and collect processed URLs
         const processingPromises = Object.entries(filesByTask).map(
           async ([taskId, filePaths]) => {
             const processedUrls = await Promise.all(
@@ -1021,7 +1069,6 @@ app.post(
                     imageProcessingQueue.push({ filePath }, err => {
                       if (err) return reject(err);
                       const filename = path.basename(filePath);
-                      // served under /processed
                       resolve(`/processed/${filename}`);
                     });
                   })
@@ -1033,24 +1080,29 @@ app.post(
         await Promise.all(processingPromises);
       }
 
-      // 5) Capture any maintenance note
       const maintenanceNote = req.body.note || '';
-
-      // 6) Create & save the completed assignment
+      
       const completedAssignment = new ChecklistAssignment({
         checklist:     templateAssignment.checklist._id,
         asset:         templateAssignment.asset._id,
         assignedAt:    templateAssignment.assignedAt,
-        tasksSnapshot,                     // snapshot of questions
-        responses,                         // text & image URLs
+        tasksSnapshot,
+        responses,
         completedAt:   new Date(),
         submittedBy:   req.session.userId,
         isTemplate:    false,
-        note:          maintenanceNote
+        note:          maintenanceNote,
+        hasAlert:      hasAlert
       });
       await completedAssignment.save();
 
-      // 7) Redirect back to technician dashboard
+      if(hasAlert){
+          io.emit('alert', {
+              message: `Alert: Checklist for asset ${templateAssignment.asset.name} requires attention!`,
+              assignmentId: completedAssignment._id
+          })
+      }
+
       res.redirect('/technician/dashboard');
     } catch (err) {
       console.error('Error submitting checklist:', err);
@@ -1090,7 +1142,10 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
   try {
     const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
       .populate('checklist')
-      .populate('asset')
+      .populate({
+          path: 'asset',
+          populate: ['floor', 'category', 'zone']
+      })
       .populate('submittedBy');
     if (!assignment || !assignment.completedAt) {
       return res.status(404).send('Completed checklist not found.');
@@ -1106,8 +1161,6 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
 
 //initialization
 // In app.js (or a dedicated initialization file)
-const Floor = require('./models/Floor');
-const Zone = require('./models/Zone');
 
 async function initializeFloorsAndZones() {
   const defaultFloors = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
@@ -1132,9 +1185,13 @@ async function initializeFloorsAndZones() {
 }
 
 // Call the initialization function after connecting to MongoDB
-initializeFloorsAndZones().catch(err => console.error('Error initializing floors and zones:', err));
+mongoose.connection.once('open', () => {
+    initializeFloorsAndZones().catch(err => console.error('Error initializing floors and zones:', err));
+    initializeAssetCategories().catch(err =>
+      console.error('Error initializing asset categories:', err)
+    );
+});
 
-const AssetCategory = require('./models/AssetCategory');
 
 async function initializeAssetCategories() {
   // Define your default categories here. Adjust the list as needed.
@@ -1149,15 +1206,12 @@ async function initializeAssetCategories() {
   }
 }
 
-// Call the initialization function after connecting to MongoDB
-initializeAssetCategories().catch(err =>
-  console.error('Error initializing asset categories:', err)
-);
 
 
-module.exports = router;
 // ------------------------------
 // START SERVER WITH SOCKET.IO
 // ------------------------------
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = app;

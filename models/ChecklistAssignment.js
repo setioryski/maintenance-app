@@ -24,6 +24,14 @@ const TaskSnapshotSchema = new Schema({
     type: String,
     default: '',
     description: 'The unit expected for measurement tasks'
+  },
+  minRange: { // Also snapshot the range
+    type: Number,
+    default: null
+  },
+  maxRange: { // Also snapshot the range
+    type: Number,
+    default: null
   }
 }, { _id: false });
 
@@ -92,6 +100,12 @@ const ChecklistAssignmentSchema = new Schema({
     enum: ['pending', 'rejected'],
     default: 'pending',
     description: 'Status set to "rejected" if SPV rejects the assignment'
+  },
+  // Add an alert field
+  hasAlert: {
+    type: Boolean,
+    default: false,
+    description: 'True if a measurement is out of range AND a functional test has failed.'
   }
 });
 

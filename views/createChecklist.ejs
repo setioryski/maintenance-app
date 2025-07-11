@@ -21,6 +21,8 @@
       const desc = task.description || '';
       const type = task.inputType || 'functional';
       const expUnit = task.expectedUnit || '';
+      const minRange = task.minRange || '';
+      const maxRange = task.maxRange || '';
       const isMeasurement = type === 'measurement';
       const isCustom = !['°C','N','cd'].includes(expUnit) && expUnit;
 
@@ -45,7 +47,9 @@
           <option value="measurement" ${type==='measurement'?'selected':''}>Measurement</option>
           <option value="visual" ${type==='visual'?'selected':''}>Visual Check</option>
         </select>
-        <div class="unit-container flex items-center gap-2 ${isMeasurement?'':'hidden'}">
+        <div class="unit-container flex items-center gap-2 ${isMeasurement ? '' : 'hidden'}">
+          <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}">
+          <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}">
           <select
             name="taskExpectedUnits"
             class="unit-select border border-gray-300 rounded p-2"
@@ -59,9 +63,9 @@
           <input
             type="text"
             name="taskExpectedUnitsCustom"
-            class="unit-custom border border-gray-300 rounded p-2 ${isCustom?'':'hidden'}"
+            class="unit-custom border border-gray-300 rounded p-2 ${isCustom ? '' : 'hidden'}"
             placeholder="Custom unit"
-            value="${isCustom?expUnit:''}"
+            value="${isCustom ? expUnit : ''}"
           />
         </div>
         <button
@@ -128,7 +132,7 @@
   </script>
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
+  <div class="max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Buat Checklist Baru</h1>
     <form action="/checklists" method="POST">
       <div class="mb-4">

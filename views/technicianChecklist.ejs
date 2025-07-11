@@ -4,7 +4,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Maintenance Checklist</title>
-  <!-- Tailwind CSS -->
   <link
     href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
     rel="stylesheet"
@@ -14,7 +13,6 @@
   <div class="max-w-3xl mx-auto p-6 bg-white shadow-md rounded">
     <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
 
-    <!-- Show Asset and Checklist info -->
     <p class="mb-2">
       Asset: <strong><%= assignment.asset.name %></strong>
     </p>
@@ -22,13 +20,12 @@
       Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong>
     </p>
 
-    <!-- Form start -->
     <form
       action="/technician/checklist/<%= assignment._id %>/submit"
       method="POST"
       enctype="multipart/form-data"
     >
-      <% 
+      <%
         // Safely get tasks; default to an empty array if not defined.
         const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
       %>
@@ -36,15 +33,12 @@
       <% if (tasks.length > 0) { %>
         <% tasks.forEach(function(task) { %>
           <div class="mb-6 border p-4 rounded">
-            <!-- Hidden field for task ID (if needed) -->
             <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
-            <!-- Task description -->
             <label class="block text-gray-700 font-bold mb-2">
-              <%= task.description %><% if (task.expectedUnit) { %> (<%= task.expectedUnit %>)<% } %>
-            </label>            
+              <%= task.description %><% if (task.expectedUnit) { %> (<%= task.expectedUnit %><% if (task.minRange != null && task.maxRange != null) { %>, Range: <%= task.minRange %>-<%= task.maxRange %><% } %>) <% } %>
+            </label>
 
-            <!-- FUNCTIONAL task: pass/fail radio -->
             <% if (task.inputType === 'functional') { %>
               <div class="flex flex-col sm:flex-row sm:space-x-6">
                 <label class="inline-flex items-center">
@@ -67,11 +61,11 @@
                 </label>
               </div>
 
-            <!-- MEASUREMENT task: numeric input -->
             <% } else if (task.inputType === 'measurement') { %>
               <div class="flex flex-col">
                 <input
                   type="number"
+                  step="any"
                   name="results[<%= task._id %>]"
                   placeholder="Enter value"
                   class="shadow border rounded w-full py-2 px-3"
@@ -80,9 +74,7 @@
               </div>
 
 
-            <!-- VISUAL task: camera-only button + previews -->
             <% } else if (task.inputType === 'visual') { %>
-              <!-- "Take Photo" button -->
               <button
                 type="button"
                 id="addImagesBtn-<%= task._id %>"
@@ -91,7 +83,6 @@
                 Take Photo
               </button>
 
-              <!-- Hidden file input (camera only; single file per capture) -->
               <input
                 type="file"
                 id="imageInput-<%= task._id %>"
@@ -99,9 +90,9 @@
                 accept="image/*"
                 capture="environment"
                 class="hidden"
+                multiple
               />
 
-              <!-- Preview container for thumbnails -->
               <div
                 id="previewContainer-<%= task._id %>"
                 class="mt-4 flex flex-wrap gap-2"
@@ -124,7 +115,6 @@
         ></textarea>
       </div>
       
-      <!-- Submit button -->
       <div class="flex justify-end">
         <button
           type="submit"
@@ -135,17 +125,14 @@
       </div>
 
     </form>
-    <!-- Form end -->
-  </div>
+    </div>
 
-  <!-- Navigation links -->
   <div class="max-w-3xl mx-auto mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
     <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 
-  <!-- Inline scripts for each visual task -->
-  <% tasks.forEach(function(task) { 
+  <% tasks.forEach(function(task) {
     if (task.inputType === 'visual') {
   %>
   <script>
@@ -202,20 +189,21 @@
   
       imageInput.addEventListener('change', async () => {
         if (imageInput.files.length > 0) {
-          try {
-            const originalFile = imageInput.files[0];
-            // Compress the image to a maximum width of 800px
-            const compressedBlob = await resizeImageWithCanvas(originalFile, 800);
-            // Create a new File object from the compressed blob
-            const compressedFile = new File([compressedBlob], originalFile.name, { type: 'image/jpeg' });
-            // Add the compressed file to our DataTransfer object
-            dt.items.add(compressedFile);
+            for(const file of imageInput.files){
+                 try {
+                    // Compress the image to a maximum width of 800px
+                    const compressedBlob = await resizeImageWithCanvas(file, 800);
+                    // Create a new File object from the compressed blob
+                    const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+                    // Add the compressed file to our DataTransfer object
+                    dt.items.add(compressedFile);
+                } catch (error) {
+                    console.error("Error compressing image:", error);
+                }
+            }
             // Update the file input's FileList
             imageInput.files = dt.files;
             renderPreview();
-          } catch (error) {
-            console.error("Error compressing image:", error);
-          }
         }
       });
   
