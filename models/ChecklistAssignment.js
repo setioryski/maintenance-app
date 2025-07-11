@@ -54,13 +54,11 @@ const ChecklistAssignmentSchema = new Schema({
     default: Date.now,
     description: 'Timestamp when this assignment was created'
   },
-  // Immutable snapshot of tasks at submission time
   tasksSnapshot: {
     type: [TaskSnapshotSchema],
     default: [],
     description: 'Copy of the Checklist.tasks when the assignment was completed'
   },
-  // Responses keyed by originalTaskId
   responses: {
     type: Schema.Types.Mixed,
     default: {},
@@ -85,27 +83,21 @@ const ChecklistAssignmentSchema = new Schema({
     default: '',
     description: 'Optional note entered by the technician'
   },
-  verifiedBySpv: {
-    type: Boolean,
-    default: false,
-    description: 'Flag indicating SPV has verified this completed assignment'
-  },
-  verifiedByManager: {
-    type: Boolean,
-    default: false,
-    description: 'Flag indicating Manager has verified this completed assignment'
-  },
+  verifiedBySpv: { type: Boolean, default: false },
+  verifiedByManager: { type: Boolean, default: false },
+  verifiedBySpvUser: { type: Schema.Types.ObjectId, ref: 'User' },
+  verifiedByManagerUser: { type: Schema.Types.ObjectId, ref: 'User' },
+  rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   verifiedStatus: {
     type: String,
     enum: ['pending', 'rejected'],
     default: 'pending',
-    description: 'Status set to "rejected" if SPV rejects the assignment'
+    description: 'Status set to "rejected" if an SPV or Manager rejects the assignment'
   },
-  // Add an alert field
   hasAlert: {
     type: Boolean,
     default: false,
-    description: 'True if a measurement is out of range AND a functional test has failed.'
+    description: 'True if a measurement is out of range OR a functional test has failed.'
   }
 });
 

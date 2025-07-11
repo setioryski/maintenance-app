@@ -1016,6 +1016,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
       }
       
       let hasAlert = false;
+      let functionalTestFailed = false;
 
       const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
         originalTaskId: t._id,
@@ -1028,26 +1029,30 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
       const responses = { ...(req.body.results || {}) };
 
-      // Check for any failure condition
+      // Check for functional test failures first
       for (const task of tasksSnapshot) {
-        const response = responses[task.originalTaskId.toString()];
-
-        // Check for functional test failure
-        if (task.inputType === 'functional' && response === 'fail') {
-          hasAlert = true;
-          break; // Alert condition met, no need to check further
-        }
-
-        // Check for out-of-range measurement
-        if (task.inputType === 'measurement') {
-          const responseValue = parseFloat(response);
-          if (!isNaN(responseValue) && task.minRange != null && task.maxRange != null) {
-            if (responseValue < task.minRange || responseValue > task.maxRange) {
-              hasAlert = true;
-              break; // Alert condition met, no need to check further
-            }
+          if (task.inputType === 'functional') {
+              const response = responses[task.originalTaskId.toString()];
+              if (response === 'fail') {
+                  functionalTestFailed = true;
+                  break;
+              }
           }
-        }
+      }
+
+      // If a functional test failed, check for out-of-range measurements
+      if (functionalTestFailed) {
+          for (const task of tasksSnapshot) {
+              if (task.inputType === 'measurement') {
+                  const responseValue = parseFloat(responses[task.originalTaskId.toString()]);
+                  if (!isNaN(responseValue) && task.minRange != null && task.maxRange != null) {
+                      if (responseValue < task.minRange || responseValue > task.maxRange) {
+                          hasAlert = true;
+                          break; 
+                      }
+                  }
+              }
+          }
       }
 
       if (req.files && req.files.length > 0) {

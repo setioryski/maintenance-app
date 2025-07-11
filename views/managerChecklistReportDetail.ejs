@@ -1,91 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manager Checklist Detail</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist Report Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded">
-    <h1 class="text-2xl font-bold mb-4">Checklist Report Detail</h1>
+<div class="max-w-4xl mx-auto mt-8 p-6 bg-white shadow-lg rounded-lg">
+    <h1 class="text-2xl font-bold mb-4 border-b pb-4">Checklist Report Detail</h1>
 
-    <!-- Header -->
-    <div class="mb-6 space-y-1">
-      <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
-      <p><strong>Checklist:</strong> <%= assignment.checklist?.title || 'N/A' %></p>
-      <p>
-        <strong>Submitted On:</strong>
-        <%= assignment.completedAt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) %> at
-        <%= assignment.completedAt.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) %>
-      </p>
-      <p><strong>Technician:</strong> <%= assignment.submittedBy?.name || 'N/A' %></p>
-      <p><strong>Verified by SPV:</strong> 
-        <% if (assignment.verifiedBySpv) { %>
-          <span class="text-blue-600 font-semibold">Yes</span>
-        <% } else { %>
-          <span class="text-yellow-600 font-semibold">No</span>
-        <% } %>
-      </p>
-      <p><strong>Verified by Manager:</strong> 
-        <% if (assignment.verifiedByManager) { %>
-          <span class="text-green-600 font-semibold">Yes</span>
-        <% } else { %>
-          <span class="text-yellow-600 font-semibold">No</span>
-        <% } %>
-      </p>
-    </div>
-
-    <!-- Task Responses -->
-    <h2 class="text-xl font-semibold mt-6 mb-4">Task Responses</h2>
-    <div class="space-y-6">
-      <% 
-        // Build tasks list from snapshot or fallback
-        const tasksList = (assignment.tasksSnapshot && assignment.tasksSnapshot.length)
-          ? assignment.tasksSnapshot.map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t.originalTaskId }))
-          : (assignment.checklist?.tasks || []).map(t => ({ desc: t.description, type: t.inputType, unit: t.expectedUnit, id: t._id }));
-      %>
-
-      <% if (!tasksList.length) { %>
-        <p class="text-gray-600">No tasks available for this report.</p>
-      <% } else { %>
-        <% tasksList.forEach(task => {
-             const resp = assignment.responses[task.id] || assignment.responses[task.id.toString()] || '';
-        %>
-          <div class="border-b pb-4">
-            <p class="font-medium"><%= task.desc %></p>
-            <p class="text-sm text-gray-600">
-              Jenis: <%= task.type.charAt(0).toUpperCase() + task.type.slice(1) %>
-              <% if (task.type === 'measurement') { %>&nbsp;(<%= task.unit %>)<% } %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+            <p><strong>Asset:</strong> <%= assignment.asset.name %></p>
+            <p><strong>Checklist:</strong> <%= assignment.checklist.title %></p>
+            <p><strong>Submitted By:</strong> <%= assignment.submittedBy.name %></p>
+            <p><strong>Submitted At:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
+        </div>
+        <div>
+            <p><strong>SPV Verification:</strong> 
+                <% if (assignment.verifiedBySpv) { %>
+                    Verified by <%= assignment.verifiedBySpvUser?.name || 'N/A' %>
+                <% } else { %>
+                    No
+                <% } %>
             </p>
-            <div class="mt-2">
-              <strong>Response:</strong>
-              <% if (Array.isArray(resp) && resp.length) { %>
-                <div class="flex flex-wrap gap-2 mt-2">
-                  <% resp.forEach(src => { %>
-                    <img src="<%= src %>" alt="Photo" class="w-20 h-20 object-cover rounded shadow" />
-                  <% }); %>
+            <p><strong>Manager Verification:</strong> 
+                <% if (assignment.verifiedByManager) { %>
+                    Verified by <%= assignment.verifiedByManagerUser?.name || 'N/A' %>
+                <% } else { %>
+                    No
+                <% } %>
+            </p>
+            <p><strong>Status:</strong>
+                <% if (assignment.verifiedStatus === 'rejected') { %>
+                    <span class="font-bold text-red-600">Rejected by <%= assignment.rejectedBy?.name || 'N/A' %></span>
+                <% } else if (assignment.hasAlert) { %>
+                     <span class="font-bold text-yellow-600">Pending with Alert</span>
+                <% } else { %>
+                     <span class="font-bold text-green-600">OK</span>
+                <% } %>
+            </p>
+        </div>
+    </div>
+
+    <h2 class="text-xl font-semibold mb-4">Task Responses</h2>
+    <div class="space-y-4">
+        <% assignment.tasksSnapshot.forEach(task => { %>
+            <div class="p-4 border rounded-md bg-gray-50">
+                <p class="font-semibold"><%= task.description %></p>
+                <p class="text-sm text-gray-600">Type: <%= task.inputType %></p>
+                <% const response = assignment.responses[task.originalTaskId.toString()]; %>
+                <div class="mt-2">
+                    <strong>Response:</strong>
+                    <% if (Array.isArray(response)) { %>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <% response.forEach(url => { %>
+                                <a href="<%= url %>" target="_blank"><img src="<%= url %>" class="w-24 h-24 object-cover rounded"></a>
+                            <% }); %>
+                        </div>
+                    <% } else { %>
+                        <span class="font-mono bg-gray-200 px-2 py-1 rounded"><%= response || 'N/A' %></span>
+                    <% } %>
                 </div>
-              <% } else { %>
-                <span><%= resp || 'No response' %></span>
-              <% } %>
             </div>
-          </div>
         <% }); %>
-      <% } %>
     </div>
+    
+    <% if (assignment.note) { %>
+        <h2 class="text-xl font-semibold mt-6 mb-2">Maintenance Note</h2>
+        <p class="p-4 border rounded-md bg-gray-50"><%= assignment.note %></p>
+    <% } %>
 
-    <!-- Note -->
-    <div class="mt-6">
-      <h2 class="text-xl font-semibold mb-2">Maintenance Note</h2>
-      <p class="text-gray-700"><%= assignment.note || 'No note provided' %></p>
+    <div class="mt-8 flex justify-between items-center">
+        <div>
+            <% if (assignment.verifiedStatus !== 'rejected') { %>
+                <form method="POST" action="/manager/report/<%= assignment._id %>/verify" class="inline">
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400" <%= assignment.verifiedByManager || !assignment.verifiedBySpv ? 'disabled' : '' %>>Verify</button>
+                </form>
+                 <form method="POST" action="/manager/report/<%= assignment._id %>/reject" class="inline ml-2">
+                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Reject</button>
+                </form>
+            <% } %>
+        </div>
+        <div>
+            <a href="/manager/dashboard" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Back to Dashboard</a>
+        </div>
     </div>
-
-    <!-- Back Links -->
-    <div class="mt-6 flex justify-between">
-      <a href="/manager/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Back to Dashboard</a>
-      <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Home</a>
-    </div>
-  </div>
+</div>
 </body>
 </html>
