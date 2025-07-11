@@ -18,11 +18,11 @@ const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm',
 
 // Make sure these match the IDs your users reference!
 const defaultDivisions = [
-  { _id: mongoose.Types.ObjectId('67d29e499ef538542714f83f'), name: 'ELEKTRONIK' },
-  { _id: mongoose.Types.ObjectId('67d29e4e9ef538542714f841'), name: 'ELEKTRIKAL' },
-  { _id: mongoose.Types.ObjectId('67d29e529ef538542714f843'), name: 'PLUMBING' },
-  { _id: mongoose.Types.ObjectId('67d29e5d9ef538542714f845'), name: 'MEKANIKAL' },
-  { _id: mongoose.Types.ObjectId('67d29e649ef538542714f847'), name: 'SIPIL' }
+  { _id: new ObjectId('67d29e499ef538542714f83f'), name: 'ELEKTRONIK' },
+  { _id: new ObjectId('67d29e4e9ef538542714f841'), name: 'ELEKTRIKAL' },
+  { _id: new ObjectId('67d29e529ef538542714f843'), name: 'PLUMBING' },
+  { _id: new ObjectId('67d29e5d9ef538542714f845'), name: 'MEKANIKAL' },
+  { _id: new ObjectId('67d29e649ef538542714f847'), name: 'SIPIL' }
 ];
 
 // Pre-hashed passwords for seed users
