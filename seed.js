@@ -1,19 +1,29 @@
 // seed.js
-// This script initializes default floors, zones, asset categories, and users into the database.
+// This script initializes default floors, zones, asset categories, divisions, and users into the database.
 require('dotenv').config();
 const mongoose = require('mongoose');
 const path = require('path');
 
 // Import models
-const Floor = require(path.join(__dirname, 'models', 'Floor'));
-const Zone = require(path.join(__dirname, 'models', 'Zone'));
+const Floor         = require(path.join(__dirname, 'models', 'Floor'));
+const Zone          = require(path.join(__dirname, 'models', 'Zone'));
 const AssetCategory = require(path.join(__dirname, 'models', 'AssetCategory'));
-const User = require(path.join(__dirname, 'models', 'User'));
+const Division      = require(path.join(__dirname, 'models', 'Division'));
+const User          = require(path.join(__dirname, 'models', 'User'));
 
 // Default data
-const defaultFloors = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
-const defaultZones = ['A', 'B', 'C', 'D'];
+const defaultFloors     = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
+const defaultZones      = ['A', 'B', 'C', 'D'];
 const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm', 'Panoramic'];
+
+// Make sure these match the IDs your users reference!
+const defaultDivisions = [
+  { _id: mongoose.Types.ObjectId('67d29e499ef538542714f83f'), name: 'ELEKTRONIK' },
+  { _id: mongoose.Types.ObjectId('67d29e4e9ef538542714f841'), name: 'ELEKTRIKAL' },
+  { _id: mongoose.Types.ObjectId('67d29e529ef538542714f843'), name: 'PLUMBING' },
+  { _id: mongoose.Types.ObjectId('67d29e5d9ef538542714f845'), name: 'MEKANIKAL' },
+  { _id: mongoose.Types.ObjectId('67d29e649ef538542714f847'), name: 'SIPIL' }
+];
 
 // Pre-hashed passwords for seed users
 const defaultUsers = [
@@ -81,15 +91,29 @@ async function seedAssetCategories() {
   }
 }
 
+async function seedDivisions() {
+  for (const div of defaultDivisions) {
+    const exists = await Division.findOne({ _id: div._id });
+    if (!exists) {
+      await Division.create({
+        _id:   div._id,
+        name:  div.name,
+        spvs:  []      // start with empty SPV list
+      });
+      console.log(`Created division: ${div.name}`);
+    }
+  }
+}
+
 async function seedUsers() {
   for (const u of defaultUsers) {
     const exists = await User.findOne({ email: u.email });
     if (!exists) {
       const newUser = new User({
-        name: u.name,
-        email: u.email,
+        name:     u.name,
+        email:    u.email,
         password: u.password,
-        role: u.role,
+        role:     u.role,
         division: u.division
       });
       await newUser.save();
@@ -105,6 +129,7 @@ async function main() {
 
   await seedFloorsAndZones();
   await seedAssetCategories();
+  await seedDivisions();
   await seedUsers();
 
   console.log('Seeding completed');
