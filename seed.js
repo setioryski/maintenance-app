@@ -1,5 +1,6 @@
 // seed.js
 // This script initializes default floors, zones, asset categories, divisions, and users into the database.
+
 require('dotenv').config();
 const mongoose = require('mongoose');
 const path = require('path');
@@ -11,12 +12,15 @@ const AssetCategory = require(path.join(__dirname, 'models', 'AssetCategory'));
 const Division      = require(path.join(__dirname, 'models', 'Division'));
 const User          = require(path.join(__dirname, 'models', 'User'));
 
+// ——— Declare ObjectId alias here ———
+const ObjectId = mongoose.Types.ObjectId;
+
 // Default data
 const defaultFloors     = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
 const defaultZones      = ['A', 'B', 'C', 'D'];
 const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm', 'Panoramic'];
 
-// Make sure these match the IDs your users reference!
+// Divisions must use `new ObjectId(...)`
 const defaultDivisions = [
   { _id: new ObjectId('67d29e499ef538542714f83f'), name: 'ELEKTRONIK' },
   { _id: new ObjectId('67d29e4e9ef538542714f841'), name: 'ELEKTRIKAL' },
@@ -37,28 +41,28 @@ const defaultUsers = [
   {
     name: 'testteknisi',
     email: 'testteknisi@test.com',
-    password: '$2b$10$t19va1NaYrZE.C68rG2HKeKK3Zy.3mQGT5RS4CgE0F/iQDMr.HKK.', // technician
+    password: '$2b$10$t19va1NaYrZE.C68rG2HKeKK3Zy.3mQGT5RS4CgE0F/iQDMr.HKK.',
     role: 'technician',
     division: '67d29e499ef538542714f83f'
   },
   {
     name: 'test1',
     email: 'test1@test.com',
-    password: '$2b$10$kdZwUu1d.sDdsmoHpskfu.IoueX4m4j75Vt0j0X2eJC34NhBwIjlm', // spv
+    password: '$2b$10$kdZwUu1d.sDdsmoHpskfu.IoueX4m4j75Vt0j0X2eJC34NhBwIjlm',
     role: 'spv',
     division: '67d29e4e9ef538542714f841'
   },
   {
     name: 'manager',
     email: 'manager@test.com',
-    password: '$2b$10$r42TXlD1dUVhBeM6ed0aAuMhkYUTqyS7HckZWSUH8CgM0wxx7aNle', // manager
+    password: '$2b$10$r42TXlD1dUVhBeM6ed0aAuMhkYUTqyS7HckZWSUH8CgM0wxx7aNle',
     role: 'manager',
     division: null
   },
   {
     name: 'admin',
     email: 'admin@test.com',
-    password: '$2b$10$iPzLzzmwpOw2qOdGNI/xfeF3IO8YPtBZ3EqiiT70o1rqCeUYjoaDa', // superuser
+    password: '$2b$10$iPzLzzmwpOw2qOdGNI/xfeF3IO8YPtBZ3EqiiT70o1rqCeUYjoaDa',
     role: 'superuser',
     division: null
   }
@@ -75,7 +79,7 @@ async function seedFloorsAndZones() {
       const exists = await Zone.findOne({ name: zoneName, floor: floor._id });
       if (!exists) {
         await Zone.create({ name: zoneName, floor: floor._id });
-        console.log(`Created zone: ${zoneName} for floor: ${floorName}`);
+        console.log(`Created zone: ${zoneName} (floor ${floorName})`);
       }
     }
   }
@@ -96,9 +100,9 @@ async function seedDivisions() {
     const exists = await Division.findOne({ _id: div._id });
     if (!exists) {
       await Division.create({
-        _id:   div._id,
-        name:  div.name,
-        spvs:  []      // start with empty SPV list
+        _id:  div._id,
+        name: div.name,
+        spvs: []
       });
       console.log(`Created division: ${div.name}`);
     }
@@ -109,14 +113,13 @@ async function seedUsers() {
   for (const u of defaultUsers) {
     const exists = await User.findOne({ email: u.email });
     if (!exists) {
-      const newUser = new User({
+      await User.create({
         name:     u.name,
         email:    u.email,
         password: u.password,
         role:     u.role,
         division: u.division
       });
-      await newUser.save();
       console.log(`Created user: ${u.email}`);
     }
   }
@@ -124,7 +127,7 @@ async function seedUsers() {
 
 async function main() {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/maintenance-app-socket';
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
   console.log('Connected to MongoDB for seeding');
 
   await seedFloorsAndZones();
