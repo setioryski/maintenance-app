@@ -72,17 +72,7 @@
         <p class="p-4 border rounded-md bg-gray-50"><%= assignment.note %></p>
     <% } %>
 
-    <div class="mt-8 flex justify-between items-center">
-        <div>
-            <% if (assignment.verifiedStatus !== 'rejected') { %>
-                <form method="POST" action="/manager/report/<%= assignment._id %>/verify" class="inline">
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400" <%= assignment.verifiedByManager || !assignment.verifiedBySpv ? 'disabled' : '' %>>Verify</button>
-                </form>
-                 <form method="POST" action="/manager/report/<%= assignment._id %>/reject" class="inline ml-2">
-                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Reject</button>
-                </form>
-            <% } %>
-        </div>
+   
         <div>
             <a href="/manager/dashboard" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Back to Dashboard</a>
         </div>

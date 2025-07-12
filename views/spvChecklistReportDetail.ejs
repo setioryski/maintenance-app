@@ -59,8 +59,25 @@
                                 <a href="<%= url %>" target="_blank"><img src="<%= url %>" class="w-24 h-24 object-cover rounded"></a>
                             <% }); %>
                         </div>
-                    <% } else { %>
-                        <span class="font-mono bg-gray-200 px-2 py-1 rounded"><%= response || 'N/A' %></span>
+                    <% } else { 
+                        let statusClass = 'text-gray-800';
+                        let responseText = response || 'N/A';
+
+                        if (task.inputType === 'functional') {
+                            if (response === 'fail') statusClass = 'text-red-600 font-bold';
+                            if (response === 'pass') statusClass = 'text-green-600 font-bold';
+                        } else if (task.inputType === 'measurement') {
+                            const value = parseFloat(response);
+                            if (!isNaN(value) && task.minRange != null && task.maxRange != null) {
+                                if (value < task.minRange || value > task.maxRange) {
+                                    statusClass = 'text-red-600 font-bold';
+                                } else {
+                                    statusClass = 'text-green-600 font-bold';
+                                }
+                            }
+                        }
+                    %>
+                        <span class="font-mono bg-gray-200 px-2 py-1 rounded <%= statusClass %>"><%= responseText %></span>
                     <% } %>
                 </div>
             </div>
@@ -72,20 +89,8 @@
         <p class="p-4 border rounded-md bg-gray-50"><%= assignment.note %></p>
     <% } %>
 
-    <div class="mt-8 flex justify-between items-center">
-        <div>
-             <% if (assignment.verifiedStatus !== 'rejected' && !assignment.verifiedByManager) { %>
-                <form method="POST" action="/spv/report/<%= assignment._id %>/verify" class="inline">
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700" <%= assignment.verifiedBySpv ? 'disabled' : '' %>>Verify</button>
-                </form>
-                 <form method="POST" action="/spv/report/<%= assignment._id %>/reject" class="inline ml-2">
-                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Reject</button>
-                </form>
-            <% } %>
-        </div>
-        <div>
-            <a href="/spv/report" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Back to Reports</a>
-        </div>
+    <div class="mt-6">
+        <a href="/spv/report" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Back to Reports</a>
     </div>
 </div>
 </body>

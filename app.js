@@ -79,7 +79,11 @@ function ensureAuthenticated(req, res, next) {
     if (req.session && req.session.userId) {
         return next();
     }
-    res.redirect('/login'); // Redirect unauthenticated users to login
+    // For AJAX requests, send a 401 Unauthorized status instead of redirecting
+    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+    }
+    res.redirect('/login'); // Redirect unauthenticated users to login for page loads
 }
 
 // General role-based middleware to reduce redundancy
@@ -408,7 +412,7 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 });
 
 // (Other routes such as Manager Dashboard, SPV checklist creation, and Technician update would be implemented in a full version)
-// Get the checklist edit form (only accessible by SPV who created the checklist)
+// Get the checklist edit form (only for SPV who created the checklist)
 
 // ---------- MANAGER ROUTE ----------//
 
@@ -419,14 +423,13 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
             req.params.assignmentId, {
                 verifiedByManager: true,
                 verifiedByManagerUser: req.session.userId,
-                verifiedStatus: 'pending' // Or some other status to indicate manager approval
+                verifiedStatus: 'pending'
             }
         );
-        // After verifying, redirect back to the filtered manager dashboard
-        res.redirect('/manager/dashboard');
+        res.json({ success: true, status: 'verified' });
     } catch (err) {
         console.error('Error verifying by manager:', err);
-        res.status(500).send(err.message);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -437,13 +440,13 @@ app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureMana
             req.params.assignmentId, {
                 verifiedStatus: 'rejected',
                 rejectedBy: req.session.userId,
-                verifiedByManager: false // Ensure this is reset if previously true
+                verifiedByManager: false
             }
         );
-        res.redirect('/manager/dashboard');
+        res.json({ success: true, status: 'rejected' });
     } catch (err) {
         console.error('Error rejecting by manager:', err);
-        res.status(500).send(err.message);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -460,11 +463,17 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
                 $ne: null
             }
         };
-        if (filter === 'spv_verified') matchCondition.verifiedBySpv = true;
-        else if (filter === 'manager_verified') matchCondition.verifiedByManager = true;
-        else if (filter === 'not_verified_spv') matchCondition.verifiedBySpv = false;
-        else if (filter === 'has_alert') matchCondition.hasAlert = true;
-        else if (filter === 'rejected') matchCondition.verifiedStatus = 'rejected';
+
+        if (filter === 'verified_spv') {
+            matchCondition.verifiedBySpv = true;
+            matchCondition.verifiedByManager = false;
+        } else if (filter === 'verified_manager') {
+            matchCondition.verifiedByManager = true;
+        } else if (filter === 'has_alert') {
+            matchCondition.hasAlert = true;
+        } else if (filter === 'rejected') {
+            matchCondition.verifiedStatus = 'rejected';
+        }
 
 
         // 3. Fetch all divisions for the dropdown
@@ -507,7 +516,8 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
             assignments,
             currentFilter: filter,
             divisions,
-            currentDivision
+            currentDivision,
+            user: req.session
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -564,7 +574,12 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
         };
 
         const filter = req.query.filter || 'all';
-        if (filter === 'has_alert') {
+        if (filter === 'verified_spv') {
+            query.verifiedBySpv = true;
+            query.verifiedByManager = false;
+        } else if (filter === 'verified_manager') {
+            query.verifiedByManager = true;
+        } else if (filter === 'has_alert') {
             query.hasAlert = true;
         } else if (filter === 'rejected') {
             query.verifiedStatus = 'rejected';
@@ -583,12 +598,15 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
                 populate: ['floor', 'category', 'zone']
             })
             .populate('submittedBy')
-            .populate('rejectedBy');
+            .populate('rejectedBy')
+            .populate('verifiedBySpvUser')
+            .populate('verifiedByManagerUser');
 
 
         res.render('spvReport', {
             assignments,
-            currentFilter: filter
+            currentFilter: filter,
+            user: req.session
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -606,9 +624,9 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
                 verifiedStatus: 'pending'
             }
         );
-        res.redirect('/spv/report');
+        res.json({ success: true, status: 'verified' });
     } catch (err) {
-        res.status(500).send(err.message);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -616,14 +634,19 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
 // Reject checklist
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
+        const assignment = await ChecklistAssignment.findById(req.params.assignmentId);
+        if (assignment.verifiedByManager) {
+            return res.status(403).json({ success: false, message: 'Cannot reject a report already verified by a manager.' });
+        }
+
         await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
             verifiedBySpv: false
         });
-        res.redirect('/spv/report');
+        res.json({ success: true, status: 'rejected' });
     } catch (err) {
-        res.status(500).send(err.message);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
