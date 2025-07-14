@@ -79,11 +79,7 @@ function ensureAuthenticated(req, res, next) {
     if (req.session && req.session.userId) {
         return next();
     }
-    // For AJAX requests, send a 401 Unauthorized status instead of redirecting
-    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
-    }
-    res.redirect('/login'); // Redirect unauthenticated users to login for page loads
+    res.redirect('/login'); // Redirect unauthenticated users to login
 }
 
 // General role-based middleware to reduce redundancy
@@ -412,7 +408,7 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 });
 
 // (Other routes such as Manager Dashboard, SPV checklist creation, and Technician update would be implemented in a full version)
-// Get the checklist edit form (only for SPV who created the checklist)
+// Get the checklist edit form (only accessible by SPV who created the checklist)
 
 // ---------- MANAGER ROUTE ----------//
 
@@ -453,15 +449,12 @@ app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureMana
 
 app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
-        // 1. Read both filters from query
         const filter = req.query.filter || 'all';
         const currentDivision = req.query.division || 'all';
 
-        // 2. Build match condition for verification statuses
         const matchCondition = {
-            completedAt: {
-                $ne: null
-            }
+            completedAt: { $ne: null },
+            verifiedStatus: { $ne: 'rejected' }
         };
 
         if (filter === 'verified_spv') {
@@ -469,55 +462,42 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
             matchCondition.verifiedByManager = false;
         } else if (filter === 'verified_manager') {
             matchCondition.verifiedByManager = true;
+        } else if (filter === 'not_verified_spv') {
+            matchCondition.verifiedBySpv = false;
         } else if (filter === 'has_alert') {
             matchCondition.hasAlert = true;
         } else if (filter === 'rejected') {
+            delete matchCondition.verifiedStatus;
             matchCondition.verifiedStatus = 'rejected';
         }
 
-
-        // 3. Fetch all divisions for the dropdown
         const divisions = await Division.find({});
 
-        // 4. Load assignments and populate necessary refs
         let assignments = await ChecklistAssignment.find(matchCondition)
             .populate({
                 path: 'checklist',
-                populate: {
-                    path: 'createdBy'
-                }
+                populate: { path: 'createdBy' }
             })
             .populate({
                 path: 'asset',
-                populate: [{
-                    path: 'floor'
-                }, {
-                    path: 'category'
-                }, {
-                    path: 'division'
-                }]
+                populate: [{ path: 'floor' }, { path: 'category' }, { path: 'division' }]
             })
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
-
-        // 5. If a specific division was chosen, filter in memory
         if (currentDivision !== 'all') {
             assignments = assignments.filter(a =>
-                a.asset.division &&
-                a.asset.division._id.toString() === currentDivision
+                a.asset.division && a.asset.division._id.toString() === currentDivision
             );
         }
 
-        // 6. Render template with both filters
         res.render('managerDashboard', {
             assignments,
             currentFilter: filter,
             divisions,
-            currentDivision,
-            user: req.session
+            currentDivision
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -559,18 +539,13 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
 // Maintenance History for SPV
 app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        const assets = await Asset.find({
-            division: req.session.userDivision
-        });
+        const assets = await Asset.find({ division: req.session.userDivision });
         const assetIds = assets.map(a => a._id);
 
-        let query = {
-            asset: {
-                $in: assetIds
-            },
-            completedAt: {
-                $ne: null
-            }
+        const query = {
+            asset: { $in: assetIds },
+            completedAt: { $ne: null },
+            verifiedStatus: { $ne: 'rejected' }
         };
 
         const filter = req.query.filter || 'all';
@@ -582,31 +557,25 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
         } else if (filter === 'has_alert') {
             query.hasAlert = true;
         } else if (filter === 'rejected') {
+            delete query.verifiedStatus;
             query.verifiedStatus = 'rejected';
         }
-
 
         const assignments = await ChecklistAssignment.find(query)
             .populate({
                 path: 'checklist',
-                populate: {
-                    path: 'createdBy'
-                }
+                populate: { path: 'createdBy' }
             })
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone']
             })
             .populate('submittedBy')
-            .populate('rejectedBy')
-            .populate('verifiedBySpvUser')
-            .populate('verifiedByManagerUser');
-
+            .populate('rejectedBy');
 
         res.render('spvReport', {
             assignments,
-            currentFilter: filter,
-            user: req.session
+            currentFilter: filter
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -634,11 +603,6 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
 // Reject checklist
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        const assignment = await ChecklistAssignment.findById(req.params.assignmentId);
-        if (assignment.verifiedByManager) {
-            return res.status(403).json({ success: false, message: 'Cannot reject a report already verified by a manager.' });
-        }
-
         await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
@@ -1021,7 +985,8 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
             const newTemplates = assetsToAssign.map(assetId => ({
                 checklist: checklistId,
                 asset: assetId,
-                isTemplate: true
+                isTemplate: true,
+                checklistTitle: checklist.title
             }));
             if (newTemplates.length > 0) {
                 await ChecklistAssignment.insertMany(newTemplates);
@@ -1115,7 +1080,8 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
         const newAssignments = assetsToAssign.map(assetId => ({
             checklist: checklistId,
             asset: assetId,
-            isTemplate: true
+            isTemplate: true,
+            checklistTitle: checklist.title
         }));
 
         // 5) Insert them (if any)
@@ -1325,6 +1291,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
         const completedAssignment = new ChecklistAssignment({
             checklist: templateAssignment.checklist._id,
+            checklistTitle: templateAssignment.checklist.title,
             asset: templateAssignment.asset._id,
             assignedAt: templateAssignment.assignedAt,
             tasksSnapshot,
@@ -1471,7 +1438,7 @@ async function initializeAssetCategories() {
             });
             console.log(`Created asset category: ${categoryName}`);
         }
-    }s
+    }
 }
 
 

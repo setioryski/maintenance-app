@@ -44,7 +44,7 @@
                             <% if (assignments.length > 0) { %>
                                 <% assignments.forEach(assignment => { %>
                                     <tr>
-                                        <td><%= assignment.checklist.title %></td>
+                                        <td><%= assignment.checklistTitle %></td>
                                         <td><%= assignment.asset.name %></td>
                                         <td><%= assignment.asset.category.name %></td>
                                         <td><%= new Date(assignment.completedAt).toLocaleDateString('en-US') %></td>

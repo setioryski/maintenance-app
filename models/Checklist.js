@@ -29,15 +29,24 @@ const checklistSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// ←── Add this pre-remove hook:
-checklistSchema.pre('remove', async function(next) {
+// MODIFY THIS HOOK
+// This hook will now run before a `deleteOne()` operation on a Checklist.
+// It ensures that only template assignments are deleted, preserving completed reports.
+checklistSchema.pre('deleteOne', { document: false, query: true }, async function(next) {
   try {
-    // Delete all assignments referencing this checklist
-    await ChecklistAssignment.deleteMany({ checklist: this._id });
+    const checklistId = this.getQuery()['_id'];
+    if (checklistId) {
+      // Delete only the template assignments, not the completed ones.
+      await ChecklistAssignment.deleteMany({
+        checklist: checklistId,
+        isTemplate: true
+      });
+    }
     next();
   } catch (err) {
     next(err);
   }
 });
+
 
 module.exports = mongoose.model('Checklist', checklistSchema);

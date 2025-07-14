@@ -40,8 +40,16 @@ const ChecklistAssignmentSchema = new Schema({
   checklist: {
     type: Schema.Types.ObjectId,
     ref: 'Checklist',
-    required: true,
+    // This is no longer strictly required, as we snapshot the title.
+    // It's useful for linking back if the template still exists.
+    // required: true, 
     description: 'Reference to the checklist template'
+  },
+  // ADD THIS FIELD
+  checklistTitle: {
+    type: String,
+    required: true,
+    description: 'The title of the checklist at the time of submission.'
   },
   asset: {
     type: Schema.Types.ObjectId,
