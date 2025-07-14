@@ -37,10 +37,10 @@
             <% if (assignments.length > 0) { %>
                 <% assignments.forEach(assignment => { %>
                 <tr id="assignment-row-<%= assignment._id %>" data-id="<%= assignment._id %>" class="<%= assignment.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900"><%= assignment.asset?.name || 'N/A' %></div>
-                        <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
-                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+    <div class="text-sm font-medium text-gray-900"><%= assignment.assetName || 'N/A' %></div>
+    <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
+</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900"><%= assignment.submittedBy?.name || 'N/A' %></div>
                         <div class="text-sm text-gray-500"><%= new Date(assignment.completedAt).toLocaleString() %></div>

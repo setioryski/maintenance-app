@@ -3,79 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Technician Reports</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .table-responsive {
-            margin-top: 20px;
-        }
-        .status-badge {
-            font-size: 0.9em;
-        }
-    </style>
+    <title>My Submitted Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container-fluid mt-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3>My Completed Reports</h3>
-                <a href="/technician/dashboard" class="btn btn-secondary">Back to Dashboard</a>
-            </div>
-            <div class="card-body">
-                <p>This page shows all the maintenance checklists you have completed. You can view the details for each report.</p>
+<body class="bg-gray-100">
+<div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6 text-center">My Submitted Reports</h1>
 
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Checklist Title</th>
-                                <th>Asset Name</th>
-                                <th>Asset Category</th>
-                                <th>Completed At</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% if (assignments.length > 0) { %>
-                                <% assignments.forEach(assignment => { %>
-                                    <tr>
-                                        <td><%= assignment.checklistTitle %></td>
-                                        <td><%= assignment.asset.name %></td>
-                                        <td><%= assignment.asset.category.name %></td>
-                                        <td><%= new Date(assignment.completedAt).toLocaleDateString('en-US') %></td>
-                                        <td>
-                                            <% if (assignment.verifiedStatus === 'rejected') { %>
-                                                <span class="badge bg-danger status-badge">Rejected</span>
-                                            <% } else if (assignment.verifiedByManager) { %>
-                                                <span class="badge bg-success status-badge">Verified</span>
-                                            <% } else if (assignment.verifiedBySpv) { %>
-                                                <span class="badge bg-primary status-badge">Verified by SPV</span>
-                                            <% } else { %>
-                                                <span class="badge bg-warning text-dark status-badge">Pending</span>
-                                            <% } %>
-                                        </td>
-                                        <td>
-                                            <a href="/technician/report/<%= assignment._id %>" class="btn btn-sm btn-info" title="View Details">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <% }); %>
-                            <% } else { %>
-                                <tr>
-                                    <td colspan="6" class="text-center">No completed reports found.</td>
-                                </tr>
-                            <% } %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div class="overflow-x-auto bg-white shadow rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset / Checklist</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            <% if (assignments.length > 0) { %>
+                <% assignments.forEach(assignment => { %>
+                <tr class="<%= assignment.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
+<td class="px-6 py-4 whitespace-nowrap">
+    <div class="text-sm font-medium text-gray-900"><%= assignment.assetName || 'N/A' %></div>
+    <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
+</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <%= new Date(assignment.completedAt).toLocaleString() %>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <% if (assignment.verifiedStatus === 'rejected') { %>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected</span>
+                        <% } else if (assignment.verifiedByManager) { %>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
+                        <% } else if (assignment.verifiedBySpv) { %>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Pending Manager</span>
+                        <% } else { %>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Pending SPV</span>
+                        <% } %>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="/technician/report/<%= assignment._id %>" class="text-indigo-600 hover:text-indigo-900">View Detail</a>
+                    </td>
+                </tr>
+                <% }); %>
+            <% } else { %>
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">You have not submitted any reports yet.</td>
+                </tr>
+            <% } %>
+            </tbody>
+        </table>
     </div>
+    <div class="mt-6 text-center">
+        <a href="/technician/dashboard" class="text-indigo-600 hover:text-indigo-900">Back to Dashboard</a>
+    </div>
+</div>
 </body>
 </html>

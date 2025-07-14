@@ -453,35 +453,30 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
         const currentDivision = req.query.division || 'all';
 
         const matchCondition = {
-            completedAt: { $ne: null },
-            verifiedStatus: { $ne: 'rejected' }
+            completedAt: { $ne: null }
         };
 
-        if (filter === 'verified_spv') {
-            matchCondition.verifiedBySpv = true;
-            matchCondition.verifiedByManager = false;
-        } else if (filter === 'verified_manager') {
-            matchCondition.verifiedByManager = true;
-        } else if (filter === 'not_verified_spv') {
-            matchCondition.verifiedBySpv = false;
-        } else if (filter === 'has_alert') {
-            matchCondition.hasAlert = true;
-        } else if (filter === 'rejected') {
-            delete matchCondition.verifiedStatus;
+        if (filter !== 'all') {
+            matchCondition.verifiedStatus = { $ne: 'rejected' };
+            if (filter === 'verified_spv') {
+                matchCondition.verifiedBySpv = true;
+                matchCondition.verifiedByManager = false;
+            } else if (filter === 'verified_manager') {
+                matchCondition.verifiedByManager = true;
+            } else if (filter === 'not_verified_spv') {
+                matchCondition.verifiedBySpv = false;
+            } else if (filter === 'has_alert') {
+                matchCondition.hasAlert = true;
+            }
+        }
+        
+        if (filter === 'rejected') {
             matchCondition.verifiedStatus = 'rejected';
         }
 
         const divisions = await Division.find({});
 
         let assignments = await ChecklistAssignment.find(matchCondition)
-            .populate({
-                path: 'checklist',
-                populate: { path: 'createdBy' }
-            })
-            .populate({
-                path: 'asset',
-                populate: [{ path: 'floor' }, { path: 'category' }, { path: 'division' }]
-            })
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
@@ -489,7 +484,7 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
 
         if (currentDivision !== 'all') {
             assignments = assignments.filter(a =>
-                a.asset.division && a.asset.division._id.toString() === currentDivision
+                a.division.toString() === currentDivision
             );
         }
 
@@ -508,7 +503,6 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
 app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate('checklist')
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone', 'division']
@@ -539,37 +533,29 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
 // Maintenance History for SPV
 app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        const assets = await Asset.find({ division: req.session.userDivision });
-        const assetIds = assets.map(a => a._id);
-
         const query = {
-            asset: { $in: assetIds },
-            completedAt: { $ne: null },
-            verifiedStatus: { $ne: 'rejected' }
+            division: req.session.userDivision,
+            completedAt: { $ne: null }
         };
 
         const filter = req.query.filter || 'all';
-        if (filter === 'verified_spv') {
-            query.verifiedBySpv = true;
-            query.verifiedByManager = false;
-        } else if (filter === 'verified_manager') {
-            query.verifiedByManager = true;
-        } else if (filter === 'has_alert') {
-            query.hasAlert = true;
-        } else if (filter === 'rejected') {
-            delete query.verifiedStatus;
+        if (filter !== 'all') {
+            query.verifiedStatus = { $ne: 'rejected' };
+            if (filter === 'verified_spv') {
+                query.verifiedBySpv = true;
+                query.verifiedByManager = false;
+            } else if (filter === 'verified_manager') {
+                query.verifiedByManager = true;
+            } else if (filter === 'has_alert') {
+                query.hasAlert = true;
+            }
+        }
+        
+        if (filter === 'rejected') {
             query.verifiedStatus = 'rejected';
         }
 
         const assignments = await ChecklistAssignment.find(query)
-            .populate({
-                path: 'checklist',
-                populate: { path: 'createdBy' }
-            })
-            .populate({
-                path: 'asset',
-                populate: ['floor', 'category', 'zone']
-            })
             .populate('submittedBy')
             .populate('rejectedBy');
 
@@ -618,12 +604,6 @@ app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, asy
 app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate({
-                path: 'checklist',
-                populate: {
-                    path: 'createdBy'
-                }
-            })
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone']
@@ -981,12 +961,17 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
                 id => id && mongoose.Types.ObjectId.isValid(id)
             );
 
-            // Build and insert new template assignments
+            // Fetch assets to get their names
+            const assets = await Asset.find({ '_id': { $in: assetsToAssign } });
+            const assetMap = new Map(assets.map(asset => [asset._id.toString(), { name: asset.name, division: asset.division }]));
+
             const newTemplates = assetsToAssign.map(assetId => ({
                 checklist: checklistId,
                 asset: assetId,
                 isTemplate: true,
-                checklistTitle: checklist.title
+                checklistTitle: checklist.title,
+                assetName: assetMap.get(assetId).name,
+                division: assetMap.get(assetId).division
             }));
             if (newTemplates.length > 0) {
                 await ChecklistAssignment.insertMany(newTemplates);
@@ -1050,11 +1035,8 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
 app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const checklistId = req.params.id;
-        const {
-            assetIds
-        } = req.body; // May be a string or array of strings
+        const { assetIds } = req.body;
 
-        // 1) Verify checklist exists and belongs to this SPV
         const checklist = await Checklist.findById(checklistId);
         if (!checklist) {
             return res.status(404).send('Checklist not found');
@@ -1063,33 +1045,29 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
             return res.status(403).send('Access denied: You can only assign your own checklists');
         }
 
-        // 2) Remove only the “template” assignments (so completed reports stay intact)
         await ChecklistAssignment.deleteMany({
             checklist: checklistId,
             isTemplate: true
         });
 
-        // 3) Normalize assetIds into an array
-        const assetsToAssign = Array.isArray(assetIds) ?
-            assetIds :
-            assetIds ?
-            [assetIds] :
-            [];
+        const assetsToAssign = Array.isArray(assetIds) ? assetIds : assetIds ? [assetIds] : [];
 
-        // 4) Build new template assignments
+        const assets = await Asset.find({ '_id': { $in: assetsToAssign } });
+        const assetMap = new Map(assets.map(asset => [asset._id.toString(), { name: asset.name, division: asset.division }]));
+
         const newAssignments = assetsToAssign.map(assetId => ({
             checklist: checklistId,
             asset: assetId,
             isTemplate: true,
-            checklistTitle: checklist.title
+            checklistTitle: checklist.title,
+            assetName: assetMap.get(assetId).name,
+            division: assetMap.get(assetId).division
         }));
 
-        // 5) Insert them (if any)
         if (newAssignments.length > 0) {
             await ChecklistAssignment.insertMany(newAssignments);
         }
 
-        // 6) Redirect back to SPV dashboard
         res.redirect('/spv/dashboard');
     } catch (err) {
         console.error('Error in POST /checklists/:id/assign:', err);
@@ -1293,6 +1271,8 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
             checklist: templateAssignment.checklist._id,
             checklistTitle: templateAssignment.checklist.title,
             asset: templateAssignment.asset._id,
+            assetName: templateAssignment.asset.name,
+            division: templateAssignment.asset.division,
             assignedAt: templateAssignment.assignedAt,
             tasksSnapshot,
             responses,
@@ -1325,21 +1305,12 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 //tehnician report
 app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
-        const assets = await Asset.find({
-            division: req.session.userDivision
-        });
-        const assetIds = assets.map(a => a._id);
-
         const assignments = await ChecklistAssignment.find({
-                asset: {
-                    $in: assetIds
-                },
+                submittedBy: req.session.userId,
                 completedAt: {
                     $ne: null
                 }
             })
-            .populate('checklist')
-            .populate('asset')
             .populate('submittedBy');
 
         res.render('technicianReport', {
@@ -1356,7 +1327,6 @@ app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req,
 app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate('checklist')
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone']

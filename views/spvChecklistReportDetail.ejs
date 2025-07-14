@@ -33,13 +33,13 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">Asset Details</div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item"><strong>Name:</strong> <%= assignment.asset.name %></li>
-                    <li class="list-group-item"><strong>Category:</strong> <%= assignment.asset.category.name %></li>
-                    <li class="list-group-item"><strong>Floor:</strong> <%= assignment.asset.floor.name %></li>
-                    <li class="list-group-item"><strong>Zone:</strong> <%= assignment.asset.zone.name %></li>
-                    <li class="list-group-item"><strong>Location:</strong> <%= assignment.asset.location %></li>
-                </ul>
+<ul class="list-group list-group-flush">
+    <li class="list-group-item"><strong>Name:</strong> <%= assignment.assetName || 'N/A' %></li>
+    <li class="list-group-item"><strong>Category:</strong> <%= assignment.asset?.category?.name || 'N/A' %></li>
+    <li class="list-group-item"><strong>Floor:</strong> <%= assignment.asset?.floor?.name || 'N/A' %></li>
+    <li class="list-group-item"><strong>Zone:</strong> <%= assignment.asset?.zone?.name || 'N/A' %></li>
+    <li class="list-group-item"><strong>Location:</strong> <%= assignment.asset?.location || 'N/A' %></li>
+</ul>
             </div>
         </div>
         <div class="col-md-6">

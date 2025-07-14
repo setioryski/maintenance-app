@@ -54,7 +54,7 @@
     <% } else { 
       const groupedAssignments = {};
       validAssignments.forEach(function(assignment) {
-        const assetName = assignment.asset.name;
+        const assetName = assignment.assetName;
         if (!groupedAssignments[assetName]) {
           groupedAssignments[assetName] = [];
         }
