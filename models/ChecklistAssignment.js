@@ -25,15 +25,27 @@ const TaskSnapshotSchema = new Schema({
     default: '',
     description: 'The unit expected for measurement tasks'
   },
-  minRange: { // Also snapshot the range
+  minRange: {
     type: Number,
     default: null
   },
-  maxRange: { // Also snapshot the range
+  maxRange: {
     type: Number,
     default: null
   }
 }, { _id: false });
+
+// NEW: Sub-schema to snapshot asset details at completion time
+const AssetSnapshotSchema = new Schema({
+  name: { type: String, required: true },
+  description: String,
+  location: String,
+  category: String, // Storing category name as string
+  floor: String,    // Storing floor name as string
+  zone: String,     // Storing zone name as string
+  division: String // Storing division name as string
+}, { _id: false });
+
 
 // Main schema for checklist assignments
 const ChecklistAssignmentSchema = new Schema({
@@ -50,13 +62,14 @@ const ChecklistAssignmentSchema = new Schema({
   asset: {
     type: Schema.Types.ObjectId,
     ref: 'Asset',
-    required: true,
-    description: 'Reference to the asset this assignment belongs to'
+    // This is no longer required to exist after submission, so it can be null
+    // if the original asset is deleted.
+    description: 'Reference to the original asset this assignment belongs to'
   },
-  assetName: {
-      type: String,
-      required: true,
-      description: 'The name of the asset at the time of submission.'
+  // REPLACED assetName with assetSnapshot
+  assetSnapshot: {
+      type: AssetSnapshotSchema,
+      description: 'Snapshot of the asset details at the time of submission.'
   },
   division: {
       type: Schema.Types.ObjectId,

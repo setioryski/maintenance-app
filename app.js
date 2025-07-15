@@ -477,6 +477,7 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
         const divisions = await Division.find({});
 
         let assignments = await ChecklistAssignment.find(matchCondition)
+            .populate('asset') // Ensure asset is populated
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
@@ -503,8 +504,11 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
 app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
+             // When populating, if the referenced 'asset' document is deleted,
+             // `assignment.asset` will be null. This is the expected behavior.
             .populate({
                 path: 'asset',
+                // We populate the asset's relations if it still exists
                 populate: ['floor', 'category', 'zone', 'division']
             })
             .populate('submittedBy')
@@ -515,7 +519,7 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
         if (!assignment || !assignment.completedAt) {
             return res.status(404).send('Checklist not found or not completed');
         }
-
+        
         res.render('managerChecklistReportDetail', {
             assignment
         });
@@ -524,9 +528,6 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
         res.status(500).send(err.message);
     }
 });
-
-
-
 
 
 
@@ -556,6 +557,7 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
         }
 
         const assignments = await ChecklistAssignment.find(query)
+            .populate('asset') // FIX: Populate the asset reference
             .populate('submittedBy')
             .populate('rejectedBy');
 
@@ -616,6 +618,7 @@ app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, asyn
         if (!assignment || !assignment.completedAt) {
             return res.status(404).send('Checklist not completed or not found.');
         }
+
         res.render('spvChecklistReportDetail', {
             assignment
         });
@@ -970,7 +973,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
                 asset: assetId,
                 isTemplate: true,
                 checklistTitle: checklist.title,
-                assetName: assetMap.get(assetId).name,
+                assetSnapshot: { name: assetMap.get(assetId).name }, // Store initial name
                 division: assetMap.get(assetId).division
             }));
             if (newTemplates.length > 0) {
@@ -994,6 +997,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
 //deleting an asset
 app.get('/assets/:id/delete', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
     try {
+        // The 'pre' hook on the Asset model will automatically clean up template assignments
         await Asset.findByIdAndDelete(req.params.id);
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -1052,17 +1056,21 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
 
         const assetsToAssign = Array.isArray(assetIds) ? assetIds : assetIds ? [assetIds] : [];
 
-        const assets = await Asset.find({ '_id': { $in: assetsToAssign } });
-        const assetMap = new Map(assets.map(asset => [asset._id.toString(), { name: asset.name, division: asset.division }]));
+        const assets = await Asset.find({ '_id': { $in: assetsToAssign } }).populate('division');
+        const assetMap = new Map(assets.map(asset => [asset._id.toString(), asset]));
 
-        const newAssignments = assetsToAssign.map(assetId => ({
-            checklist: checklistId,
-            asset: assetId,
-            isTemplate: true,
-            checklistTitle: checklist.title,
-            assetName: assetMap.get(assetId).name,
-            division: assetMap.get(assetId).division
-        }));
+        const newAssignments = assetsToAssign.map(assetId => {
+            const asset = assetMap.get(assetId);
+            return {
+                checklist: checklistId,
+                asset: assetId,
+                isTemplate: true,
+                checklistTitle: checklist.title,
+                // We create a minimal snapshot for the template. This will be overwritten on submission.
+                assetSnapshot: { name: asset.name },
+                division: asset.division._id
+            };
+        });
 
         if (newAssignments.length > 0) {
             await ChecklistAssignment.insertMany(newAssignments);
@@ -1082,6 +1090,7 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
 app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
     try {
         // ensureChecklistBelongsToUser already loaded the checklist into req.checklist
+        // The 'pre' hook on the Checklist model will clean up template assignments
         await Checklist.deleteOne({
             _id: req.params.id
         });
@@ -1194,9 +1203,13 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
         const templateAssignment = await ChecklistAssignment.findById(assignmentId)
             .populate('checklist')
-            .populate('asset');
-        if (!templateAssignment) {
-            return res.status(404).send('Checklist assignment not found.');
+            .populate({
+                path: 'asset',
+                populate: ['floor', 'category', 'zone', 'division'] // Populate all relations
+            });
+            
+        if (!templateAssignment || !templateAssignment.asset) {
+            return res.status(404).send('Checklist assignment or associated asset not found.');
         }
 
         let hasAlert = false;
@@ -1213,24 +1226,32 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
         const responses = { ...(req.body.results || {})
         };
 
-        // Check for functional test failures OR out-of-range measurements
         for (const task of tasksSnapshot) {
-            if (task.inputType === 'functional') {
-                const response = responses[task.originalTaskId.toString()];
-                if (response === 'fail') {
-                    hasAlert = true;
-                    break; // An alert is triggered, no need to check further
-                }
+            if (task.inputType === 'functional' && responses[task.originalTaskId.toString()] === 'fail') {
+                hasAlert = true;
+                break; 
             } else if (task.inputType === 'measurement') {
-                const responseValue = parseFloat(responses[task.originalTaskId.toString()]);
-                if (!isNaN(responseValue) && task.minRange != null && task.maxRange != null) {
-                    if (responseValue < task.minRange || responseValue > task.maxRange) {
+                const value = parseFloat(responses[task.originalTaskId.toString()]);
+                if (!isNaN(value) && task.minRange != null && task.maxRange != null) {
+                    if (value < task.minRange || value > task.maxRange) {
                         hasAlert = true;
-                        break; // An alert is triggered, no need to check further
+                        break; 
                     }
                 }
             }
         }
+        
+        // --- NEW: Create the full asset snapshot ---
+        const assetSnapshot = {
+            name: templateAssignment.asset.name,
+            description: templateAssignment.asset.description,
+            location: templateAssignment.asset.location,
+            // Safely access populated names, provide fallback
+            category: templateAssignment.asset.category ? templateAssignment.asset.category.name : 'N/A',
+            floor: templateAssignment.asset.floor ? templateAssignment.asset.floor.name : 'N/A',
+            zone: templateAssignment.asset.zone ? templateAssignment.asset.zone.name : 'N/A',
+            division: templateAssignment.asset.division ? templateAssignment.asset.division.name : 'N/A'
+        };
 
 
         if (req.files && req.files.length > 0) {
@@ -1270,15 +1291,15 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
         const completedAssignment = new ChecklistAssignment({
             checklist: templateAssignment.checklist._id,
             checklistTitle: templateAssignment.checklist.title,
-            asset: templateAssignment.asset._id,
-            assetName: templateAssignment.asset.name,
-            division: templateAssignment.asset.division,
+            asset: templateAssignment.asset._id, // Keep the original reference
+            assetSnapshot: assetSnapshot, // Save the NEW snapshot
+            division: templateAssignment.asset.division._id,
             assignedAt: templateAssignment.assignedAt,
             tasksSnapshot,
             responses,
             completedAt: new Date(),
             submittedBy: req.session.userId,
-            isTemplate: false,
+            isTemplate: false, // Mark as a completed report
             note: maintenanceNote,
             hasAlert: hasAlert
         });
@@ -1311,6 +1332,7 @@ app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req,
                     $ne: null
                 }
             })
+            .populate('asset') // Populate asset
             .populate('submittedBy');
 
         res.render('technicianReport', {
@@ -1328,7 +1350,7 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
             .populate({
-                path: 'asset',
+                path: 'asset', // Still attempt to populate the asset
                 populate: ['floor', 'category', 'zone']
             })
             .populate('submittedBy')
@@ -1339,6 +1361,7 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
         if (!assignment || !assignment.completedAt) {
             return res.status(404).send('Completed checklist not found.');
         }
+
         res.render('technicianChecklistReportDetail', {
             assignment
         });

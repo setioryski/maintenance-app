@@ -37,10 +37,19 @@
             <% if (assignments.length > 0) { %>
                 <% assignments.forEach(assignment => { %>
                 <tr id="assignment-row-<%= assignment._id %>" data-id="<%= assignment._id %>" class="<%= assignment.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
-<td class="px-6 py-4 whitespace-nowrap">
-    <div class="text-sm font-medium text-gray-900"><%= assignment.assetName || 'N/A' %></div>
-    <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
-</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">
+                            <%# This is the corrected block %>
+                            <% if (assignment.asset) { %>
+                                <%= assignment.asset.name %>
+                            <% } else if (assignment.assetSnapshot) { %>
+                                <%= assignment.assetSnapshot.name %> (Deleted)
+                            <% } else { %>
+                                N/A
+                            <% } %>
+                        </div>
+                        <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900"><%= assignment.submittedBy?.name || 'N/A' %></div>
                         <div class="text-sm text-gray-500"><%= new Date(assignment.completedAt).toLocaleString() %></div>
@@ -50,7 +59,7 @@
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected by <%= assignment.rejectedBy?.name || 'N/A' %></span>
                         <% } else if (assignment.verifiedByManager) { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Verified by Manager</span>
-                          <% } else if (assignment.verifiedBySpv) { %>
+                        <% } else if (assignment.verifiedBySpv) { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Verified by SPV</span>
                         <% } else { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Pending SPV Verification</span>
@@ -66,7 +75,7 @@
                              <button type="button" class="text-green-600 hover:text-green-900 verify-btn" data-id="<%= assignment._id %>">Verify</button>
                         <% } %>
                         <% if (assignment.verifiedStatus !== 'rejected' && !assignment.verifiedByManager) { %>
-                            <button type="button" class="text-red-600 hover:text-red-900 reject-btn ml-4" data-id="<%= assignment._id %>" data-verified="<%= assignment.verifiedBySpv ? 'true' : 'false' %>">Reject</button>
+                             <button type="button" class="text-red-600 hover:text-red-900 reject-btn ml-4" data-id="<%= assignment._id %>" data-verified="<%= assignment.verifiedBySpv ? 'true' : 'false' %>">Reject</button>
                         <% } %>
                     </td>
                 </tr>

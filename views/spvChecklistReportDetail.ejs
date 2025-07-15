@@ -33,13 +33,13 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">Asset Details</div>
-<ul class="list-group list-group-flush">
-    <li class="list-group-item"><strong>Name:</strong> <%= assignment.assetName || 'N/A' %></li>
-    <li class="list-group-item"><strong>Category:</strong> <%= assignment.asset?.category?.name || 'N/A' %></li>
-    <li class="list-group-item"><strong>Floor:</strong> <%= assignment.asset?.floor?.name || 'N/A' %></li>
-    <li class="list-group-item"><strong>Zone:</strong> <%= assignment.asset?.zone?.name || 'N/A' %></li>
-    <li class="list-group-item"><strong>Location:</strong> <%= assignment.asset?.location || 'N/A' %></li>
-</ul>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></li>
+                    <li class="list-group-item"><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></li>
+                    <li class="list-group-item"><strong>Floor:</strong> <%= assignment.asset ? assignment.asset.floor.name : assignment.assetSnapshot.floor %></li>
+                    <li class="list-group-item"><strong>Zone:</strong> <%= assignment.asset ? assignment.asset.zone.name : assignment.assetSnapshot.zone %></li>
+                    <li class="list-group-item"><strong>Location:</strong> <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></li>
+                </ul>
             </div>
         </div>
         <div class="col-md-6">
@@ -79,34 +79,34 @@
                 <div class="task-item">
                     <h6><%= task.description %></h6>
                     <%
-                       const response = assignment.responses[task.originalTaskId.toString()];
-                       let displayResponse = response;
-                       let responseClass = '';
+                        const response = assignment.responses[task.originalTaskId.toString()];
+                        let displayResponse = response;
+                        let responseClass = '';
 
-                       if (task.inputType === 'measurement' && response !== null) {
-                           const value = parseFloat(response);
-                           if (!isNaN(value)) {
-                               if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
-                                   responseClass = 'status-fail';
-                               } else {
-                                   responseClass = 'status-ok';
-                               }
-                           }
-                           displayResponse = `${value} ${task.expectedUnit || ''}`;
-                       } else if (task.inputType === 'functional') {
-                           if (response === 'fail') {
-                               responseClass = 'status-fail';
-                               displayResponse = 'Fail';
-                           } else {
-                               responseClass = 'status-ok';
-                               displayResponse = 'OK';
-                           }
-                       } else if (Array.isArray(response)) {
-                           displayResponse = '';
-                           response.forEach(url => {
-                               displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 150px; margin-right: 10px; border-radius: 5px;"></a>`;
-                           });
-                       }
+                        if (task.inputType === 'measurement' && response !== null) {
+                            const value = parseFloat(response);
+                            if (!isNaN(value)) {
+                                if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
+                                    responseClass = 'status-fail';
+                                } else {
+                                    responseClass = 'status-ok';
+                                }
+                            }
+                            displayResponse = `${value} ${task.expectedUnit || ''}`;
+                        } else if (task.inputType === 'functional') {
+                            if (response === 'fail') {
+                                responseClass = 'status-fail';
+                                displayResponse = 'Fail';
+                            } else {
+                                responseClass = 'status-ok';
+                                displayResponse = 'OK';
+                            }
+                        } else if (Array.isArray(response)) {
+                            displayResponse = '';
+                            response.forEach(url => {
+                                displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 150px; margin-right: 10px; border-radius: 5px;"></a>`;
+                            });
+                        }
                     %>
                     <p class="task-response <%= responseClass %>"><%- displayResponse %></p>
                 </div>
