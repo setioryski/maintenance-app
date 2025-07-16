@@ -415,10 +415,12 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 // Manager: mark a completed checklist as verified by manager
 app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
+        const user = await User.findById(req.session.userId);
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedByManager: true,
                 verifiedByManagerUser: req.session.userId,
+                verifiedByManagerUserName: user.name,
                 verifiedStatus: 'pending'
             }
         );
@@ -432,10 +434,12 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
 // Manager: reject a completed checklist
 app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
+        const user = await User.findById(req.session.userId);
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedStatus: 'rejected',
                 rejectedBy: req.session.userId,
+                rejectedByName: user.name,
                 verifiedByManager: false
             }
         );
@@ -574,10 +578,12 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
 // SPV: mark as verified
 app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
+        const user = await User.findById(req.session.userId);
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedBySpv: true,
                 verifiedBySpvUser: req.session.userId,
+                verifiedBySpvUserName: user.name,
                 verifiedStatus: 'pending'
             }
         );
@@ -591,9 +597,11 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
 // Reject checklist
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
+        const user = await User.findById(req.session.userId);
         await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
+            rejectedByName: user.name,
             verifiedBySpv: false
         });
         res.json({ success: true, status: 'rejected' });
@@ -1212,6 +1220,11 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
             return res.status(404).send('Checklist assignment or associated asset not found.');
         }
 
+        const user = await User.findById(req.session.userId);
+        if (!user) {
+            return res.status(404).send('Submitting user not found.');
+        }
+
         let hasAlert = false;
 
         const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
@@ -1299,6 +1312,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
             responses,
             completedAt: new Date(),
             submittedBy: req.session.userId,
+            submittedByName: user.name,
             isTemplate: false, // Mark as a completed report
             note: maintenanceNote,
             hasAlert: hasAlert

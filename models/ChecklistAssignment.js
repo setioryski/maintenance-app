@@ -100,6 +100,10 @@ const ChecklistAssignmentSchema = new Schema({
     ref: 'User',
     description: 'User who completed and submitted this assignment'
   },
+  submittedByName: {
+    type: String,
+    description: 'Name of the user who submitted the assignment at the time of submission.'
+  },
   isTemplate: {
     type: Boolean,
     default: true,
@@ -114,7 +118,10 @@ const ChecklistAssignmentSchema = new Schema({
   verifiedByManager: { type: Boolean, default: false },
   verifiedBySpvUser: { type: Schema.Types.ObjectId, ref: 'User' },
   verifiedByManagerUser: { type: Schema.Types.ObjectId, ref: 'User' },
+  verifiedBySpvUserName: { type: String },
+  verifiedByManagerUserName: { type: String },
   rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  rejectedByName: { type: String },
   verifiedStatus: {
     type: String,
     enum: ['pending', 'rejected'],
