@@ -48,10 +48,9 @@
             <% if (assignments.length > 0) { %>
                 <% assignments.forEach(assignment => { %>
                 <tr id="assignment-row-<%= assignment._id %>" data-id="<%= assignment._id %>" class="<%= assignment.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
-                  <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">
-                           <%# This is the corrected block %>
-                           <% if (assignment.asset) { %>
+                            <% if (assignment.asset) { %>
                                 <%= assignment.asset.name %>
                             <% } else if (assignment.assetSnapshot) { %>
                                 <%= assignment.assetSnapshot.name %> (Deleted)
@@ -62,7 +61,7 @@
                         <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900"><%= assignment.submittedBy?.name || 'N/A' %></div>
+                        <div class="text-sm text-gray-900"><%= assignment.submittedByName || 'N/A' %></div>
                         <div class="text-sm text-gray-500"><%= new Date(assignment.completedAt).toLocaleString() %></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap status-cell">
@@ -147,7 +146,6 @@
         const cancelBtn = document.getElementById('cancel-reject-btn');
         let actionUrl = '';
         let rowToUpdate = null;
-
         const handleAction = async (url, row) => {
             const assignmentId = row.dataset.id;
             try {
@@ -157,7 +155,6 @@
                         'Accept': 'application/json'
                     }
                 });
-
                 if (response.status === 401) {
                     alert('Your session has expired. Please log in again.');
                     window.location.href = '/login';
@@ -165,7 +162,6 @@
                 }
 
                 const result = await response.json();
-
                 if (result.success) {
                     const statusCell = row.querySelector('.status-cell');
                     const actionCell = row.querySelector('.action-cell');
@@ -187,7 +183,6 @@
             }
             modal.classList.add('hidden');
         };
-
         document.querySelectorAll('.verify-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const assignmentId = e.target.dataset.id;
@@ -195,7 +190,6 @@
                 handleAction(`/manager/report/${assignmentId}/verify`, row);
             });
         });
-
         document.querySelectorAll('.reject-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const assignmentId = e.target.dataset.id;
@@ -216,7 +210,6 @@
                 handleAction(actionUrl, rowToUpdate);
             }
         });
-
         cancelBtn.addEventListener('click', () => {
             modal.classList.add('hidden');
             actionUrl = '';
