@@ -416,6 +416,9 @@ app.post('/admin/assets', ensureAuthenticated, ensureSuperuser, async (req, res)
 app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found.' });
+        }
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedByManager: true,
@@ -435,6 +438,9 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
 app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found.' });
+        }
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedStatus: 'rejected',
@@ -579,6 +585,9 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
 app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found.' });
+        }
         await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedBySpv: true,
@@ -598,6 +607,9 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
 app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found.' });
+        }
         await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
@@ -1222,7 +1234,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
         const user = await User.findById(req.session.userId);
         if (!user) {
-            return res.status(404).send('Submitting user not found.');
+            return res.status(401).send('Submitting user not found.');
         }
 
         let hasAlert = false;
