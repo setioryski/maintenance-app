@@ -900,25 +900,14 @@ app.get('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res)
             return res.status(403).send('Access denied: You can only edit your own checklist');
         }
 
-        // Fetch all assets and the ones already assigned
-        const assets = await Asset.find({
-            division: req.session.userDivision
-        });
-        const existingAssignments = await ChecklistAssignment.find({
-            checklist: checklist._id,
-            isTemplate: true
-        });
-        const assignedAssetIds = existingAssignments.map(a => a.asset.toString());
-
         res.render('editChecklist', {
-            checklist,
-            assets,
-            assignedAssetIds
+            checklist
         });
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
+
 // POST the edits
 app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
@@ -929,8 +918,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
             taskInputTypes,
             taskExpectedUnits,
             taskMinRanges,
-            taskMaxRanges,
-            assetIds
+            taskMaxRanges
         } = req.body;
 
         // 1) Load & authorize
@@ -966,42 +954,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
         checklist.tasks = tasks;
         await checklist.save();
 
-        // 3) If assetIds was submitted, rebuild *only* the template assignments
-        if (Object.prototype.hasOwnProperty.call(req.body, 'assetIds')) {
-            // Remove old template entries, keep completed reports
-            await ChecklistAssignment.deleteMany({
-                checklist: checklistId,
-                isTemplate: true
-            });
-
-            // Normalize to array, filter out empty & invalid IDs
-            let assetsToAssign = Array.isArray(assetIds) ?
-                assetIds :
-                assetIds ?
-                [assetIds] :
-                [];
-            assetsToAssign = assetsToAssign.filter(
-                id => id && mongoose.Types.ObjectId.isValid(id)
-            );
-
-            // Fetch assets to get their names
-            const assets = await Asset.find({ '_id': { $in: assetsToAssign } });
-            const assetMap = new Map(assets.map(asset => [asset._id.toString(), { name: asset.name, division: asset.division }]));
-
-            const newTemplates = assetsToAssign.map(assetId => ({
-                checklist: checklistId,
-                asset: assetId,
-                isTemplate: true,
-                checklistTitle: checklist.title,
-                assetSnapshot: { name: assetMap.get(assetId).name }, // Store initial name
-                division: assetMap.get(assetId).division
-            }));
-            if (newTemplates.length > 0) {
-                await ChecklistAssignment.insertMany(newTemplates);
-            }
-        }
-
-        // 4) Redirect back to SPV dashboard
+        // 3) Redirect back to SPV dashboard
         res.redirect('/spv/dashboard');
     } catch (err) {
         console.error('Error editing checklist:', err);
