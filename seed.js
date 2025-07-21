@@ -16,45 +16,42 @@ const User          = require(path.join(__dirname, 'models', 'User'));
 const ObjectId = mongoose.Types.ObjectId;
 
 // Default data
-const defaultFloors     = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
+const defaultFloors     = ['FRONT DESK', 'RUANG MAKAN', '1', '2', '3'];
 const defaultZones      = ['A', 'B', 'C', 'D'];
-const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm', 'Panoramic'];
+const defaultCategories = ['KAMAR'];
 
 // Divisions must use `new ObjectId(...)`
 const defaultDivisions = [
-  { _id: new ObjectId('67d29e499ef538542714f83f'), name: 'ELEKTRONIK' },
-  { _id: new ObjectId('67d29e4e9ef538542714f841'), name: 'ELEKTRIKAL' },
-  { _id: new ObjectId('67d29e529ef538542714f843'), name: 'PLUMBING' },
-  { _id: new ObjectId('67d29e5d9ef538542714f845'), name: 'MEKANIKAL' },
-  { _id: new ObjectId('67d29e649ef538542714f847'), name: 'SIPIL' }
+  { _id: new ObjectId('67d29e499ef538542714f83f'), name: 'HOUSEKEEPING' },
+
 ];
 
 // Pre-hashed passwords for seed users
 const defaultUsers = [
   {
-    name: 'test',
-    email: 'test@test.com',
+    name: 'setio',
+    email: 'setio@wispan.com',
     password: '$2b$10$DCbIiB7.R1o7Qvyla2q9QellQWqNvjj54UFyQrz4M17ZUrqXvduBi', // spv
     role: 'spv',
     division: '67d29e499ef538542714f83f'
   },
   {
-    name: 'testteknisi',
-    email: 'testteknisi@test.com',
+    name: 'janna',
+    email: 'janna@wispan.com',
     password: '$2b$10$t19va1NaYrZE.C68rG2HKeKK3Zy.3mQGT5RS4CgE0F/iQDMr.HKK.',
     role: 'technician',
     division: '67d29e499ef538542714f83f'
   },
   {
-    name: 'test1',
-    email: 'test1@test.com',
+    name: 'epi',
+    email: 'epi@wispan.com',
     password: '$2b$10$kdZwUu1d.sDdsmoHpskfu.IoueX4m4j75Vt0j0X2eJC34NhBwIjlm',
     role: 'spv',
-    division: '67d29e4e9ef538542714f841'
+    division: '67d29e499ef538542714f83f'
   },
   {
-    name: 'manager',
-    email: 'manager@test.com',
+    name: 'nuzula',
+    email: 'nuzula@wispan.com',
     password: '$2b$10$r42TXlD1dUVhBeM6ed0aAuMhkYUTqyS7HckZWSUH8CgM0wxx7aNle',
     role: 'manager',
     division: null

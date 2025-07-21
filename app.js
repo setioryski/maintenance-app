@@ -1352,66 +1352,15 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
 
 
 
-//initialization
-// In app.js (or a dedicated initialization file)
-
-async function initializeFloorsAndZones() {
-    const defaultFloors = ['B', 'LG', 'LM', 'G', 'UG', '1', '2', '3', '3A', '5', 'MO'];
-    const defaultZones = ['A', 'B', 'C', 'D'];
-
-    for (const floorName of defaultFloors) {
-        let floor = await Floor.findOne({
-            name: floorName
-        });
-        if (!floor) {
-            floor = await Floor.create({
-                name: floorName
-            });
-            console.log(`Created floor: ${floorName}`);
-        }
-
-        // For each floor, create default zones if not already created.
-        for (const zoneName of defaultZones) {
-            const zoneExists = await Zone.findOne({
-                name: zoneName,
-                floor: floor._id
-            });
-            if (!zoneExists) {
-                await Zone.create({
-                    name: zoneName,
-                    floor: floor._id
-                });
-                console.log(`Created zone: ${zoneName} for floor: ${floorName}`);
-            }
-        }
-    }
-}
-
 // Call the initialization function after connecting to MongoDB
 mongoose.connection.once('open', () => {
-    initializeFloorsAndZones().catch(err => console.error('Error initializing floors and zones:', err));
     initializeAssetCategories().catch(err =>
         console.error('Error initializing asset categories:', err)
     );
 });
 
 
-async function initializeAssetCategories() {
-    // Define your default categories here. Adjust the list as needed.
-    const defaultCategories = ['AHU', 'CCTV', 'Elevator', 'Generator', 'Fire Alarm', 'Panoramic'];
 
-    for (const categoryName of defaultCategories) {
-        let category = await AssetCategory.findOne({
-            name: categoryName
-        });
-        if (!category) {
-            await AssetCategory.create({
-                name: categoryName
-            });
-            console.log(`Created asset category: ${categoryName}`);
-        }
-    }
-}
 
 
 
