@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
-  <title>Technician Dashboard - Maintenance Templates</title>
+  <title>Personel Dashboard - Maintenance</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .dropdown-content { display: none; }
@@ -12,9 +12,10 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <div class="max-w-6xl mx-auto p-4">
-    <h1 class="text-3xl font-bold text-center mb-6">Technician Dashboard</h1>
-    <h2 class="text-xl font-semibold mb-4">Maintenance Checklist Templates</h2>
+  <!-- Add pb-20 (padding-bottom: 5rem) to create space for the fixed bottom nav -->
+  <div class="max-w-6xl mx-auto p-4 pb-20">
+    <h1 class="text-3xl font-bold text-center mb-6">Personel Dashboard</h1>
+    <h2 class="text-xl font-semibold mb-4">Maintenance Checklist</h2>
 
     <div class="mb-4 flex flex-col sm:flex-row sm:space-x-4">
       <input 
@@ -23,13 +24,13 @@
         placeholder="Search asset by name..." 
         class="w-full sm:flex-1 border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
       >
-      <select id="floorFilter" class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2">
+      <select id="floorFilter" class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2 mt-2 sm:mt-0">
         <option value="">All Floors</option>
         <% floors.forEach(function(floor) { %>
           <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
         <% }); %>
       </select>
-      <select id="categoryFilter" class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2">
+      <select id="categoryFilter" class="w-full sm:w-auto border border-gray-300 rounded px-4 py-2 mt-2 sm:mt-0">
         <option value="">All Categories</option>
         <% assetCategories.forEach(function(cat) { %>
           <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
@@ -215,7 +216,6 @@
         
         header.style.display = isVisible ? '' : 'none';
         if (body) {
-            // Only hide the body, don't change its display type
              if(!isVisible) body.style.display = 'none';
         }
       });
@@ -226,8 +226,9 @@
         const assetFloor = card.getAttribute('data-floor') || "";
         const assetCategory = card.getAttribute('data-category') || "";
         
+        // FIX: Changed 'cardFloor' to 'assetFloor' which is the correct variable name.
         const isVisible = assetName.includes(searchValue) &&
-                         (floorValue === "" || cardFloor === floorValue) &&
+                         (floorValue === "" || assetFloor === floorValue) &&
                          (categoryValue === "" || assetCategory === categoryValue);
 
         card.style.display = isVisible ? '' : 'none';
