@@ -14,7 +14,8 @@
     <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
 
     <p class="mb-2">
-      Asset: <strong><%= assignment.assetName %></strong>
+      <!-- FIX: Changed assignment.assetName to assignment.asset.name -->
+      Asset: <strong><%= assignment.asset ? assignment.asset.name : 'N/A' %></strong>
     </p>
     <p class="mb-4">
       Checklist: <strong><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></strong>
