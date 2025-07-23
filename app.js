@@ -43,7 +43,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'mysecret',
     resave: false,
     saveUninitialized: true, // Required for flash messages
-    cookie: { maxAge: 60000 } // Flash messages will persist for 1 minute
+    cookie: { maxAge: 172800000 } // Flash messages will persist for 1 minute
 }));
 
 // Flash message middleware to make messages available in views
