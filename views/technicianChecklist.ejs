@@ -14,7 +14,6 @@
     <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
 
     <p class="mb-2">
-      <!-- FIX: Changed assignment.assetName to assignment.asset.name -->
       Asset: <strong><%= assignment.asset ? assignment.asset.name : 'N/A' %></strong>
     </p>
     <p class="mb-4">
@@ -22,6 +21,7 @@
     </p>
 
     <form
+      id="checklist-form"
       action="/technician/checklist/<%= assignment._id %>/submit"
       method="POST"
       enctype="multipart/form-data"
@@ -33,7 +33,7 @@
 
       <% if (tasks.length > 0) { %>
         <% tasks.forEach(function(task) { %>
-          <div class="mb-6 border p-4 rounded">
+          <div class="mb-6 border p-4 rounded task-item">
             <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
             <label class="block text-gray-700 font-bold mb-2">
@@ -115,7 +115,7 @@
           placeholder="Enter any maintenance note here..."
         ></textarea>
       </div>
-      
+
       <div class="flex justify-end">
         <button
           type="submit"
@@ -172,7 +172,7 @@
         reader.readAsDataURL(file);
       });
     }
-  
+
     // Inline script for visual tasks in technicianChecklist.ejs
     (function() {
       // 'task' variable is provided by the EJS loop for each visual task
@@ -182,12 +182,12 @@
       const previewContainer = document.getElementById('previewContainer-' + taskId);
       // DataTransfer to hold the compressed files for this task
       const dt = new DataTransfer();
-  
+
       // Trigger file input when "Take Photo" button is clicked
       addImagesBtn.addEventListener('click', () => {
         imageInput.click();
       });
-  
+
       imageInput.addEventListener('change', async () => {
         if (imageInput.files.length > 0) {
             for(const file of imageInput.files){
@@ -207,7 +207,7 @@
             renderPreview();
         }
       });
-  
+
       function renderPreview() {
         // Clear existing previews
         previewContainer.innerHTML = '';
@@ -240,7 +240,56 @@
       }
     })();
   </script>
-  
+
   <% } }); %>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('checklist-form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                let allTasksCompleted = true;
+                const taskElements = document.querySelectorAll('.task-item');
+
+                taskElements.forEach(taskElement => {
+                    const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
+                    const measurementInput = taskElement.querySelector('input[type="number"]');
+                    const visualInput = taskElement.querySelector('input[type="file"]');
+
+                    // Reset borders
+                    taskElement.style.border = '1px solid #e2e8f0';
+                    if (measurementInput) measurementInput.style.border = '1px solid #d1d5db';
+
+
+                    if (functionalRadios.length > 0) {
+                        const isChecked = Array.from(functionalRadios).some(radio => radio.checked);
+                        if (!isChecked) {
+                            allTasksCompleted = false;
+                            taskElement.style.border = '2px solid red';
+                        }
+                    }
+
+                    if (measurementInput) {
+                        if (measurementInput.value.trim() === '') {
+                            allTasksCompleted = false;
+                            measurementInput.style.border = '2px solid red';
+                        }
+                    }
+                    
+                    if (visualInput) {
+                        if (visualInput.files.length === 0) {
+                            allTasksCompleted = false;
+                            taskElement.style.border = '2px solid red';
+                        }
+                    }
+                });
+
+                if (!allTasksCompleted) {
+                    event.preventDefault(); // Stop form submission
+                    alert('Please complete all checklist items before submitting.');
+                }
+            });
+        }
+    });
+  </script>
 </body>
 </html>
