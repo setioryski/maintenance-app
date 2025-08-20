@@ -1,14 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Superuser Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superuser Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <h1>Superuser Dashboard</h1>
-  <ul>
-    <li><a href="/admin/users/new">Register New User</a></li>
-    <li><a href="/admin/divisions/new">Create Division</a></li>
-  </ul>
-  <a href="/logout">Logout</a>
+<body class="bg-gray-100">
+
+    <header class="bg-gray-800 text-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">Superuser Dashboard</h1>
+            <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition duration-300">
+                Logout
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <p class="text-2xl text-gray-700 mb-6">Welcome, Admin!</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <a href="/admin/users" class="block p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="bg-blue-500 text-white rounded-full p-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <div class="ml-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Manage Users</h2>
+                        <p class="text-gray-600">Add, edit, or delete user accounts.</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="/admin/manage-data" class="block p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="bg-green-500 text-white rounded-full p-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7s0 2.21 8 4 8-4 8-4"></path></svg>
+                    </div>
+                    <div class="ml-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Manage Master Data</h2>
+                        <p class="text-gray-600">Manage divisions, floors, zones, and categories.</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="/admin/users/new" class="block p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                 <div class="flex items-center">
+                    <div class="bg-purple-500 text-white rounded-full p-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                    </div>
+                    <div class="ml-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Register New User</h2>
+                        <p class="text-gray-600">Quick link to the user registration form.</p>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
 </body>
 </html>

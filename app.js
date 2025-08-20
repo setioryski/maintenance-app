@@ -43,7 +43,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'mysecret',
     resave: false,
     saveUninitialized: true, // Required for flash messages
-    cookie: { maxAge: 172800000 } // Flash messages will persist for 1 minute
+    cookie: { maxAge: 172800000 } // Flash messages will persist for 2 days
 }));
 
 // Flash message middleware to make messages available in views
@@ -68,6 +68,38 @@ const Division = require('./models/Division');
 const AssetCategory = require('./models/AssetCategory');
 const Floor = require('./models/Floor');
 const Zone = require('./models/Zone');
+const Activity = require('./models/Activity');
+
+
+// FUNGSI BARU UNTUK LOG AKTIVITAS
+async function logActivity(userId, action, divisionId = null) {
+    try {
+        const user = await User.findById(userId).populate('division');
+        if (!user) return;
+
+        let divisionInfo = {};
+        if (user.role === 'manager' || user.role === 'superuser') {
+            if (divisionId) {
+                const division = await Division.findById(divisionId);
+                if (division) {
+                    divisionInfo = { id: division._id, name: division.name };
+                }
+            }
+        } else if (user.division) {
+            divisionInfo = { id: user.division._id, name: user.division.name };
+        }
+
+        const newActivity = new Activity({
+            user: { id: user._id, name: user.name },
+            action,
+            division: divisionInfo,
+            role: user.role,
+        });
+        await newActivity.save();
+    } catch (error) {
+        console.error('Failed to log activity:', error);
+    }
+}
 
 
 // Configure Multer to store uploaded files in a folder
@@ -128,13 +160,15 @@ async function ensureAssetBelongsToUser(req, res, next) {
     }
 }
 
-async function ensureChecklistBelongsToUser(req, res, next) {
+// Middleware baru untuk memastikan checklist milik divisi user
+async function ensureChecklistBelongsToDivision(req, res, next) {
     try {
         const checklist = await Checklist.findById(req.params.id);
         if (!checklist) {
             return res.status(404).send('Checklist not found');
         }
-        if (checklist.createdBy.toString() !== req.session.userId) {
+        // Periksa apakah checklist.division sama dengan req.session.userDivision
+        if (checklist.division.toString() !== req.session.userDivision) {
             return res.status(403).send('Access denied: You are not authorized to modify this checklist');
         }
         req.checklist = checklist;
@@ -241,6 +275,9 @@ app.post('/login', async (req, res) => {
         req.session.userId = user._id;
         req.session.userRole = user.role;
         req.session.userDivision = (user.role === 'spv' || user.role === 'technician') && user.division ? user.division.toString() : null;
+        
+        await logActivity(user._id, `logged in to the system.`);
+        
         res.redirect('/');
     } catch (err) {
         res.status(500).send(err.message);
@@ -257,6 +294,16 @@ app.get('/superuser/dashboard', ensureAuthenticated, ensureSuperuser, (req, res)
     res.render('superuserDashboard');
 });
 
+// --- USER MANAGEMENT (SUPERUSER) ---
+app.get('/admin/users', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const users = await User.find({}).populate('division');
+        res.render('manageUsers', { users });
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
 app.get('/admin/users/new', ensureAuthenticated, ensureSuperuser, async (req, res) => {
     const divisions = await Division.find({});
     res.render('newUser', { divisions });
@@ -271,14 +318,75 @@ app.post('/admin/users', ensureAuthenticated, ensureSuperuser, async (req, res) 
         }
         const newUser = new User({ name, email, password: hashedPassword, role, division: division || null });
         await newUser.save();
-        res.redirect('/admin/users/new');
+        
+        await logActivity(req.session.userId, `created a new user: ${name} (${role}).`);
+        req.session.message = { type: 'success', text: 'User created successfully.' };
+        res.redirect('/admin/users');
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
 
-app.get('/admin/divisions/new', ensureAuthenticated, ensureSuperuser, (req, res) => {
-    res.render('createDivision');
+app.get('/admin/users/:id/edit', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const userToEdit = await User.findById(req.params.id);
+        const divisions = await Division.find({});
+        res.render('editUser', { userToEdit, divisions });
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/admin/users/:id/edit', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        let { name, email, role, division, password } = req.body;
+        const userToUpdate = await User.findById(req.params.id);
+
+        userToUpdate.name = name;
+        userToUpdate.email = email;
+        userToUpdate.role = role;
+        userToUpdate.division = (role === 'spv' || role === 'technician') ? division : null;
+
+        if (password) {
+            userToUpdate.password = await bcrypt.hash(password, 10);
+        }
+
+        await userToUpdate.save();
+        await logActivity(req.session.userId, `updated user details for ${name}.`);
+        req.session.message = { type: 'success', text: 'User updated successfully.' };
+        res.redirect('/admin/users');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.get('/admin/users/:id/delete', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        // Prevent superuser from deleting themselves
+        if (user._id.toString() === req.session.userId) {
+            req.session.message = { type: 'error', text: "You cannot delete your own account." };
+            return res.redirect('/admin/users');
+        }
+        await User.findByIdAndDelete(req.params.id);
+        await logActivity(req.session.userId, `deleted user: ${user.name}.`);
+        req.session.message = { type: 'success', text: 'User deleted successfully.' };
+        res.redirect('/admin/users');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+
+// --- MASTER DATA MANAGEMENT (SUPERUSER) ---
+app.get('/admin/manage-data', ensureAuthenticated, ensureSuperuser, (req, res) => {
+    res.render('superuserManageData');
+});
+
+// Divisions
+app.get('/admin/divisions', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    const divisions = await Division.find({});
+    res.render('manageDivisions', { divisions });
 });
 
 app.post('/admin/divisions', ensureAuthenticated, ensureSuperuser, async (req, res) => {
@@ -286,11 +394,114 @@ app.post('/admin/divisions', ensureAuthenticated, ensureSuperuser, async (req, r
         const { name } = req.body;
         const newDivision = new Division({ name });
         await newDivision.save();
-        res.redirect('/admin/divisions/new');
+        await logActivity(req.session.userId, `created a new division: ${name}.`);
+        req.session.message = { type: 'success', text: 'Division created.' };
+        res.redirect('/admin/divisions');
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
+
+app.post('/admin/divisions/:id/delete', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const division = await Division.findById(req.params.id);
+        // Add logic here to re-assign or handle users/assets in this division before deleting
+        await Division.findByIdAndDelete(req.params.id);
+        await logActivity(req.session.userId, `deleted division: ${division.name}.`);
+        req.session.message = { type: 'success', text: 'Division deleted.' };
+        res.redirect('/admin/divisions');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+// Asset Categories
+app.get('/admin/asset-categories', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    const categories = await AssetCategory.find({});
+    res.render('manageAssetCategories', { categories });
+});
+
+app.post('/admin/asset-categories', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const { name } = req.body;
+        await AssetCategory.create({ name });
+        await logActivity(req.session.userId, `created asset category: ${name}.`);
+        req.session.message = { type: 'success', text: 'Category created.' };
+        res.redirect('/admin/asset-categories');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/admin/asset-categories/:id/delete', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const category = await AssetCategory.findById(req.params.id);
+        await AssetCategory.findByIdAndDelete(req.params.id);
+        await logActivity(req.session.userId, `deleted asset category: ${category.name}.`);
+        req.session.message = { type: 'success', text: 'Category deleted.' };
+        res.redirect('/admin/asset-categories');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+// Floors and Zones
+app.get('/admin/floors-zones', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    const floors = await Floor.find({}).populate('zones');
+    const allZones = await Zone.find({});
+    res.render('manageFloorsZones', { floors, allZones });
+});
+
+app.post('/admin/floors', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const { name } = req.body;
+        await Floor.create({ name });
+        await logActivity(req.session.userId, `created floor: ${name}.`);
+        req.session.message = { type: 'success', text: 'Floor created.' };
+        res.redirect('/admin/floors-zones');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/admin/zones', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const { name, floorId } = req.body;
+        await Zone.create({ name, floor: floorId });
+        const floor = await Floor.findById(floorId);
+        await logActivity(req.session.userId, `created zone "${name}" on floor "${floor.name}".`);
+        req.session.message = { type: 'success', text: 'Zone created.' };
+        res.redirect('/admin/floors-zones');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/admin/floors/:id/delete', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const floor = await Floor.findById(req.params.id);
+        await Zone.deleteMany({ floor: req.params.id });
+        await Floor.findByIdAndDelete(req.params.id);
+        await logActivity(req.session.userId, `deleted floor: ${floor.name} and all its zones.`);
+        req.session.message = { type: 'success', text: 'Floor and zones deleted.' };
+        res.redirect('/admin/floors-zones');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/admin/zones/:id/delete', ensureAuthenticated, ensureSuperuser, async (req, res) => {
+    try {
+        const zone = await Zone.findById(req.params.id).populate('floor');
+        await Zone.findByIdAndDelete(req.params.id);
+        await logActivity(req.session.userId, `deleted zone: ${zone.name} from floor ${zone.floor.name}.`);
+        req.session.message = { type: 'success', text: 'Zone deleted.' };
+        res.redirect('/admin/floors-zones');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
 
 // ---------- MANAGER ROUTES ----------//
 app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
@@ -335,11 +546,15 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
             );
         }
 
+        // Ambil semua aktivitas untuk manager
+        const activities = await Activity.find({}).sort({ timestamp: -1 }).limit(20);
+
         res.render('managerDashboard', {
             assignments,
             currentFilter: filter,
             divisions,
-            currentDivision
+            currentDivision,
+            activities // Kirim data aktivitas ke view
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -352,14 +567,17 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        await ChecklistAssignment.findByIdAndUpdate(
+        const assignment = await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedByManager: true,
                 verifiedByManagerUser: req.session.userId,
                 verifiedByManagerUserName: user.name,
                 verifiedStatus: 'pending'
             }
-        );
+        ).populate('asset');
+
+        await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`, assignment.division);
+
         res.json({ success: true, status: 'verified' });
     } catch (err) {
         console.error('Error verifying by manager:', err);
@@ -373,14 +591,17 @@ app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureMana
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        await ChecklistAssignment.findByIdAndUpdate(
+        const assignment = await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedStatus: 'rejected',
                 rejectedBy: req.session.userId,
                 rejectedByName: user.name,
                 verifiedByManager: false
             }
-        );
+        ).populate('asset');
+
+        await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`, assignment.division);
+
         res.json({ success: true, status: 'rejected' });
     } catch (err) {
         console.error('Error rejecting by manager:', err);
@@ -464,14 +685,17 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        await ChecklistAssignment.findByIdAndUpdate(
+        const assignment = await ChecklistAssignment.findByIdAndUpdate(
             req.params.assignmentId, {
                 verifiedBySpv: true,
                 verifiedBySpvUser: req.session.userId,
                 verifiedBySpvUserName: user.name,
                 verifiedStatus: 'pending'
             }
-        );
+        ).populate('asset');
+        
+        await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`);
+
         res.json({ success: true, status: 'verified' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -484,12 +708,15 @@ app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, asy
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
+        const assignment = await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
             rejectedByName: user.name,
             verifiedBySpv: false
-        });
+        }).populate('asset');
+        
+        await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`);
+        
         res.json({ success: true, status: 'rejected' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -522,7 +749,8 @@ app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, asyn
 
 app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        const checklists = await Checklist.find({ createdBy: req.session.userId }).sort({ order: 1 });
+        // Ambil checklist berdasarkan divisi SPV
+        const checklists = await Checklist.find({ division: req.session.userDivision }).sort({ order: 1 });
         const checklistData = await Promise.all(checklists.map(async checklist => {
             const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id, isTemplate: true });
             return { ...checklist.toObject(), assignmentCount: count };
@@ -535,6 +763,14 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
 
         const assetCategories = await AssetCategory.find({});
         const floors = await Floor.find({});
+
+        // Ambil aktivitas untuk SPV
+        const activities = await Activity.find({
+            $or: [
+                { 'division.id': req.session.userDivision },
+                { role: 'manager' }
+            ]
+        }).sort({ timestamp: -1 }).limit(20);
         
         res.render('spvDashboard', {
             checklists: checklistData,
@@ -542,7 +778,8 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
             assetCategories,
             floors,
             user: req.session,
-            message: res.locals.message
+            message: res.locals.message,
+            activities
         });
 
     } catch (err) {
@@ -579,6 +816,9 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
 
         const newAsset = new Asset({ name, description, location, category, floor, zone, division });
         await newAsset.save();
+        
+        await logActivity(req.session.userId, `created a new asset: ${name}.`);
+
         req.session.message = { type: 'success', text: 'Asset created successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -620,6 +860,9 @@ app.post('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsT
         req.asset.floor = floor;
         req.asset.zone = zone;
         await req.asset.save();
+        
+        await logActivity(req.session.userId, `edited asset: ${name}.`);
+        
         req.session.message = { type: 'success', text: 'Asset updated successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -666,6 +909,9 @@ app.post('/assets/:id/duplicate', ensureAuthenticated, ensureSpv, ensureAssetBel
         });
 
         await newAsset.save();
+        
+        await logActivity(req.session.userId, `duplicated asset: ${originalAsset.name} to ${newName}.`);
+        
         req.session.message = { type: 'success', text: `Asset "${originalAsset.name}" duplicated successfully as "${newName}".` };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -677,7 +923,11 @@ app.post('/assets/:id/duplicate', ensureAuthenticated, ensureSpv, ensureAssetBel
 
 app.get('/assets/:id/delete', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
     try {
+        const assetName = req.asset.name;
         await Asset.findByIdAndDelete(req.params.id);
+        
+        await logActivity(req.session.userId, `deleted asset: ${assetName}.`);
+        
         req.session.message = { type: 'success', text: 'Asset deleted successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -728,8 +978,11 @@ app.post('/checklists', ensureAuthenticated, ensureSpv, async (req, res) => {
             title,
             tasks,
             createdBy: req.session.userId,
+            division: req.session.userDivision // Tambahkan divisi saat membuat
         });
         await newChecklist.save();
+        
+        await logActivity(req.session.userId, `created a new checklist: ${title}.`);
 
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -753,25 +1006,18 @@ app.get('/api/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req,
     }
 });
 
-app.get('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.get('/checklists/:id/edit', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
-        const checklist = await Checklist.findById(req.params.id);
-        if (!checklist) return res.status(404).send('Checklist not found');
-        if (checklist.createdBy.toString() !== req.session.userId) {
-            return res.status(403).send('Access denied: You can only edit your own checklist');
-        }
-
         res.render('editChecklist', {
-            checklist
+            checklist: req.checklist // checklist didapat dari middleware
         });
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
 
-app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
-        const checklistId = req.params.id;
         const {
             title,
             taskDescriptions,
@@ -781,13 +1027,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
             taskMaxRanges
         } = req.body;
 
-        const checklist = await Checklist.findById(checklistId);
-        if (!checklist) {
-            return res.status(404).send('Checklist not found');
-        }
-        if (checklist.createdBy.toString() !== req.session.userId) {
-            return res.status(403).send('Access denied: You can only edit your own checklist');
-        }
+        const checklist = req.checklist; // Ambil checklist dari middleware
 
         checklist.title = title;
         const tasks = [];
@@ -811,6 +1051,8 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
 
         checklist.tasks = tasks;
         await checklist.save();
+        
+        await logActivity(req.session.userId, `edited checklist: ${title}.`);
 
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -819,11 +1061,8 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, async (req, res
     }
 });
 
-app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
-        const checklist = await Checklist.findById(req.params.id);
-        if (!checklist) return res.status(404).send('Checklist not found');
-
         const assignments = await ChecklistAssignment.find({
             checklist: req.params.id,
             isTemplate: true
@@ -835,7 +1074,7 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
         });
 
         res.render('assignChecklist', {
-            checklist,
+            checklist: req.checklist,
             assets,
             assignedAssetIds
         });
@@ -844,18 +1083,11 @@ app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, re
     }
 });
 
-app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
         const checklistId = req.params.id;
         const { assetIds } = req.body;
-
-        const checklist = await Checklist.findById(checklistId);
-        if (!checklist) {
-            return res.status(404).send('Checklist not found');
-        }
-        if (checklist.createdBy.toString() !== req.session.userId) {
-            return res.status(403).send('Access denied: You can only assign your own checklists');
-        }
+        const checklist = req.checklist; // Ambil dari middleware
 
         await ChecklistAssignment.deleteMany({
             checklist: checklistId,
@@ -882,6 +1114,8 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
         if (newAssignments.length > 0) {
             await ChecklistAssignment.insertMany(newAssignments);
         }
+        
+        await logActivity(req.session.userId, `assigned checklist "${checklist.title}" to ${assetsToAssign.length} assets.`);
 
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -890,11 +1124,15 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, async (req, r
     }
 });
 
-app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToUser, async (req, res) => {
+app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
+        const checklistTitle = req.checklist.title;
         await Checklist.deleteOne({
             _id: req.params.id
         });
+        
+        await logActivity(req.session.userId, `deleted checklist: ${checklistTitle}.`);
+        
         res.redirect('/spv/dashboard');
     } catch (err) {
         res.status(500).send(err.message);
@@ -945,11 +1183,20 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
 
         const floors = await Floor.find({});
         const assetCategories = await AssetCategory.find({});
+        
+        // Ambil aktivitas untuk Teknisi
+        const activities = await Activity.find({
+            $or: [
+                { 'division.id': req.session.userDivision },
+                { role: 'manager' }
+            ]
+        }).sort({ timestamp: -1 }).limit(20);
 
         res.render('technicianDashboard', {
             assignments,
             floors,
-            assetCategories
+            assetCategories,
+            activities
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -1086,6 +1333,8 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
             hasAlert: hasAlert
         });
         await completedAssignment.save();
+
+        await logActivity(req.session.userId, `submitted a report for asset: ${templateAssignment.asset.name}.`);
 
         if (hasAlert) {
             io.emit('alert', {

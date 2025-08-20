@@ -1,46 +1,79 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>Create New User</title>
-  <script>
-    function toggleDivision() {
-      const roleSelect = document.getElementById('roleSelect');
-      const divisionField = document.getElementById('divisionField');
-      if (roleSelect.value === 'spv' || roleSelect.value === 'technician') {
-        divisionField.style.display = 'block';
-      } else {
-        divisionField.style.display = 'none';
-      }
-    }
-    window.onload = toggleDivision;
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register New User</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <h1>Create New User (Superuser Only)</h1>
-  <form action="/admin/users" method="POST">
-    <label>Name:</label>
-    <input type="text" name="name" required><br>
-    <label>Email:</label>
-    <input type="email" name="email" required><br>
-    <label>Password:</label>
-    <input type="password" name="password" required><br>
-    <label>Role:</label>
-    <select id="roleSelect" name="role" required onchange="toggleDivision()">
-      <option value="manager">Manager</option>
-      <option value="superuser">Superuser</option>
-      <option value="spv">Supervisor (SPV)</option>
-      <option value="technician">Technician</option>
-    </select><br>
-    <div id="divisionField" style="display:none;">
-      <label>Division:</label>
-      <select name="division">
-        <option value="">Select Division</option>
-        <% divisions.forEach(function(division) { %>
-          <option value="<%= division._id %>"><%= division.name %></option>
-        <% }); %>
-      </select><br>
+<body class="bg-gray-100">
+    <div class="container mx-auto flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-lg">
+            <div class="bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4">
+                <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Register New User</h1>
+                <form action="/admin/users" method="POST">
+                    <div class="mb-4">
+                        <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Name:</label>
+                        <input type="text" name="name" id="name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
+                        <input type="email" name="email" id="email" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                        <input type="password" name="password" id="password" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="roleSelect" class="block text-gray-700 text-sm font-bold mb-2">Role:</label>
+                        <select id="roleSelect" name="role" required onchange="toggleDivision()" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <option value="manager">Manager</option>
+                            <option value="superuser">Superuser</option>
+                            <option value="spv">Supervisor (SPV)</option>
+                            <option value="technician">Technician</option>
+                        </select>
+                    </div>
+
+                    <div id="divisionField" class="mb-6" style="display:none;">
+                        <label for="division" class="block text-gray-700 text-sm font-bold mb-2">Division:</label>
+                        <select name="division" id="division" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <option value="">Select Division</option>
+                            <% divisions.forEach(function(division) { %>
+                                <option value="<%= division._id %>"><%= division.name %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-center">
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300">
+                            Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="text-center">
+                <a href="/admin/users" class="text-indigo-600 hover:text-indigo-800 transition duration-300">&larr; Back to Manage Users</a>
+            </div>
+        </div>
     </div>
-    <button type="submit">Create User</button>
-  </form>
-  <a href="/superuser/dashboard">Back to Dashboard</a>
+
+    <script>
+        function toggleDivision() {
+            const roleSelect = document.getElementById('roleSelect');
+            const divisionField = document.getElementById('divisionField');
+            if (roleSelect.value === 'spv' || roleSelect.value === 'technician') {
+                divisionField.style.display = 'block';
+                document.getElementById('division').required = true;
+            } else {
+                divisionField.style.display = 'none';
+                document.getElementById('division').required = false;
+            }
+        }
+        // Run on page load to set the initial state
+        document.addEventListener('DOMContentLoaded', toggleDivision);
+    </script>
 </body>
 </html>

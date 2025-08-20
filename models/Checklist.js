@@ -26,6 +26,7 @@ const checklistSchema = new mongoose.Schema({
   tasks: [checklistItemSchema],
   order: { type: Number, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' }, // BARIS DITAMBAHKAN
   createdAt: { type: Date, default: Date.now }
 });
 

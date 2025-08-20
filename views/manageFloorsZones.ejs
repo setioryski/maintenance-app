@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Floors & Zones</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6">Manage Floors & Zones</h1>
+
+        <% if (message && message.text) { %>
+            <div class="p-4 mb-4 text-sm rounded-lg bg-green-100 text-green-700">
+                <%= message.text %>
+            </div>
+        <% } %>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2">Add New</h2>
+                <form action="/admin/floors" method="POST" class="mb-6">
+                    <label for="floor-name" class="block text-gray-700 font-bold">New Floor</label>
+                    <div class="flex mt-1">
+                        <input type="text" name="name" id="floor-name" required class="flex-grow rounded-l-md border-gray-300 shadow-sm" placeholder="e.g., Lt. 5">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r-md">Add Floor</button>
+                    </div>
+                </form>
+                <form action="/admin/zones" method="POST">
+                    <label for="zone-name" class="block text-gray-700 font-bold">New Zone</label>
+                    <div class="flex mt-1">
+                        <input type="text" name="name" id="zone-name" required class="flex-grow rounded-l-md border-gray-300 shadow-sm" placeholder="e.g., Zona E">
+                        <select name="floorId" required class="border-gray-300 shadow-sm">
+                            <option value="" disabled selected>Select Floor</option>
+                            <% floors.forEach(function(floor) { %>
+                                <option value="<%= floor._id %>"><%= floor.name %></option>
+                            <% }); %>
+                        </select>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r-md">Add Zone</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Existing Layout</h2>
+                <div class="h-96 overflow-y-auto">
+                    <% floors.forEach(function(floor) { %>
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center bg-gray-100 p-2 rounded-t-md">
+                                <h3 class="font-bold"><%= floor.name %></h3>
+                                <form action="/admin/floors/<%= floor._id %>/delete" method="POST" onsubmit="return confirm('Are you sure? This will delete the floor and all zones within it.');">
+                                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Delete Floor</button>
+                                </form>
+                            </div>
+                            <ul class="border rounded-b-md p-2">
+                                <% allZones.filter(z => z.floor.toString() === floor._id.toString()).forEach(function(zone) { %>
+                                    <li class="flex justify-between items-center py-1">
+                                        <span>- <%= zone.name %></span>
+                                        <form action="/admin/zones/<%= zone._id %>/delete" method="POST" onsubmit="return confirm('Are you sure?');">
+                                            <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete Zone</button>
+                                        </form>
+                                    </li>
+                                <% }); %>
+                                <% if (allZones.filter(z => z.floor.toString() === floor._id.toString()).length === 0) { %>
+                                    <li class="text-gray-500 text-sm">No zones added.</li>
+                                <% } %>
+                            </ul>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <a href="/admin/manage-data" class="text-indigo-600 hover:text-indigo-900">&larr; Back to Manage Data</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Meta tags for responsiveness -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>SPV Dashboard - Manajemen Checklist & Asset</title>
@@ -14,23 +13,19 @@
   </style>
 </head>
 <body class="bg-gray-100">
-  <!-- Fixed Header -->
   <header class="fixed top-0 left-0 right-0 bg-blue-600 text-white p-4 shadow z-50">
     <div class="max-w-6xl mx-auto">
       <h1 class="text-xl font-semibold">SPV Dashboard</h1>
     </div>
   </header>
   
-  <!-- Main Content -->
   <div class="pt-20 max-w-6xl mx-auto p-4 bg-white shadow-md rounded">
-    <!-- Flash Message Display -->
     <% if (message && message.text) { %>
       <div class="p-4 mb-4 text-sm rounded-lg message-<%= message.type %>" role="alert">
         <%= message.text %>
       </div>
     <% } %>
 
-    <!-- Heading & Top Action Buttons -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
       <h1 class="text-2xl font-bold mb-4 sm:mb-0">Manajemen Checklist & Asset</h1>
       <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
@@ -43,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Manajemen Checklist -->
     <div class="mb-8">
       <h2 class="text-xl font-bold mb-4">Manajemen Checklist</h2>
       <div class="overflow-x-auto">
@@ -82,7 +76,6 @@
       </div>
     </div>
 
-    <!-- Manajemen Asset -->
     <div>
       <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
       
@@ -171,9 +164,31 @@
         </table>
       </div>
     </div>
+    
+    <div class="mt-8">
+      <h2 class="text-xl font-bold mb-4">News Activity</h2>
+      <div class="bg-white shadow rounded-lg p-4 h-64 overflow-y-auto">
+        <% if (locals.activities && activities.length > 0) { %>
+          <ul>
+            <% activities.forEach(function(activity) { %>
+              <li class="border-b last:border-b-0 py-2">
+                <p class="text-sm text-gray-800">
+                  <strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %>
+                </p>
+                <p class="text-xs text-gray-500">
+                  <%= new Date(activity.timestamp).toLocaleString() %>
+                </p>
+              </li>
+            <% }); %>
+          </ul>
+        <% } else { %>
+          <p class="text-gray-500">No recent activities in your division.</p>
+        <% } %>
+      </div>
+    </div>
   </div>
 
-  <div class="max-w-6xl mx-auto mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 px-4">
+  <div class="max-w-6xl mx-auto mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 px-4 pb-4">
     <a href="/" class="text-blue-500 hover:text-blue-700">Dashboard</a>
     <a href="/spv/report" class="text-blue-500 hover:text-blue-700">Report</a>
     <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>

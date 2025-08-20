@@ -12,7 +12,6 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <!-- Add pb-20 (padding-bottom: 5rem) to create space for the fixed bottom nav -->
   <div class="max-w-6xl mx-auto p-4 pb-20">
     <h1 class="text-3xl font-bold text-center mb-6">Personel Dashboard</h1>
     <h2 class="text-xl font-semibold mb-4">Maintenance Checklist</h2>
@@ -50,7 +49,7 @@
         return '📦';
       };
 
-      const validAssignments = assignments.filter(a => a.checklist && a.asset); 
+      const validAssignments = assignments.filter(a => a.checklist && a.asset);
       if (validAssignments.length === 0) { 
     %>
       <p class="text-center text-gray-600">No maintenance checklist templates available.</p>
@@ -149,17 +148,28 @@
       <% }); %>
     </div>
     <% } %>
-  </div>
-
-  <div class="mt-4 text-center hidden sm:block">
-    <a href="/technician/report" class="text-blue-500 hover:text-blue-700 font-semibold">
-      View All Completed Checklist Reports
-    </a>
-  </div>
-
-  <div class="max-w-6xl mx-auto mt-4 hidden sm:flex justify-end space-x-4">
-    <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
-    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+    
+    <div class="mt-8">
+        <h2 class="text-xl font-semibold mb-4">News Activity</h2>
+        <div class="bg-white shadow rounded-lg p-4 h-64 overflow-y-auto">
+            <% if (locals.activities && activities.length > 0) { %>
+                <ul>
+                    <% activities.forEach(activity => { %>
+                        <li class="border-b last:border-b-0 py-2">
+                            <p class="text-sm text-gray-800">
+                                <strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %>
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                <%= new Date(activity.timestamp).toLocaleString() %>
+                            </p>
+                        </li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p class="text-gray-600">No recent activities.</p>
+            <% } %>
+        </div>
+    </div>
   </div>
 
   <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow sm:hidden">
@@ -211,8 +221,8 @@
         const body = document.getElementById(groupId);
 
         const isVisible = assetName.includes(searchValue) &&
-                         (floorValue === "" || assetFloor === floorValue) &&
-                         (categoryValue === "" || assetCategory === categoryValue);
+                          (floorValue === "" || assetFloor === floorValue) &&
+                          (categoryValue === "" || assetCategory === categoryValue);
         
         header.style.display = isVisible ? '' : 'none';
         if (body) {
@@ -226,10 +236,9 @@
         const assetFloor = card.getAttribute('data-floor') || "";
         const assetCategory = card.getAttribute('data-category') || "";
         
-        // FIX: Changed 'cardFloor' to 'assetFloor' which is the correct variable name.
         const isVisible = assetName.includes(searchValue) &&
-                         (floorValue === "" || assetFloor === floorValue) &&
-                         (categoryValue === "" || assetCategory === categoryValue);
+                          (floorValue === "" || assetFloor === floorValue) &&
+                          (categoryValue === "" || assetCategory === categoryValue);
 
         card.style.display = isVisible ? '' : 'none';
       });

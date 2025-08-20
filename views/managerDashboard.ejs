@@ -82,7 +82,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium action-cell">
                         <a href="/manager/report/<%= assignment._id %>/detail" class="text-indigo-600 hover:text-indigo-900 mr-4">Detail</a>
                         <% if (assignment.verifiedStatus !== 'rejected' && assignment.verifiedBySpv && !assignment.verifiedByManager) { %>
-                             <button type="button" class="text-green-600 hover:text-green-900 verify-btn" data-id="<%= assignment._id %>">Verify</button>
+                            <button type="button" class="text-green-600 hover:text-green-900 verify-btn" data-id="<%= assignment._id %>">Verify</button>
                         <% } %>
                         <% if (assignment.verifiedStatus !== 'rejected') { %>
                             <button type="button" class="text-red-600 hover:text-red-900 reject-btn ml-4" data-id="<%= assignment._id %>" data-verified="<%= assignment.verifiedByManager ? 'true' : 'false' %>">Reject</button>
@@ -98,6 +98,32 @@
             </tbody>
         </table>
     </div>
+
+    <div class="mt-8">
+        <h2 class="text-xl font-bold mb-4">News Activity</h2>
+        <div class="bg-white shadow rounded-lg p-4 h-64 overflow-y-auto">
+            <% if (locals.activities && activities.length > 0) { %>
+                <ul>
+                    <% activities.forEach(activity => { %>
+                        <li class="border-b last:border-b-0 py-2">
+                            <p class="text-sm text-gray-800">
+                                <strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %>
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                <%= new Date(activity.timestamp).toLocaleString() %>
+                                <% if (activity.division && activity.division.name) { %>
+                                    - Divisi: <%= activity.division.name %>
+                                <% } %>
+                            </p>
+                        </li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p class="text-gray-500">No recent activities.</p>
+            <% } %>
+        </div>
+    </div>
+    
     <div class="mt-6 text-center">
         <a href="/logout" class="text-indigo-600 hover:text-indigo-900">Logout</a>
     </div>
@@ -146,14 +172,13 @@
         const cancelBtn = document.getElementById('cancel-reject-btn');
         let actionUrl = '';
         let rowToUpdate = null;
+
         const handleAction = async (url, row) => {
             const assignmentId = row.dataset.id;
             try {
                 const response = await fetch(url, { 
                     method: 'POST',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'Accept': 'application/json' }
                 });
                 if (response.status === 401) {
                     alert('Your session has expired. Please log in again.');
@@ -183,6 +208,7 @@
             }
             modal.classList.add('hidden');
         };
+
         document.querySelectorAll('.verify-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const assignmentId = e.target.dataset.id;
@@ -190,6 +216,7 @@
                 handleAction(`/manager/report/${assignmentId}/verify`, row);
             });
         });
+
         document.querySelectorAll('.reject-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const assignmentId = e.target.dataset.id;
@@ -210,6 +237,7 @@
                 handleAction(actionUrl, rowToUpdate);
             }
         });
+
         cancelBtn.addEventListener('click', () => {
             modal.classList.add('hidden');
             actionUrl = '';
