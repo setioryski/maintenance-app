@@ -757,6 +757,7 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
         }));
 
         const assets = await Asset.find({ division: req.session.userDivision })
+            .sort({ order: 1 }) // Sort assets by order
             .populate('category')
             .populate('floor')
             .populate('zone');
@@ -1156,6 +1157,18 @@ app.post('/checklists/sort', ensureAuthenticated, ensureSpv, async (req, res) =>
         res.status(500).json({
             error: err.message
         });
+    }
+});
+
+app.post('/assets/sort', ensureAuthenticated, ensureSpv, async (req, res) => {
+    try {
+        const { order } = req.body; // Expects an array of asset IDs
+        for (let i = 0; i < order.length; i++) {
+            await Asset.findByIdAndUpdate(order[i], { order: i });
+        }
+        res.status(200).json({ message: 'Asset order updated successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

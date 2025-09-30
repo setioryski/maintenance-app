@@ -10,7 +10,8 @@ const assetSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetCategory', required: true },
   floor: { type: mongoose.Schema.Types.ObjectId, ref: 'Floor' },
   zone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone' },
-  division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' }
+  division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' },
+  order: { type: Number, default: 0 } // Add this line
 });
 
 // ADD THIS HOOK

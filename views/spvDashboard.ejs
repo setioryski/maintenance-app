@@ -51,8 +51,8 @@
           </thead>
           <tbody id="checklist-tbody">
             <% checklists.forEach(checklist => { %>
-              <tr data-id="<%= checklist._id %>">
-                <td class="p-2 border cursor-move"><%= checklist.title %></td>
+              <tr data-id="<%= checklist._id %>" class="cursor-move">
+                <td class="p-2 border"><%= checklist.title %></td>
                 <td class="p-2 border"><%= checklist.assignmentCount || 0 %></td>
                 <td class="p-2 border">
                   <div class="flex flex-col sm:flex-row gap-2">
@@ -133,8 +133,10 @@
           <tbody id="asset-tbody">
             <% assets.forEach(asset => { %>
               <tr 
+                data-id="<%= asset._id %>" 
                 data-category="<%= asset.category ? asset.category._id.toString() : '' %>" 
                 data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>"
+                class="cursor-move"
               >
                 <td class="p-2 border"><%= asset.name %></td>
                 <td class="p-2 border"><%= asset.category ? asset.category.name : 'N/A' %></td>
@@ -151,9 +153,9 @@
                        onclick="return confirm('Yakin ingin menghapus asset ini?')">
                       Hapus
                     </a>
-                    <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline">
+                     <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline">
                         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                            Duplicate
+                         Duplicate
                         </button>
                     </form>
                   </div>
@@ -164,8 +166,7 @@
         </table>
       </div>
     </div>
-    
-    <div class="mt-8">
+     <div class="mt-8">
       <h2 class="text-xl font-bold mb-4">News Activity</h2>
       <div class="bg-white shadow rounded-lg p-4 h-64 overflow-y-auto">
         <% if (locals.activities && activities.length > 0) { %>
@@ -196,28 +197,54 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
   <script>
-    if (window.innerWidth >= 640) {
-      var checklistTbody = document.getElementById('checklist-tbody');
-      Sortable.create(checklistTbody, {
-        animation: 150,
-        ghostClass: 'dragging',
-        onEnd: function(evt) {
-          var order = [];
-          checklistTbody.querySelectorAll('tr').forEach(function(row) {
-            order.push(row.getAttribute('data-id'));
-          });
-          fetch('/checklists/sort', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order: order })
-          })
-          .then(response => response.json())
-          .then(data => console.log(data.message))
-          .catch(err => console.error(err));
-        }
-      });
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+      // Only enable drag-and-drop on larger screens
+      if (window.innerWidth >= 640) {
+        // --- Initialize Sortable for Checklists ---
+        var checklistTbody = document.getElementById('checklist-tbody');
+        Sortable.create(checklistTbody, {
+          animation: 150,
+          ghostClass: 'dragging',
+          onEnd: function(evt) {
+            var order = [];
+            checklistTbody.querySelectorAll('tr').forEach(function(row) {
+              order.push(row.getAttribute('data-id'));
+            });
+            fetch('/checklists/sort', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order: order })
+            })
+            .then(response => response.json())
+            .then(data => console.log(data.message))
+            .catch(err => console.error('Checklist sort error:', err));
+          }
+        });
+
+        // --- Initialize Sortable for Assets ---
+        var assetTbody = document.getElementById('asset-tbody');
+        Sortable.create(assetTbody, {
+          animation: 150,
+          ghostClass: 'dragging',
+          onEnd: function(evt) {
+            var order = [];
+            assetTbody.querySelectorAll('tr').forEach(function(row) {
+              order.push(row.getAttribute('data-id'));
+            });
+            fetch('/assets/sort', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order: order })
+            })
+            .then(response => response.json())
+            .then(data => console.log(data.message))
+            .catch(err => console.error('Asset sort error:', err));
+          }
+        });
+      }
+    });
     
+    // --- Filtering logic for asset table ---
     const assetSearch = document.getElementById('asset-search');
     const assetFloorFilter = document.getElementById('asset-floor-filter');
     const assetCategoryFilter = document.getElementById('asset-category-filter');
