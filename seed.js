@@ -172,9 +172,7 @@ const defaultChecklists = [
     {
         title: 'Pengecekan CCTV Harian',
         tasks: [
-            { description: 'Cek kondisi fisik kamera', inputType: 'visual' },
             { description: 'Pastikan kamera online', inputType: 'functional' },
-            { description: 'Periksa kualitas gambar', inputType: 'visual' },
             { description: 'Ukur suhu kamera (°C)', inputType: 'measurement', expectedUnit: '°C', minRange: 10, maxRange: 50 }
         ],
         createdBy: 'zulham@delipark.com'
@@ -183,8 +181,6 @@ const defaultChecklists = [
     {
         title: 'Pengecekan Generator Mingguan',
         tasks: [
-            { description: 'Cek level oli', inputType: 'visual' },
-            { description: 'Periksa level bahan bakar', inputType: 'visual' },
             { description: 'Test start generator', inputType: 'functional' }
         ],
         createdBy: 'arif@delipark.com'
@@ -193,7 +189,6 @@ const defaultChecklists = [
     {
         title: 'Pengecekan Pompa Bulanan',
         tasks: [
-            { description: 'Periksa kebocoran pada pipa', inputType: 'visual' },
             { description: 'Cek tekanan pompa (Bar)', inputType: 'measurement', expectedUnit: 'Bar', minRange: 2, maxRange: 5 },
             { description: 'Dengarkan suara abnormal dari pompa', inputType: 'functional' }
         ],
@@ -204,7 +199,6 @@ const defaultChecklists = [
         title: 'Inspeksi Elevator Bulanan',
         tasks: [
             { description: 'Cek fungsi tombol lantai', inputType: 'functional' },
-            { description: 'Periksa kebersihan dalam kabin', inputType: 'visual' },
             { description: 'Pastikan pintu terbuka dan tertutup dengan lancar', inputType: 'functional' }
         ],
         createdBy: 'spv.mekanikal@delipark.com'
@@ -213,8 +207,6 @@ const defaultChecklists = [
     {
         title: 'Pengecekan AHU Bulanan',
         tasks: [
-            { description: 'Cek kebersihan filter', inputType: 'visual' },
-            { description: 'Periksa V-Belt', inputType: 'visual' },
             { description: 'Ukur suhu udara keluar (°C)', inputType: 'measurement', expectedUnit: '°C', minRange: 16, maxRange: 22 }
         ],
         createdBy: 'spv.hvac@delipark.com'
@@ -223,9 +215,7 @@ const defaultChecklists = [
     {
         title: 'Inspeksi Pintu Darurat Mingguan',
         tasks: [
-            { description: 'Pastikan pintu mudah dibuka', inputType: 'functional' },
-            { description: 'Periksa kondisi handle pintu', inputType: 'visual' },
-            { description: 'Pastikan tidak ada halangan di depan pintu', inputType: 'visual' }
+            { description: 'Pastikan pintu mudah dibuka', inputType: 'functional' }
         ],
         createdBy: 'spv.sipil@delipark.com'
     }

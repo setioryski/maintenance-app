@@ -6,129 +6,194 @@
     <title>Manager Checklist Report Detail</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .task-item { margin-bottom: 1rem; }
-        .task-response { font-weight: bold; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .card {
+            page-break-inside: avoid;
+        }
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .task-table th, .task-table td {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem;
+            vertical-align: top;
+        }
+        .task-table th {
+            background-color: #f8f9fa;
+        }
         .status-ok { color: green; }
         .status-fail { color: red; }
-        .has-alert { border-left: 5px solid #ffc107; }
         .rejected-status { color: #dc3545; }
         .verified-status { color: green; }
+        .has-alert .card-header {
+             border-left: 5px solid #ffc107;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                margin: 0;
+                font-size: 12px;
+                background-color: #fff;
+            }
+            .container {
+                max-width: 100% !important;
+            }
+            .card {
+                border: 1px solid #dee2e6;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="container mt-5">
-    <div class="card <%= assignment.hasAlert ? 'has-alert' : '' %>">
-        <div class="card-header">
-            <h3>Maintenance Report</h3>
+<div class="container my-4">
+    <% if (locals.message && message.text) { %>
+        <div class="alert <%= message.type === 'success' ? 'alert-success' : 'alert-danger' %> no-print" role="alert">
+            <%= message.text %>
         </div>
-        <div class="card-body">
-            <h4 class="card-title"><%= assignment.checklistTitle %></h4>
-            <p class="card-text">
-               Review the maintenance checklist report below. You may verify or reject this submission.
-            </p>
+    <% } %>
+
+    <div class="card mb-4 <%= assignment.hasAlert ? 'has-alert' : '' %>">
+        <div class="card-header">
+            <h3 class="mb-0">Maintenance Report: <%= assignment.checklistTitle %></h3>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Asset Details</div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item"><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></li>
-                    <li class="list-group-item"><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></li>
-                    <li class="list-group-item"><strong>Floor:</strong> <%= assignment.asset ? assignment.asset.floor.name : assignment.assetSnapshot.floor %></li>
-                    <li class="list-group-item"><strong>Zone:</strong> <%= assignment.asset ? assignment.asset.zone.name : assignment.assetSnapshot.zone %></li>
-                    <li class="list-group-item"><strong>Location:</strong> <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></li>
-                </ul>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>Asset Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></p>
+                    <p><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></p>
+                    <p><strong>Location:</strong> <%= assignment.asset ? `${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %> - <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></p>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Report Information</div>
-                <ul class="list-group list-group-flush">
-                     <li class="list-group-item"><strong>Submitted By:</strong> <%= assignment.submittedByName || 'N/A' %></li>
-                    <li class="list-group-item"><strong>Submission Date:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></li>
-                    <li class="list-group-item"><strong>SPV Verification:</strong>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>Report Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Submitted By:</strong> <%= assignment.submittedByName || 'N/A' %></p>
+                    <p><strong>Submission Date:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
+                    <p><strong>SPV Verification:</strong>
                         <% if (assignment.verifiedBySpv) { %>
-                           <span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span>
+                            <span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span>
                         <% } else { %>
-                            Pending
+                            <span>Pending</span>
                         <% } %>
-                    </li>
-                    <li class="list-group-item"><strong>Manager Verification:</strong>
-                         <% if (assignment.verifiedByManager) { %>
+                    </p>
+                    <p><strong>Manager Verification:</strong>
+                        <% if (assignment.verifiedByManager) { %>
                             <span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span>
                         <% } else { %>
-                            Pending
+                            <span>Pending</span>
                         <% } %>
-                    </li>
-                    <% if (assignment.verifiedStatus === 'rejected') { %>
-                        <li class="list-group-item rejected-status">
-                            <strong>Status:</strong> Rejected by <%= assignment.rejectedByName || 'N/A' %>
-                        </li>
-                    <% } %>
-                </ul>
+                    </p>
+                    <p><strong>Overall Status:</strong>
+                        <% if (assignment.verifiedStatus === 'rejected') { %>
+                            <span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName || 'N/A' %></span>
+                        <% } else if (assignment.verifiedByManager) { %>
+                            <span class="verified-status fw-bold">Approved</span>
+                        <% } else if (assignment.verifiedBySpv) { %>
+                            <span class="text-primary fw-bold">Pending Manager Approval</span>
+                        <% } else { %>
+                            <span class="text-muted fw-bold">Pending SPV Approval</span>
+                        <% } %>
+                        <% if (assignment.hasAlert) { %>
+                            <span class="badge bg-warning text-dark ms-2">Alert</span>
+                        <% } %>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="card mt-4">
-        <div class="card-header">Checklist Responses</div>
+    <div class="card">
+        <div class="card-header">
+            <h4>Checklist Responses</h4>
+        </div>
         <div class="card-body">
-            <% assignment.tasksSnapshot.forEach(task => { %>
-                <div class="task-item">
-                    <h6><%= task.description %></h6>
-                    <%
-                        const response = assignment.responses[task.originalTaskId.toString()];
-                        let displayResponse = response;
-                        let responseClass = '';
+            <div class="table-responsive">
+                <table class="table table-striped task-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50%;">Task Description</th>
+                            <th>Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% assignment.tasksSnapshot.forEach(task => { %>
+                            <tr class="task-item">
+                                <td><%= task.description %></td>
+                                <td>
+                                    <%
+                                    const response = assignment.responses[task.originalTaskId.toString()];
+                                    let displayResponse = response;
+                                    let responseClass = '';
 
-                        if (task.inputType === 'measurement' && response !== null) {
-                            const value = parseFloat(response);
-                            if (!isNaN(value)) {
-                                if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
-                                    responseClass = 'status-fail';
-                                } else {
-                                    responseClass = 'status-ok';
-                                }
-                            }
-                            displayResponse = `${value} ${task.expectedUnit || ''}`;
-                        } else if (task.inputType === 'functional') {
-                            if (response === 'fail') {
-                                responseClass = 'status-fail';
-                                displayResponse = 'Fail';
-                            } else {
-                                responseClass = 'status-ok';
-                                displayResponse = 'OK';
-                            }
-                        } else if (Array.isArray(response)) {
-                            displayResponse = '';
-                            response.forEach(url => {
-                                displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 150px; margin-right: 10px; border-radius: 5px;"></a>`;
-                            });
-                        }
-                    %>
-                    <p class="task-response <%= responseClass %>"><%- displayResponse %></p>
-                </div>
-            <% }); %>
-
-            <% if (assignment.note) { %>
-                <div class="mt-4">
-                    <h6>Technician's Note:</h6>
-                    <p><%= assignment.note %></p>
-                </div>
-            <% } %>
+                                    if (task.inputType === 'measurement' && response !== null) {
+                                        const value = parseFloat(response);
+                                        if (!isNaN(value)) {
+                                            if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
+                                                responseClass = 'status-fail';
+                                            } else {
+                                                responseClass = 'status-ok';
+                                            }
+                                        }
+                                        displayResponse = `${value} ${task.expectedUnit || ''}`;
+                                    } else if (task.inputType === 'functional') {
+                                        if (response === 'fail') {
+                                            responseClass = 'status-fail';
+                                            displayResponse = 'Fail';
+                                        } else {
+                                            responseClass = 'status-ok';
+                                            displayResponse = 'OK';
+                                        }
+                                    } else if (Array.isArray(response)) {
+                                        displayResponse = '';
+                                        response.forEach(url => {
+                                            displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`;
+                                        });
+                                    }
+                                    %>
+                                    <span class="task-response <%= responseClass %>"><%- displayResponse %></span>
+                                </td>
+                            </tr>
+                        <% }); %>
+                        <% if (assignment.note) { %>
+                            <tr>
+                                <td class="fw-bold">Technician's Note:</td>
+                                <td><%= assignment.note %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="mt-4 text-center">
+
+    <div class="mt-4 text-center no-print">
         <a href="/manager/dashboard" class="btn btn-secondary">Back to Dashboard</a>
         <% if (assignment.verifiedStatus !== 'rejected' && assignment.verifiedBySpv && !assignment.verifiedByManager) { %>
-        <form action="/manager/report/<%= assignment._id %>/verify" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-success">Verify</button>
-        </form>
-        <form action="/manager/report/<%= assignment._id %>/reject" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-danger">Reject</button>
-        </form>
+            <form action="/manager/report/<%= assignment._id %>/verify" method="POST" class="d-inline">
+                <input type="hidden" name="fromDetail" value="true">
+                <button type="submit" class="btn btn-success">Verify</button>
+            </form>
+            <form action="/manager/report/<%= assignment._id %>/reject" method="POST" class="d-inline">
+                <input type="hidden" name="fromDetail" value="true">
+                <button type="submit" class="btn btn-danger">Reject</button>
+            </form>
         <% } %>
     </div>
 </div>

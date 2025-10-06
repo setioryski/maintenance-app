@@ -41,14 +41,14 @@ row.innerHTML = `
 'selected' : ''}>Functional Test</option>
           <option value="measurement" ${type === 'measurement' ?
 'selected' : ''}>Measurement</option>
-          <option value="visual" ${type === 'visual' ?
-'selected' : ''}>Visual Check</option>
+          <% /* <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option> */ %>
         </select>
         <div class="measurement-container flex items-center gap-2 ${type === 'measurement' ? '' : 'hidden'}">
             <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}" />
             <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}" />
             <input type="text" name="taskExpectedUnits" placeholder="Unit" class="border border-gray-300 rounded p-2 w-24" value="${expUnit}" />
     
+
     </div>
         <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
       `;
@@ -75,7 +75,8 @@ taskList.appendChild(row);
 
       <div class="flex items-center justify-between mb-2">
         <label class="text-gray-700 font-semibold">Item Inspeksi</label>
-        <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
+    
+    <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
   
     </div>
 
@@ -83,9 +84,10 @@ taskList.appendChild(row);
         <% checklist.tasks.forEach(function(task) { %>
           <div class="task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
             <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="<%= task.description %>" required />
-            <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required onchange="toggleMeasurementFields(this, this.closest('.task-row'))">
+            <select name="taskInputTypes" class="border border-gray-300 rounded 
+p-2" required onchange="toggleMeasurementFields(this, this.closest('.task-row'))">
             
-  <option value="visual" <%= task.inputType === 'visual' ? 'selected' : '' %>>Visual Check</option>
+  <% /* <option value="visual" <%= task.inputType === 'visual' ? 'selected' : '' %>>Visual Check</option> */ %>
               <option value="measurement" <%= task.inputType === 'measurement' ?
 'selected' : '' %>>Measurement</option>
               <option value="functional" <%= task.inputType === 'functional' ?
@@ -94,6 +96,7 @@ taskList.appendChild(row);
             <div class="measurement-container flex items-center gap-2 <%= task.inputType === 'measurement' ? '' : 'hidden' %>">
                 <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="<%= task.minRange || '' %>" />
                 <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="<%= task.maxRange || '' 
+
 %>" />
                 <input type="text" name="taskExpectedUnits" placeholder="Unit" class="border border-gray-300 rounded p-2 w-24" value="<%= task.expectedUnit || '' %>" />
             </div>

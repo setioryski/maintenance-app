@@ -11,24 +11,23 @@
   <script>
     // A simple counter so each row has a unique data-index
     let taskIndex = 0;
-
-    function removeTask(btn) {
+function removeTask(btn) {
       btn.closest('.task-row').remove();
     }
 
     function createTaskRow(task = {}) {
       const idx = taskIndex++;
-      const desc = task.description || '';
+const desc = task.description || '';
       const type = task.inputType || 'functional';
       const expUnit = task.expectedUnit || '';
-      const minRange = task.minRange || '';
+const minRange = task.minRange || '';
       const maxRange = task.maxRange || '';
       const isMeasurement = type === 'measurement';
-      const isCustom = !['°C','N','cd'].includes(expUnit) && expUnit;
+const isCustom = !['°C','N','cd'].includes(expUnit) && expUnit;
 
       const row = document.createElement('div');
       row.className = 'task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2';
-      row.dataset.index = idx;
+row.dataset.index = idx;
       row.innerHTML = `
         <input
           type="text"
@@ -39,22 +38,25 @@
           required
         />
         <select
-          name="taskInputTypes"
+    
+      name="taskInputTypes"
           class="w-full sm:w-auto border border-gray-300 rounded p-2"
           data-index="${idx}"
         >
           <option value="functional" ${type==='functional'?'selected':''}>Functional Test</option>
           <option value="measurement" ${type==='measurement'?'selected':''}>Measurement</option>
-          <option value="visual" ${type==='visual'?'selected':''}>Visual Check</option>
+          <% /* <option value="visual" ${type==='visual'?'selected':''}>Visual Check</option> */ %>
         </select>
-        <div class="unit-container flex items-center gap-2 ${isMeasurement ? '' : 'hidden'}">
+        <div class="unit-container flex items-center gap-2 ${isMeasurement ? 
+'' : 'hidden'}">
           <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}">
           <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}">
           <select
             name="taskExpectedUnits"
             class="unit-select border border-gray-300 rounded p-2"
           >
-            <option value="">-- pilih satuan --</option>
+            
+<option value="">-- pilih satuan --</option>
             <option value="°C" ${expUnit==='°C'?'selected':''}>Celsius (°C)</option>
             <option value="N" ${expUnit==='N'?'selected':''}>Newton (N)</option>
             <option value="cd" ${expUnit==='cd'?'selected':''}>Candela (cd)</option>
@@ -62,10 +64,13 @@
           </select>
           <input
             type="text"
-            name="taskExpectedUnitsCustom"
-            class="unit-custom border border-gray-300 rounded p-2 ${isCustom ? '' : 'hidden'}"
+     
+       name="taskExpectedUnitsCustom"
+            class="unit-custom border border-gray-300 rounded p-2 ${isCustom ?
+'' : 'hidden'}"
             placeholder="Custom unit"
-            value="${isCustom ? expUnit : ''}"
+            value="${isCustom ?
+expUnit : ''}"
           />
         </div>
         <button
@@ -77,7 +82,8 @@
         </button>
       `;
 
-      // wire up interactions
+      
+// wire up interactions
       const typeSelect = row.querySelector('select[name="taskInputTypes"]');
       const unitContainer = row.querySelector('.unit-container');
       const unitSelect = row.querySelector('.unit-select');
@@ -88,7 +94,8 @@
           unitContainer.classList.remove('hidden');
         } else {
           unitContainer.classList.add('hidden');
-          unitSelect.value = '';
+          
+unitSelect.value = '';
           customInput.value = '';
           customInput.classList.add('hidden');
         }
@@ -97,10 +104,10 @@
       unitSelect.addEventListener('change', () => {
         if (unitSelect.value === 'other') {
           customInput.classList.remove('hidden');
-        } else {
+} else {
           customInput.classList.add('hidden');
           customInput.value = '';
-        }
+}
       });
 
       return row;
@@ -108,7 +115,7 @@
 
     function addTask(prefill) {
       document.getElementById('taskList').appendChild(createTaskRow(prefill));
-    }
+}
 
     document.addEventListener('DOMContentLoaded', () => {
       // Load from template if selected
@@ -119,7 +126,8 @@
           const res = await fetch(`/api/checklists/${tplSel.value}/tasks`);
           const tasks = await res.json();
           const list = document.getElementById('taskList');
-          list.innerHTML = '';
+   
+       list.innerHTML = '';
           tasks.forEach(t => addTask(t));
         } catch (e) {
           console.error(e);
@@ -129,7 +137,7 @@
       // start with one blank row
       addTask();
     });
-  </script>
+</script>
 </head>
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
@@ -142,7 +150,8 @@
           name="title"
           class="w-full border border-gray-300 rounded p-2"
           required
-        />
+    
+    />
       </div>
       <div class="mb-4">
         <label class="block font-semibold mb-1">Pilih Checklist (Template)</label>
@@ -152,8 +161,10 @@
         >
           <option value="">-- Pilih Checklist --</option>
           <% existingChecklists.forEach(ch => { %>
-            <option value="<%= ch._id %>"><%= ch.title %></option>
-          <% }); %>
+  
+          <option value="<%= ch._id %>"><%= ch.title %></option>
+          <% });
+%>
         </select>
       </div>
 
@@ -165,7 +176,8 @@
           onclick="addTask()"
         >
           + Tambah Item
-        </button>
+    
+    </button>
       </div>
 
       <div id="taskList" class="mb-4"></div>
@@ -183,7 +195,8 @@
     <a
       href="/spv/dashboard"
       class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block"
-    >
+   
+ >
       Back to Dashboard
     </a>
   </div>

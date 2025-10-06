@@ -7,7 +7,7 @@ const checklistItemSchema = new mongoose.Schema({
   description: { type: String, required: true },
   inputType: {
     type: String,
-    enum: ['functional','measurement','visual'],
+    enum: ['functional','measurement'/*,'visual'*/],
     required: true
   },
   expectedUnit: { type: String, default: '' },

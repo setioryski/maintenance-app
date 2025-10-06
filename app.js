@@ -506,55 +506,63 @@ app.post('/admin/zones/:id/delete', ensureAuthenticated, ensureSuperuser, async 
 // ---------- MANAGER ROUTES ----------//
 app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
-        const filter = req.query.filter || 'all';
-        const currentDivision = req.query.division || 'all';
+        const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all' } = req.query;
 
-        const matchCondition = {
-            completedAt: { $ne: null }
-        };
+        const matchCondition = { completedAt: { $ne: null } };
 
         if (filter !== 'all') {
-            matchCondition.verifiedStatus = { $ne: 'rejected' };
-            if (filter === 'verified_spv') {
-                matchCondition.verifiedBySpv = true;
-                matchCondition.verifiedByManager = false;
-            } else if (filter === 'verified_manager') {
-                matchCondition.verifiedByManager = true;
-            } else if (filter === 'not_verified_spv') {
-                matchCondition.verifiedBySpv = false;
-            } else if (filter === 'has_alert') {
-                matchCondition.hasAlert = true;
+            if (filter === 'rejected') {
+                matchCondition.verifiedStatus = 'rejected';
+            } else {
+                matchCondition.verifiedStatus = { $ne: 'rejected' };
+                if (filter === 'verified_spv') {
+                    matchCondition.verifiedBySpv = true;
+                    matchCondition.verifiedByManager = false;
+                } else if (filter === 'verified_manager') {
+                    matchCondition.verifiedByManager = true;
+                } else if (filter === 'has_alert') {
+                    matchCondition.hasAlert = true;
+                }
             }
         }
         
-        if (filter === 'rejected') {
-            matchCondition.verifiedStatus = 'rejected';
+        if (division !== 'all') {
+            matchCondition.division = division;
+        }
+        
+        if (submittedBy !== 'all') {
+            matchCondition.submittedBy = submittedBy;
         }
 
-        const divisions = await Division.find({});
-
         let assignments = await ChecklistAssignment.find(matchCondition)
-            .populate('asset')
+            .populate({
+                path: 'asset',
+                populate: { path: 'floor' }
+            })
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
-        if (currentDivision !== 'all') {
-            assignments = assignments.filter(a =>
-                a.division.toString() === currentDivision
-            );
+        if (floor !== 'all') {
+            assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
         }
-
-        // Ambil semua aktivitas untuk manager
+        
+        const divisions = await Division.find({});
+        const floors = await Floor.find({});
+        const technicians = await User.find({ role: 'technician' });
         const activities = await Activity.find({}).sort({ timestamp: -1 }).limit(20);
 
         res.render('managerDashboard', {
             assignments,
             currentFilter: filter,
             divisions,
-            currentDivision,
-            activities // Kirim data aktivitas ke view
+            currentDivision: division,
+            floors,
+            currentFloor: floor,
+            technicians,
+            currentSubmittedBy: submittedBy,
+            activities
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -577,11 +585,21 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
         ).populate('asset');
 
         await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`, assignment.division);
-
-        res.json({ success: true, status: 'verified' });
+        
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'success', text: 'Report verified successfully.' };
+            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.json({ success: true, status: 'verified' });
+        }
     } catch (err) {
         console.error('Error verifying by manager:', err);
-        res.status(500).json({ success: false, message: err.message });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'danger', text: 'Failed to verify report.' };
+            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.status(500).json({ success: false, message: err.message });
+        }
     }
 });
 
@@ -602,10 +620,20 @@ app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureMana
 
         await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`, assignment.division);
 
-        res.json({ success: true, status: 'rejected' });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'success', text: 'Report rejected successfully.' };
+            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.json({ success: true, status: 'rejected' });
+        }
     } catch (err) {
         console.error('Error rejecting by manager:', err);
-        res.status(500).json({ success: false, message: err.message });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'danger', text: 'Failed to reject report.' };
+            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.status(500).json({ success: false, message: err.message });
+        }
     }
 });
 
@@ -637,13 +665,13 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
 // ---------- SPV ROUTES ----------//
 app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        console.log('SPV Report - Session Division:', req.session.userDivision); // DEBUG LOG
+        const { filter = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+
         const query = {
             division: req.session.userDivision,
             completedAt: { $ne: null }
         };
 
-        const filter = req.query.filter || 'all';
         if (filter !== 'all') {
             if (filter === 'rejected') {
                  query.verifiedStatus = 'rejected';
@@ -660,18 +688,32 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
             }
         }
         
-        console.log('SPV Report - Query:', query); // DEBUG LOG
+        if (submittedBy !== 'all') {
+            query.submittedBy = submittedBy;
+        }
 
-        const assignments = await ChecklistAssignment.find(query)
-            .populate('asset')
+        let assignments = await ChecklistAssignment.find(query)
+            .populate({
+                path: 'asset',
+                populate: { path: 'floor' }
+            })
             .populate('submittedBy')
             .populate('rejectedBy');
         
-        console.log('SPV Report - Assignments Found:', assignments.length); // DEBUG LOG
+        if (floor !== 'all') {
+            assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
+        }
+
+        const floors = await Floor.find({});
+        const technicians = await User.find({ role: 'technician', division: req.session.userDivision });
 
         res.render('spvReport', {
             assignments,
-            currentFilter: filter
+            currentFilter: filter,
+            floors,
+            currentFloor: floor,
+            technicians,
+            currentSubmittedBy: submittedBy
         });
     } catch (err) {
         console.error("Error fetching SPV report:", err);
@@ -695,10 +737,20 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
         ).populate('asset');
         
         await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`);
-
-        res.json({ success: true, status: 'verified' });
+        
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'success', text: 'Report verified successfully.' };
+            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.json({ success: true, status: 'verified' });
+        }
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'danger', text: 'Failed to verify report.' };
+            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.status(500).json({ success: false, message: err.message });
+        }
     }
 });
 
@@ -717,9 +769,19 @@ app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, asy
         
         await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`);
         
-        res.json({ success: true, status: 'rejected' });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'success', text: 'Report rejected successfully.' };
+            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.json({ success: true, status: 'rejected' });
+        }
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        if (req.body.fromDetail) {
+            req.session.message = { type: 'danger', text: 'Failed to reject report.' };
+            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+        } else {
+            return res.status(500).json({ success: false, message: err.message });
+        }
     }
 });
 
@@ -1362,24 +1424,42 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
         res.status(500).send(err.message);
     }
 });
+
 app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
-        const assignments = await ChecklistAssignment.find({
-                submittedBy: req.session.userId,
-                completedAt: {
-                    $ne: null
-                }
-            })
+        const { submittedBy = 'all' } = req.query;
+        
+        const query = {
+            completedAt: { $ne: null }
+        };
+
+        // If the filter is 'all', the technician sees all their reports.
+        // If they select their own name, it still shows all their reports.
+        // If they somehow select another user, this will filter for that user's reports.
+        if (submittedBy !== 'all') {
+            query.submittedBy = submittedBy;
+        } else {
+            // By default, a technician should only see their own reports
+            query.submittedBy = req.session.userId;
+        }
+
+        const assignments = await ChecklistAssignment.find(query)
             .populate('asset')
             .populate('submittedBy');
+            
+        // For the filter dropdown, we only need the current user
+        const technicians = await User.find({ _id: req.session.userId });
 
         res.render('technicianReport', {
-            assignments
+            assignments,
+            technicians,
+            currentSubmittedBy: submittedBy
         });
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
+
 app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
