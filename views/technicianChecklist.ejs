@@ -20,7 +20,7 @@
           Asset: <strong><%= assignment.asset ? assignment.asset.name : 'N/A' %></strong>
         </p>
          <p class="text-xs text-gray-500">
-          Location: Fl. <%= assignment.asset.floor?.name || 'N/A' %>, Zone <%= assignment.asset.zone?.name || 'N/A' %> - <%= assignment.asset.location %>
+          Location: Fl. <%= (assignment.asset.floor && assignment.asset.floor.name) ? assignment.asset.floor.name : 'N/A' %>, Zone <%= (assignment.asset.zone && assignment.asset.zone.name) ? assignment.asset.zone.name : 'N/A' %> - <%= assignment.asset.location %>
         </p>
       </div>
 
@@ -30,7 +30,7 @@
         <% if (tasks.length > 0) { %>
           <div class="space-y-6">
           <% tasks.forEach(function(task, index) { %>
-            <div class="border p-4 rounded-lg shadow-sm task-item bg-white">
+            <div class="border p-4 rounded-lg shadow-sm task-item bg-white" data-task-id="<%= task._id %>">
               <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
               <label class="block text-gray-800 font-semibold mb-3">
@@ -42,14 +42,14 @@
 
               <% if (task.inputType === 'functional') { %>
                 <div class="flex space-x-4">
-                  <label class="flex-1">
-                    <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only peer"/>
-                    <div class="w-full p-3 text-center text-green-700 bg-green-50 rounded-lg border-2 border-green-200 cursor-pointer peer-checked:bg-green-600 peer-checked:text-white peer-checked:border-green-600">OK</div>
-                  </label>
-                  <label class="flex-1">
-                    <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only peer"/>
-                    <div class="w-full p-3 text-center text-red-700 bg-red-50 rounded-lg border-2 border-red-200 cursor-pointer peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600">Fail</div>
-                  </label>
+                  <div class="flex-1 p-3 text-center text-green-800 bg-green-100 rounded-lg border-2 border-green-200 cursor-pointer transition-colors duration-200 functional-button" data-value="pass">
+                    <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only"/>
+                    Pass
+                  </div>
+                  <div class="flex-1 p-3 text-center text-red-800 bg-red-100 rounded-lg border-2 border-red-200 cursor-pointer transition-colors duration-200 functional-button" data-value="fail">
+                    <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only"/>
+                    Fail
+                  </div>
                 </div>
               <% } else if (task.inputType === 'measurement') { %>
                 <input
@@ -97,6 +97,7 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // --- FORM VALIDATION SCRIPT ---
         const form = document.getElementById('checklist-form');
         if (form) {
             form.addEventListener('submit', function(event) {
@@ -107,9 +108,11 @@
                     const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
                     const measurementInput = taskElement.querySelector('input[type="number"]');
                     
-                    // Reset borders
-                    taskElement.style.border = '1px solid #e5e7eb'; // default gray-200
-                    if (measurementInput) measurementInput.classList.remove('border-red-500', 'ring-red-500');
+                    taskElement.style.border = '1px solid #e5e7eb'; 
+
+                    if (measurementInput) {
+                        measurementInput.classList.remove('border-red-500', 'ring-red-500', 'border-2');
+                    }
 
                     if (functionalRadios.length > 0) {
                         if (!Array.from(functionalRadios).some(radio => radio.checked)) {
@@ -121,7 +124,7 @@
                     if (measurementInput) {
                         if (measurementInput.value.trim() === '') {
                             allTasksCompleted = false;
-                            measurementInput.classList.add('border-red-500', 'ring-red-500');
+                            measurementInput.classList.add('border-red-500', 'ring-red-500', 'border-2');
                         }
                     }
                 });
@@ -132,6 +135,44 @@
                 }
             });
         }
+
+        // --- FUNCTIONAL BUTTON SCRIPT ---
+        document.querySelectorAll('.functional-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const radio = button.querySelector('input[type="radio"]');
+                radio.checked = true;
+
+                // Find the parent task item
+                const taskItem = button.closest('.task-item');
+                if (taskItem) {
+                    // Get all buttons within the same task
+                    const allButtons = taskItem.querySelectorAll('.functional-button');
+                    
+                    allButtons.forEach(btn => {
+                        const btnRadio = btn.querySelector('input[type="radio"]');
+                        if (btnRadio.checked) {
+                            // Apply dark style to selected
+                            if (btn.dataset.value === 'pass') {
+                                btn.classList.remove('bg-green-100', 'text-green-800');
+                                btn.classList.add('bg-green-600', 'text-white');
+                            } else {
+                                btn.classList.remove('bg-red-100', 'text-red-800');
+                                btn.classList.add('bg-red-600', 'text-white');
+                            }
+                        } else {
+                            // Reset style for unselected
+                            if (btn.dataset.value === 'pass') {
+                                btn.classList.add('bg-green-100', 'text-green-800');
+                                btn.classList.remove('bg-green-600', 'text-white');
+                            } else {
+                                btn.classList.add('bg-red-100', 'text-red-800');
+                                btn.classList.remove('bg-red-600', 'text-white');
+                            }
+                        }
+                    });
+                }
+            });
+        });
     });
   </script>
 </body>
