@@ -10,25 +10,13 @@
             font-family: Arial, sans-serif;
             background-color: #f8f9fa;
         }
-        .card {
+        .task-item {
             page-break-inside: avoid;
         }
-        .task-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .task-table th, .task-table td {
-            border: 1px solid #dee2e6;
-            padding: 0.75rem;
-            vertical-align: top;
-        }
-        .task-table th {
-            background-color: #f8f9fa;
-        }
-        .status-ok { color: green; }
-        .status-fail { color: red; }
-        .rejected-status { color: #dc3545; }
-        .verified-status { color: green; }
+        .status-ok { color: green !important; }
+        .status-fail { color: red !important; }
+        .rejected-status { color: #dc3545 !important; }
+        .verified-status { color: green !important; }
         .has-alert .card-header {
              border-left: 5px solid #ffc107;
         }
@@ -39,14 +27,26 @@
             }
             body {
                 margin: 0;
-                font-size: 12px;
+                font-size: 10px; /* Smaller font for print */
                 background-color: #fff;
             }
             .container {
                 max-width: 100% !important;
             }
             .card {
-                border: 1px solid #dee2e6;
+                border: none;
+                box-shadow: none;
+            }
+            /* Ensure the table header repeats on each page */
+            thead {
+                display: table-header-group;
+            }
+            tbody {
+                display: table-row-group;
+            }
+            .status-ok, .status-fail, .rejected-status, .verified-status, .badge {
+                -webkit-print-color-adjust: exact !important; /* For Chrome, Safari */
+                print-color-adjust: exact !important;         /* Standard */
             }
         }
     </style>
@@ -59,131 +59,101 @@
         </div>
     <% } %>
 
-    <div class="card mb-4 <%= assignment.hasAlert ? 'has-alert' : '' %>">
-        <div class="card-header">
-            <h3 class="mb-0">Maintenance Report: <%= assignment.checklistTitle %></h3>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5>Asset Details</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></p>
-                    <p><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></p>
-                    <p><strong>Location:</strong> <%= assignment.asset ? `${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %> - <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5>Report Information</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Submitted By:</strong> <%= assignment.submittedByName || 'N/A' %></p>
-                    <p><strong>Submission Date:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
-                    <p><strong>SPV Verification:</strong>
-                        <% if (assignment.verifiedBySpv) { %>
-                            <span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span>
-                        <% } else { %>
-                            <span>Pending</span>
-                        <% } %>
-                    </p>
-                    <p><strong>Manager Verification:</strong>
-                        <% if (assignment.verifiedByManager) { %>
-                            <span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span>
-                        <% } else { %>
-                            <span>Pending</span>
-                        <% } %>
-                    </p>
-                    <p><strong>Overall Status:</strong>
-                        <% if (assignment.verifiedStatus === 'rejected') { %>
-                            <span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName || 'N/A' %></span>
-                        <% } else if (assignment.verifiedByManager) { %>
-                            <span class="verified-status fw-bold">Approved</span>
-                        <% } else if (assignment.verifiedBySpv) { %>
-                            <span class="text-primary fw-bold">Pending Manager Approval</span>
-                        <% } else { %>
-                            <span class="text-muted fw-bold">Pending SPV Approval</span>
-                        <% } %>
-                        <% if (assignment.hasAlert) { %>
-                            <span class="badge bg-warning text-dark ms-2">Alert</span>
-                        <% } %>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h4>Checklist Responses</h4>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped task-table mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 50%;">Task Description</th>
-                            <th>Response</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% assignment.tasksSnapshot.forEach(task => { %>
-                            <tr class="task-item">
-                                <td><%= task.description %></td>
-                                <td>
-                                    <%
-                                    const response = assignment.responses[task.originalTaskId.toString()];
-                                    let displayResponse = response;
-                                    let responseClass = '';
-
-                                    if (task.inputType === 'measurement' && response !== null) {
-                                        const value = parseFloat(response);
-                                        if (!isNaN(value)) {
-                                            if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
-                                                responseClass = 'status-fail';
-                                            } else {
-                                                responseClass = 'status-ok';
-                                            }
-                                        }
-                                        displayResponse = `${value} ${task.expectedUnit || ''}`;
-                                    } else if (task.inputType === 'functional') {
-                                        if (response === 'fail') {
-                                            responseClass = 'status-fail';
-                                            displayResponse = 'Fail';
-                                        } else {
-                                            responseClass = 'status-ok';
-                                            displayResponse = 'OK';
-                                        }
-                                    } else if (Array.isArray(response)) {
-                                        displayResponse = '';
-                                        response.forEach(url => {
-                                            displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`;
-                                        });
-                                    }
-                                    %>
-                                    <span class="task-response <%= responseClass %>"><%- displayResponse %></span>
-                                </td>
-                            </tr>
-                        <% }); %>
-                        <% if (assignment.note) { %>
-                            <tr>
-                                <td class="fw-bold">Technician's Note:</td>
-                                <td><%= assignment.note %></td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <td colspan="4" class="p-0">
+                    <div class="card report-header mb-4 border-0">
+                        <div class="card-header bg-white">
+                            <h3 class="mb-0">Maintenance Report: <%= assignment.checklistTitle %></h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-bordered table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th style="width: 15%;">Asset Name</th>
+                                        <td style="width: 35%;"><%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></td>
+                                        <th style="width: 15%;">Submitted By</th>
+                                        <td style="width: 35%;"><%= assignment.submittedByName || 'N/A' %></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Category</th>
+                                        <td><%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></td>
+                                        <th>Submission Date</th>
+                                        <td><%= new Date(assignment.completedAt).toLocaleString() %></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Location</th>
+                                        <td>
+                                            <%= assignment.asset ? `${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %>
+                                            - <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %>
+                                        </td>
+                                        <th>Verification Status</th>
+                                        <td>
+                                            <div><strong>SPV: </strong> <% if (assignment.verifiedBySpv) { %><span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></div>
+                                            <div><strong>Manager: </strong> <% if (assignment.verifiedByManager) { %><span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Overall Status</th>
+                                        <td colspan="3">
+                                            <% if (assignment.verifiedStatus === 'rejected') { %><span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName || 'N/A' %></span><% } else if (assignment.verifiedByManager) { %><span class="verified-status fw-bold">Approved</span><% } else if (assignment.verifiedBySpv) { %><span class="text-primary fw-bold">Pending Manager Approval</span><% } else { %><span class="text-muted fw-bold">Pending SPV Approval</span><% } %>
+                                            <% if (assignment.hasAlert) { %><span class="badge bg-warning text-dark ms-2">Alert</span><% } %>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-header">
+                        <h4>Checklist Responses</h4>
+                    </div>
+                </td>
+            </tr>
+            <tr class="table-light">
+                <th style="width: 50%;" class="ps-4">Task Description</th>
+                <th colspan="3" class="ps-4">Response</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% assignment.tasksSnapshot.forEach(task => { %>
+                <tr class="task-item">
+                    <td class="ps-4"><%= task.description %></td>
+                    <td colspan="3" class="ps-4">
+                        <%
+                        const response = assignment.responses[task.originalTaskId.toString()];
+                        let displayResponse = response;
+                        let responseClass = '';
+                        if (task.inputType === 'measurement' && response !== null) {
+                            const value = parseFloat(response);
+                            if (!isNaN(value)) {
+                                if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) { responseClass = 'status-fail'; } else { responseClass = 'status-ok'; }
+                            }
+                            displayResponse = `${value} ${task.expectedUnit || ''}`;
+                        } else if (task.inputType === 'functional') {
+                            if (response === 'fail') { responseClass = 'status-fail'; displayResponse = 'Fail'; } else { responseClass = 'status-ok'; displayResponse = 'OK'; }
+                        } else if (Array.isArray(response)) {
+                            displayResponse = '';
+                            response.forEach(url => {
+                                displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`;
+                            });
+                        }
+                        %>
+                        <span class="task-response <%= responseClass %>"><%- displayResponse %></span>
+                    </td>
+                </tr>
+            <% }); %>
+            <% if (assignment.note) { %>
+                <tr>
+                    <td class="fw-bold ps-4">Technician's Note:</td>
+                    <td colspan="3" class="ps-4"><%= assignment.note %></td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
 
     <div class="mt-4 text-center no-print">
+        <button onclick="window.print()" class="btn btn-info">Print</button>
         <a href="/manager/dashboard" class="btn btn-secondary">Back to Dashboard</a>
         <% if (assignment.verifiedStatus !== 'rejected' && assignment.verifiedBySpv && !assignment.verifiedByManager) { %>
             <form action="/manager/report/<%= assignment._id %>/verify" method="POST" class="d-inline">
