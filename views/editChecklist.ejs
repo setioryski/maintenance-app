@@ -26,7 +26,7 @@
 
     function createTaskRow(task = {}) {
       const desc = task.description || '';
-      const type = task.inputType || 'visual';
+      const type = task.inputType || 'functional';
       const expUnit = task.expectedUnit || '';
       const minRange = task.minRange || '';
       const maxRange = task.maxRange || '';
@@ -38,7 +38,6 @@
         <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required>
           <option value="functional" ${type === 'functional' ? 'selected' : ''}>Functional Test</option>
           <option value="measurement" ${type === 'measurement' ? 'selected' : ''}>Measurement</option>
-          <option value="visual" ${type === 'visual' ? 'selected' : ''}>Visual Check</option>
         </select>
         <div class="measurement-container flex items-center gap-2 ${type === 'measurement' ? '' : 'hidden'}">
             <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}" />
@@ -78,7 +77,6 @@
           <div class="task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
             <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="flex-1 border border-gray-300 rounded p-2" value="<%= task.description %>" required />
             <select name="taskInputTypes" class="border border-gray-300 rounded p-2" required onchange="toggleMeasurementFields(this, this.closest('.task-row'))">
-              <option value="visual" <%= task.inputType === 'visual' ? 'selected' : '' %>>Visual Check</option>
               <option value="measurement" <%= task.inputType === 'measurement' ? 'selected' : '' %>>Measurement</option>
               <option value="functional" <%= task.inputType === 'functional' ? 'selected' : '' %>>Functional Test</option>
             </select>
