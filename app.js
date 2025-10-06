@@ -298,7 +298,7 @@ app.get('/superuser/dashboard', ensureAuthenticated, ensureSuperuser, (req, res)
 app.get('/admin/users', ensureAuthenticated, ensureSuperuser, async (req, res) => {
     try {
         const users = await User.find({}).populate('division');
-        res.render('manageUsers', { users });
+        res.render('ManageUsers', { users });
     } catch (err) {
         res.status(500).send(err.message);
     }
