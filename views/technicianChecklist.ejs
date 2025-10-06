@@ -4,239 +4,97 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Maintenance Checklist</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-100">
-  <div class="max-w-3xl mx-auto p-6 bg-white shadow-md rounded">
-    <h1 class="text-2xl font-bold text-center mb-4">Maintenance Checklist</h1>
+  <div class="max-w-3xl mx-auto p-4 sm:p-6 pb-24">
+    <div class="bg-white shadow-lg rounded-lg p-6">
+      <div class="text-center border-b pb-4 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Maintenance Checklist</h1>
+        <p class="text-sm text-gray-500"><%= new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></p>
+      </div>
 
-    <p class="mb-2">
-      Asset: <strong><%= assignment.asset ?
-assignment.asset.name : 'N/A' %></strong>
-    </p>
-    <p class="mb-4">
-      Checklist: <strong><%= assignment.checklist ?
-assignment.checklist.title : 'N/A' %></strong>
-    </p>
+      <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+        <h2 class="font-bold text-lg text-blue-800"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></h2>
+        <p class="text-sm text-gray-700 mt-1">
+          Asset: <strong><%= assignment.asset ? assignment.asset.name : 'N/A' %></strong>
+        </p>
+         <p class="text-xs text-gray-500">
+          Location: Fl. <%= assignment.asset.floor?.name || 'N/A' %>, Zone <%= assignment.asset.zone?.name || 'N/A' %> - <%= assignment.asset.location %>
+        </p>
+      </div>
 
-    <form
-      id="checklist-form"
-      action="/technician/checklist/<%= assignment._id %>/submit"
-      method="POST"
-      enctype="multipart/form-data"
-    >
-      <%
-        // Safely get tasks;
-        // default to an empty array if not defined.
-        const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : [];
-%>
+      <form id="checklist-form" action="/technician/checklist/<%= assignment._id %>/submit" method="POST" enctype="multipart/form-data">
+        <% const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : []; %>
 
-      <% if (tasks.length > 0) { %>
-        <% tasks.forEach(function(task) { %>
-          <div class="mb-6 border p-4 rounded task-item">
-            <input type="hidden" name="taskIds[]" value="<%= task._id %>">
+        <% if (tasks.length > 0) { %>
+          <div class="space-y-6">
+          <% tasks.forEach(function(task, index) { %>
+            <div class="border p-4 rounded-lg shadow-sm task-item bg-white">
+              <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
-            <label class="block text-gray-700 font-bold mb-2">
-              <%= task.description %><% if (task.expectedUnit) { %> (<%= task.expectedUnit %><% if (task.minRange != null && 
-task.maxRange != null) { %>, Range: <%= task.minRange %>-<%= task.maxRange %><% } %>) <% } %>
-            </label>
+              <label class="block text-gray-800 font-semibold mb-3">
+                <span class="text-blue-600 mr-2"><%= index + 1 %>.</span><%= task.description %>
+                <% if (task.expectedUnit) { %> 
+                  <span class="text-xs font-normal text-gray-500">(Unit: <%= task.expectedUnit %><% if (task.minRange != null && task.maxRange != null) { %>, Range: <%= task.minRange %>-<%= task.maxRange %><% } %>)</span> 
+                <% } %>
+              </label>
 
-            <% if (task.inputType === 'functional') { %>
-              <div class="flex flex-col sm:flex-row sm:space-x-6">
-                <label class="inline-flex items-center">
-                  <input
- 
-                   type="radio"
-                    name="results[<%= task._id %>]"
-                    value="pass"
-                    required
-                  />
- 
-                 <span class="ml-2">Pass</span>
-                </label>
-                <label class="inline-flex items-center mt-2 sm:mt-0">
-                  <input
-                    type="radio"
-        
-            name="results[<%= task._id %>]"
-                    value="fail"
-                    required
-                  />
-                  <span class="ml-2">Fail</span>
-         
-       </label>
-              </div>
-
-            <% } else if (task.inputType === 'measurement') { %>
-              <div class="flex flex-col">
+              <% if (task.inputType === 'functional') { %>
+                <div class="flex space-x-4">
+                  <label class="flex-1">
+                    <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only peer"/>
+                    <div class="w-full p-3 text-center text-green-700 bg-green-50 rounded-lg border-2 border-green-200 cursor-pointer peer-checked:bg-green-600 peer-checked:text-white peer-checked:border-green-600">OK</div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only peer"/>
+                    <div class="w-full p-3 text-center text-red-700 bg-red-50 rounded-lg border-2 border-red-200 cursor-pointer peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600">Fail</div>
+                  </label>
+                </div>
+              <% } else if (task.inputType === 'measurement') { %>
                 <input
                   type="number"
-         
-         step="any"
+                  step="any"
                   name="results[<%= task._id %>]"
-                  placeholder="Enter value"
-                  class="shadow border rounded w-full py-2 px-3"
+                  placeholder="Enter value..."
+                  class="shadow-sm border rounded w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
-           
-     />
-              </div>
-
-
-            <% } /* else if (task.inputType === 'visual') { */ %>
-              <% /* } */ %>
+                />
+              <% } %>
+            </div>
+          <% }); %>
           </div>
-        <% });
-%>
-      <% } else { %>
-        <p class="text-gray-600">No tasks available for this checklist.</p>
-      <% } %>
+        <% } else { %>
+          <p class="text-center text-gray-600">No tasks available for this checklist.</p>
+        <% } %>
 
-      <div class="mb-6">
-        <label class="block text-gray-700 font-bold mb-2" for="note">Maintenance Note</label>
-        <textarea
-          id="note"
-          name="note"
-          rows="3"
-         
- class="w-full border border-gray-300 rounded p-2"
-          placeholder="Enter any maintenance note here..."
-        ></textarea>
-      </div>
-
-      <div class="flex justify-end">
-        <button
-          type="submit"
-          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-        >
-          Submit Checklist
-      
-  </button>
-      </div>
-
-    </form>
+        <div class="mt-8">
+          <label class="block text-gray-700 font-bold mb-2" for="note">Notes / Remarks</label>
+          <textarea
+            id="note"
+            name="note"
+            rows="4"
+            class="w-full border border-gray-300 rounded-lg p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add any relevant notes here..."
+          ></textarea>
+        </div>
+      </form>
     </div>
-
-  <div class="max-w-3xl mx-auto mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-    <a href="/technician/dashboard" class="text-blue-500 hover:text-blue-700">Dashboard</a>
-    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
   </div>
 
-  <% tasks.forEach(function(task) {
-    if (task.inputType === 'visual') {
-  %>
-  <script>
-    // Helper function to compress an image using the Canvas API
-    function resizeImageWithCanvas(file, maxWidth) {
-      return new Promise((resolve, reject) => {
-        
-const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = new Image();
-img.onload = function() {
-            let width = img.width;
-let height = img.height;
-            // Resize if image is wider than maxWidth
-            if (width > maxWidth) {
-              height = height * (maxWidth / width);
-width = maxWidth;
-            }
-            const canvas = document.createElement('canvas');
-canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-// Convert canvas to a JPEG blob at 70% quality
-            canvas.toBlob(blob => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error('Canvas is empty'));
-          
-    }
-            }, 'image/jpeg', 0.7);
-          };
-img.onerror = err => reject(err);
-          img.src = e.target.result;
-        };
-        reader.onerror = err => reject(err);
-        reader.readAsDataURL(file);
-      });
-}
+  <footer class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+      <div class="max-w-3xl mx-auto flex justify-between items-center">
+        <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr; Back to Dashboard</a>
+        <button
+          type="submit"
+          form="checklist-form"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300"
+        >
+          Submit Checklist
+        </button>
+      </div>
+  </footer>
 
-    // Inline script for visual tasks in technicianChecklist.ejs
-    (function() {
-      // 'task' variable is provided by the EJS loop for each visual task
-      const taskId = "<%= task._id %>";
-      const addImagesBtn = document.getElementById('addImagesBtn-' + taskId);
-      const imageInput = document.getElementById('imageInput-' + taskId);
-      const previewContainer = document.getElementById('previewContainer-' + taskId);
-      // DataTransfer to hold the compressed files for this task
-      const 
-dt = new DataTransfer();
-
-      // Trigger file input when "Take Photo" button is clicked
-      addImagesBtn.addEventListener('click', () => {
-        imageInput.click();
-      });
-
-      imageInput.addEventListener('change', async () => {
-        if (imageInput.files.length > 0) {
-            for(const file of imageInput.files){
-                 try {
-    
-                // Compress the image to a maximum width of 800px
-                    const compressedBlob = await resizeImageWithCanvas(file, 800);
-// Create a new File object from the compressed blob
-                    const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
-// Add the compressed file to our DataTransfer object
-                    dt.items.add(compressedFile);
-} catch (error) {
-                    console.error("Error compressing image:", error);
-}
-            }
-            // Update the file input's FileList
-            imageInput.files = dt.files;
-renderPreview();
-        }
-      });
-
-      function renderPreview() {
-        // Clear existing previews
-        previewContainer.innerHTML = '';
-// Loop through the DataTransfer items and render thumbnails
-        for (let i = 0; i < dt.items.length; i++) {
-          const file = dt.items[i].getAsFile();
-const fileReader = new FileReader();
-          fileReader.onload = (e) => {
-            const wrapper = document.createElement('div');
-wrapper.classList.add('relative', 'w-20', 'h-20', 'border', 'rounded', 'overflow-hidden');
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.classList.add('w-full', 'h-full', 'object-cover');
-// Create a remove button for the thumbnail
-            const removeBtn = document.createElement('button');
-removeBtn.type = 'button';
-            removeBtn.classList.add('absolute', 'top-0', 'right-0', 'bg-red-500', 'text-white', 'rounded-full', 'w-5', 'h-5', 'text-xs', 'flex', 'items-center', 'justify-center');
-            removeBtn.innerHTML = '&times;';
-removeBtn.addEventListener('click', () => {
-              dt.items.remove(i);
-              imageInput.files = dt.files;
-              renderPreview();
-            });
-wrapper.appendChild(img);
-            wrapper.appendChild(removeBtn);
-            previewContainer.appendChild(wrapper);
-          };
-          fileReader.readAsDataURL(file);
-        }
-      }
-    })();
-</script>
-
-  <% } }); %>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('checklist-form');
@@ -245,47 +103,33 @@ wrapper.appendChild(img);
                 let allTasksCompleted = true;
                 const taskElements = document.querySelectorAll('.task-item');
 
-             
-   taskElements.forEach(taskElement => {
+                taskElements.forEach(taskElement => {
                     const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
                     const measurementInput = taskElement.querySelector('input[type="number"]');
-                    const visualInput = taskElement.querySelector('input[type="file"]');
-
+                    
                     // Reset borders
-    
-                taskElement.style.border = '1px solid #e2e8f0';
-                    if (measurementInput) measurementInput.style.border = '1px solid #d1d5db';
-
+                    taskElement.style.border = '1px solid #e5e7eb'; // default gray-200
+                    if (measurementInput) measurementInput.classList.remove('border-red-500', 'ring-red-500');
 
                     if (functionalRadios.length > 0) {
-                        const isChecked = Array.from(functionalRadios).some(radio => radio.checked);
-if (!isChecked) {
+                        if (!Array.from(functionalRadios).some(radio => radio.checked)) {
                             allTasksCompleted = false;
-taskElement.style.border = '2px solid red';
+                            taskElement.style.border = '2px solid red';
                         }
                     }
 
                     if (measurementInput) {
                         if (measurementInput.value.trim() === '') {
-                         
-   allTasksCompleted = false;
-                            measurementInput.style.border = '2px solid red';
-}
-                    }
-                    
-                    if (visualInput) {
-                        if (visualInput.files.length === 0) {
-          
-                  allTasksCompleted = false;
-taskElement.style.border = '2px solid red';
+                            allTasksCompleted = false;
+                            measurementInput.classList.add('border-red-500', 'ring-red-500');
                         }
                     }
                 });
-if (!allTasksCompleted) {
+
+                if (!allTasksCompleted) {
                     event.preventDefault();
-// Stop form submission
                     alert('Please complete all checklist items before submitting.');
-}
+                }
             });
         }
     });

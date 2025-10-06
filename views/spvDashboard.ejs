@@ -8,9 +8,6 @@
   <style>
     .cursor-move { cursor: move; }
     .dragging { opacity: 0.5; background-color: #eef2ff; }
-    .message-success { background-color: #d1fae5; border-color: #6ee7b7; color: #065f46; }
-    .message-error { background-color: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-    .table-hover tbody tr:hover { background-color: #f9fafb; }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -37,7 +34,7 @@
   <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
         <% if (message && message.text) { %>
-          <div class="p-4 mb-4 text-sm rounded-lg message-<%= message.type %>" role="alert">
+          <div class="p-4 mb-4 text-sm rounded-lg <%= message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>" role="alert">
             <%= message.text %>
           </div>
         <% } %>
@@ -45,42 +42,42 @@
         <div class="flex flex-col md:flex-row items-start justify-between mb-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">Dashboard Supervisor</h1>
-            <p class="text-sm text-gray-500">Kelola checklist, aset, dan lihat aktivitas terbaru.</p>
+            <p class="text-sm text-gray-500">Manage checklists, assets, and view recent activity.</p>
           </div>
           <div class="flex space-x-2 mt-4 md:mt-0">
             <a href="/checklists/new" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-              Checklist Baru
+               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              New Checklist
             </a>
             <a href="/assets/new" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
-              Asset Baru
+               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+              New Asset
             </a>
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold mb-4">Manajemen Checklist</h2>
+            <h2 class="text-xl font-bold mb-4">Checklist Management</h2>
             <div class="hidden md:block">
-              <table class="w-full text-left table-hover">
+              <table class="w-full text-left table-auto">
                 <thead>
                   <tr class="bg-gray-50">
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Nama Checklist</th>
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Aset</th>
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Aksi</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Checklist Name</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Assigned Assets</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="checklist-tbody">
                   <% checklists.forEach(checklist => { %>
-                    <tr data-id="<%= checklist._id %>" class="cursor-move">
+                    <tr data-id="<%= checklist._id %>" class="cursor-move hover:bg-gray-50">
                       <td class="p-3 border-b border-gray-200"><%= checklist.title %></td>
                       <td class="p-3 border-b border-gray-200"><%= checklist.assignmentCount || 0 %></td>
                       <td class="p-3 border-b border-gray-200">
                         <div class="flex gap-2">
                           <a href="/checklists/<%= checklist._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
                           <a href="/checklists/<%= checklist._id %>/assign" class="text-green-600 hover:text-green-800">Assign</a>
-                          <a href="/checklists/<%= checklist._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus checklist ini?')">Hapus</a>
+                          <a href="/checklists/<%= checklist._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Are you sure you want to delete this checklist?')">Delete</a>
                         </div>
                       </td>
                     </tr>
@@ -88,15 +85,15 @@
                 </tbody>
               </table>
             </div>
-             <div class="md:hidden space-y-3">
+            <div class="md:hidden space-y-3">
                <% checklists.forEach(checklist => { %>
                  <div class="border rounded-lg p-4 bg-gray-50">
                    <p class="font-bold text-gray-800"><%= checklist.title %></p>
-                   <p class="text-sm text-gray-600 mt-1">Jumlah Aset: <%= checklist.assignmentCount || 0 %></p>
+                   <p class="text-sm text-gray-600 mt-1">Assigned Assets: <%= checklist.assignmentCount || 0 %></p>
                    <div class="flex gap-2 mt-3">
                      <a href="/checklists/<%= checklist._id %>/edit" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
                      <a href="/checklists/<%= checklist._id %>/assign" class="flex-1 text-center bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">Assign</a>
-                     <a href="/checklists/<%= checklist._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Yakin ingin menghapus checklist ini?')">Hapus</a>
+                     <a href="/checklists/<%= checklist._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Are you sure you want to delete this checklist?')">Delete</a>
                    </div>
                  </div>
                <% }); %>
@@ -104,41 +101,41 @@
           </div>
 
           <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
+            <h2 class="text-xl font-bold mb-4">Asset Management</h2>
             <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" id="asset-search" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cari nama aset...">
+              <input type="text" id="asset-search" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Search asset name...">
               <select id="asset-floor-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">Semua Lantai</option>
+                <option value="all">All Floors</option>
                 <% floors.forEach(function(floor) { %><option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option><% }); %>
               </select>
               <select id="asset-category-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">Semua Kategori</option>
+                <option value="all">All Categories</option>
                 <% assetCategories.forEach(function(cat) { %><option value="<%= cat._id %>"><%= cat.name %></option><% }); %>
               </select>
             </div>
             
             <div class="hidden md:block h-96 overflow-y-auto">
-              <table class="w-full text-left table-hover">
+              <table class="w-full text-left table-auto">
                 <thead>
                   <tr class="bg-gray-50">
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Nama Asset</th>
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Kategori</th>
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Aksi</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Asset Name</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Category</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="asset-tbody">
                   <% assets.forEach(asset => { %>
-                    <tr class="asset-item cursor-move" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
+                    <tr class="asset-item cursor-move hover:bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
                       <td class="p-3 border-b border-gray-200">
                         <div class="font-medium text-gray-900"><%= asset.name %></div>
-                        <div class="text-xs text-gray-500"><%= asset.location %>, Lt. <%= asset.floor ? asset.floor.name : 'N/A' %>, Zona <%= asset.zone ? asset.zone.name : 'N/A' %></div>
+                        <div class="text-xs text-gray-500"><%= asset.location %>, Fl. <%= asset.floor ? asset.floor.name : 'N/A' %>, Zone <%= asset.zone ? asset.zone.name : 'N/A' %></div>
                       </td>
                       <td class="p-3 border-b border-gray-200"><%= asset.category ? asset.category.name : 'N/A' %></td>
                       <td class="p-3 border-b border-gray-200">
                         <div class="flex gap-2">
                           <a href="/assets/<%= asset._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
-                          <a href="/assets/<%= asset._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus asset ini?')">Hapus</a>
-                          <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline"><button type="submit" class="text-blue-600 hover:text-blue-800">Duplikat</button></form>
+                          <a href="/assets/<%= asset._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Are you sure you want to delete this asset?')">Delete</a>
+                          <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline"><button type="submit" class="text-blue-600 hover:text-blue-800">Duplicate</button></form>
                         </div>
                       </td>
                     </tr>
@@ -152,10 +149,10 @@
                 <div class="asset-item border rounded-lg p-4 bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
                     <p class="font-bold text-gray-800"><%= asset.name %></p>
                     <p class="text-sm text-gray-600"><%= asset.category ? asset.category.name : 'N/A' %></p>
-                    <p class="text-sm text-gray-600"><%= asset.location %>, Lantai <%= asset.floor ? asset.floor.name : 'N/A' %>, Zona <%= asset.zone ? asset.zone.name : 'N/A' %></p>
+                    <p class="text-sm text-gray-600"><%= asset.location %>, Floor <%= asset.floor ? asset.floor.name : 'N/A' %>, Zone <%= asset.zone ? asset.zone.name : 'N/A' %></p>
                     <div class="flex gap-2 mt-3">
                         <a href="/assets/<%= asset._id %>/edit" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
-                        <a href="/assets/<%= asset._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Yakin ingin menghapus asset ini?')">Hapus</a>
+                        <a href="/assets/<%= asset._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Are you sure you want to delete this asset?')">Delete</a>
                         <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="flex-1">
                             <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Duplicate</button>
                         </form>
@@ -167,7 +164,7 @@
         </div>
 
         <div class="mt-8 bg-white p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold mb-4">Aktivitas Terbaru</h2>
+          <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
           <div class="h-64 overflow-y-auto">
             <ul>
               <% if (locals.activities && activities.length > 0) { %>
@@ -178,7 +175,7 @@
                   </li>
                 <% }); %>
               <% } else { %>
-                <p class="text-gray-500">Belum ada aktivitas terbaru di divisi Anda.</p>
+                <p class="text-gray-500">No recent activities in your division.</p>
               <% } %>
             </ul>
           </div>
@@ -186,14 +183,14 @@
     </div>
   </main>
 
-  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden no-print">
+  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden">
     <div class="flex justify-around py-2">
       <a href="/spv/dashboard" class="flex flex-col items-center text-blue-600">
         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
         <span class="text-xs">Dashboard</span>
       </a>
       <a href="/spv/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
+         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
         <span class="text-xs">Reports</span>
       </a>
     </div>
@@ -213,7 +210,6 @@
     const assetSearch = document.getElementById('asset-search');
     const assetFloorFilter = document.getElementById('asset-floor-filter');
     const assetCategoryFilter = document.getElementById('asset-category-filter');
-
     function filterAssets() {
       const searchTerm = assetSearch.value.toLowerCase();
       const selectedFloor = assetFloorFilter.value;
