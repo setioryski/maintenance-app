@@ -3,275 +3,233 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
-  <title>SPV Dashboard - Manajemen Checklist & Asset</title>
+  <title>SPV Dashboard - Maintenance App</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .cursor-move { cursor: move; }
-    .dragging { opacity: 0.5; }
-    .message-success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
-    .message-error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+    .dragging { opacity: 0.5; background-color: #eef2ff; }
+    .message-success { background-color: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+    .message-error { background-color: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+    .table-hover tbody tr:hover { background-color: #f9fafb; }
   </style>
 </head>
 <body class="bg-gray-100">
-  <header class="fixed top-0 left-0 right-0 bg-blue-600 text-white p-4 shadow z-50">
-    <div class="max-w-6xl mx-auto">
-      <h1 class="text-xl font-semibold">SPV Dashboard</h1>
+  <header class="bg-white shadow-md z-10 sticky top-0">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex-shrink-0">
+          <img src="/image/logo.png" alt="Company Logo" class="h-8">
+        </div>
+        <div class="hidden md:block">
+          <div class="ml-10 flex items-baseline space-x-4">
+            <a href="/spv/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+            <a href="/spv/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Reports</a>
+            <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
+          </div>
+        </div>
+        <div class="md:hidden">
+          <a href="/logout" class="text-gray-500 text-sm">Logout</a>
+        </div>
+      </div>
     </div>
   </header>
   
-  <div class="pt-20 max-w-6xl mx-auto p-4 bg-white shadow-md rounded">
-    <% if (message && message.text) { %>
-      <div class="p-4 mb-4 text-sm rounded-lg message-<%= message.type %>" role="alert">
-        <%= message.text %>
-      </div>
-    <% } %>
-
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
-      <h1 class="text-2xl font-bold mb-4 sm:mb-0">Manajemen Checklist & Asset</h1>
-      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-        <a href="/checklists/new" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          + Buat Checklist Baru
-        </a>
-        <a href="/assets/new" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-          + Buat Asset Baru
-        </a>
-      </div>
-    </div>
-
-    <div class="mb-8">
-      <h2 class="text-xl font-bold mb-4">Manajemen Checklist</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-gray-200">
-              <th class="p-2 border">Nama Checklist</th>
-              <th class="p-2 border">Jumlah Aset Tersassign</th>
-              <th class="p-2 border">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="checklist-tbody">
-            <% checklists.forEach(checklist => { %>
-              <tr data-id="<%= checklist._id %>" class="cursor-move">
-                <td class="p-2 border"><%= checklist.title %></td>
-                <td class="p-2 border"><%= checklist.assignmentCount || 0 %></td>
-                <td class="p-2 border">
-                  <div class="flex flex-col sm:flex-row gap-2">
-                    <a href="/checklists/<%= checklist._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
-                      Edit
-                    </a>
-                    <a href="/checklists/<%= checklist._id %>/delete" 
-                       class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
-                       onclick="return confirm('Yakin ingin menghapus checklist ini?')">
-                      Hapus
-                    </a>
-                    <a href="/checklists/<%= checklist._id %>/assign" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                      Assign
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div>
-      <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
-      
-      <div class="mb-4 flex flex-col sm:flex-row sm:space-x-4">
-        <div class="flex-1">
-          <label for="asset-search" class="block text-gray-700 font-semibold mb-1">
-            Search Asset:
-          </label>
-          <input 
-            type="text" 
-            id="asset-search" 
-            class="w-full border border-gray-300 rounded p-2" 
-            placeholder="Enter asset name..."
-          >
-        </div>
-        <div class="flex-1">
-          <label for="asset-floor-filter" class="block text-gray-700 font-semibold mb-1">
-            Filter by Floor:
-          </label>
-          <select 
-            id="asset-floor-filter" 
-            class="w-full border border-gray-300 rounded p-2"
-          >
-            <option value="all">All Floors</option>
-            <% floors.forEach(function(floor) { %>
-              <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
-            <% }); %>
-          </select>
-        </div>
-        <div class="flex-1">
-          <label for="asset-category-filter" class="block text-gray-700 font-semibold mb-1">
-            Filter by Kategori Asset:
-          </label>
-          <select id="asset-category-filter" class="w-full border border-gray-300 rounded p-2">
-            <option value="all">Semua</option>
-            <% assetCategories.forEach(function(cat) { %>
-              <option value="<%= cat._id %>"><%= cat.name %></option>
-            <% }); %>
-          </select>
-        </div>
-      </div>
-      
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-gray-200">
-              <th class="p-2 border">Nama Asset</th>
-              <th class="p-2 border">Kategori</th>
-              <th class="p-2 border">Lokasi</th>
-              <th class="p-2 border">Lantai</th>
-              <th class="p-2 border">Zona</th>
-              <th class="p-2 border">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="asset-tbody">
-            <% assets.forEach(asset => { %>
-              <tr 
-                data-id="<%= asset._id %>" 
-                data-category="<%= asset.category ? asset.category._id.toString() : '' %>" 
-                data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>"
-                class="cursor-move"
-              >
-                <td class="p-2 border"><%= asset.name %></td>
-                <td class="p-2 border"><%= asset.category ? asset.category.name : 'N/A' %></td>
-                <td class="p-2 border"><%= asset.location %></td>
-                <td class="p-2 border"><%= asset.floor ? asset.floor.name : 'N/A' %></td>
-                <td class="p-2 border"><%= asset.zone ? asset.zone.name : 'N/A' %></td>
-                <td class="p-2 border">
-                  <div class="flex flex-col sm:flex-row gap-2">
-                    <a href="/assets/<%= asset._id %>/edit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
-                      Edit
-                    </a>
-                    <a href="/assets/<%= asset._id %>/delete" 
-                       class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
-                       onclick="return confirm('Yakin ingin menghapus asset ini?')">
-                      Hapus
-                    </a>
-                     <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline">
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                         Duplicate
-                        </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-     <div class="mt-8">
-      <h2 class="text-xl font-bold mb-4">News Activity</h2>
-      <div class="bg-white shadow rounded-lg p-4 h-64 overflow-y-auto">
-        <% if (locals.activities && activities.length > 0) { %>
-          <ul>
-            <% activities.forEach(function(activity) { %>
-              <li class="border-b last:border-b-0 py-2">
-                <p class="text-sm text-gray-800">
-                  <strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %>
-                </p>
-                <p class="text-xs text-gray-500">
-                  <%= new Date(activity.timestamp).toLocaleString() %>
-                </p>
-              </li>
-            <% }); %>
-          </ul>
-        <% } else { %>
-          <p class="text-gray-500">No recent activities in your division.</p>
+  <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <% if (message && message.text) { %>
+          <div class="p-4 mb-4 text-sm rounded-lg message-<%= message.type %>" role="alert">
+            <%= message.text %>
+          </div>
         <% } %>
-      </div>
-    </div>
-  </div>
 
-  <div class="max-w-6xl mx-auto mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 px-4 pb-4">
-    <a href="/" class="text-blue-500 hover:text-blue-700">Dashboard</a>
-    <a href="/spv/report" class="text-blue-500 hover:text-blue-700">Report</a>
-    <a href="/logout" class="text-blue-500 hover:text-blue-700">Logout</a>
+        <div class="flex flex-col md:flex-row items-start justify-between mb-6">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">Dashboard Supervisor</h1>
+            <p class="text-sm text-gray-500">Kelola checklist, aset, dan lihat aktivitas terbaru.</p>
+          </div>
+          <div class="flex space-x-2 mt-4 md:mt-0">
+            <a href="/checklists/new" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              Checklist Baru
+            </a>
+            <a href="/assets/new" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+              Asset Baru
+            </a>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Manajemen Checklist</h2>
+            <div class="hidden md:block">
+              <table class="w-full text-left table-hover">
+                <thead>
+                  <tr class="bg-gray-50">
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Nama Checklist</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Aset</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="checklist-tbody">
+                  <% checklists.forEach(checklist => { %>
+                    <tr data-id="<%= checklist._id %>" class="cursor-move">
+                      <td class="p-3 border-b border-gray-200"><%= checklist.title %></td>
+                      <td class="p-3 border-b border-gray-200"><%= checklist.assignmentCount || 0 %></td>
+                      <td class="p-3 border-b border-gray-200">
+                        <div class="flex gap-2">
+                          <a href="/checklists/<%= checklist._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
+                          <a href="/checklists/<%= checklist._id %>/assign" class="text-green-600 hover:text-green-800">Assign</a>
+                          <a href="/checklists/<%= checklist._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus checklist ini?')">Hapus</a>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+             <div class="md:hidden space-y-3">
+               <% checklists.forEach(checklist => { %>
+                 <div class="border rounded-lg p-4 bg-gray-50">
+                   <p class="font-bold text-gray-800"><%= checklist.title %></p>
+                   <p class="text-sm text-gray-600 mt-1">Jumlah Aset: <%= checklist.assignmentCount || 0 %></p>
+                   <div class="flex gap-2 mt-3">
+                     <a href="/checklists/<%= checklist._id %>/edit" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
+                     <a href="/checklists/<%= checklist._id %>/assign" class="flex-1 text-center bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">Assign</a>
+                     <a href="/checklists/<%= checklist._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Yakin ingin menghapus checklist ini?')">Hapus</a>
+                   </div>
+                 </div>
+               <% }); %>
+             </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Manajemen Asset</h2>
+            <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input type="text" id="asset-search" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cari nama aset...">
+              <select id="asset-floor-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="all">Semua Lantai</option>
+                <% floors.forEach(function(floor) { %><option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option><% }); %>
+              </select>
+              <select id="asset-category-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="all">Semua Kategori</option>
+                <% assetCategories.forEach(function(cat) { %><option value="<%= cat._id %>"><%= cat.name %></option><% }); %>
+              </select>
+            </div>
+            
+            <div class="hidden md:block h-96 overflow-y-auto">
+              <table class="w-full text-left table-hover">
+                <thead>
+                  <tr class="bg-gray-50">
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Nama Asset</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Kategori</th>
+                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="asset-tbody">
+                  <% assets.forEach(asset => { %>
+                    <tr class="asset-item cursor-move" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
+                      <td class="p-3 border-b border-gray-200">
+                        <div class="font-medium text-gray-900"><%= asset.name %></div>
+                        <div class="text-xs text-gray-500"><%= asset.location %>, Lt. <%= asset.floor ? asset.floor.name : 'N/A' %>, Zona <%= asset.zone ? asset.zone.name : 'N/A' %></div>
+                      </td>
+                      <td class="p-3 border-b border-gray-200"><%= asset.category ? asset.category.name : 'N/A' %></td>
+                      <td class="p-3 border-b border-gray-200">
+                        <div class="flex gap-2">
+                          <a href="/assets/<%= asset._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
+                          <a href="/assets/<%= asset._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus asset ini?')">Hapus</a>
+                          <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="inline"><button type="submit" class="text-blue-600 hover:text-blue-800">Duplikat</button></form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+
+            <div id="asset-card-container" class="md:hidden space-y-3 h-96 overflow-y-auto">
+              <% assets.forEach(asset => { %>
+                <div class="asset-item border rounded-lg p-4 bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
+                    <p class="font-bold text-gray-800"><%= asset.name %></p>
+                    <p class="text-sm text-gray-600"><%= asset.category ? asset.category.name : 'N/A' %></p>
+                    <p class="text-sm text-gray-600"><%= asset.location %>, Lantai <%= asset.floor ? asset.floor.name : 'N/A' %>, Zona <%= asset.zone ? asset.zone.name : 'N/A' %></p>
+                    <div class="flex gap-2 mt-3">
+                        <a href="/assets/<%= asset._id %>/edit" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
+                        <a href="/assets/<%= asset._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Yakin ingin menghapus asset ini?')">Hapus</a>
+                        <form action="/assets/<%= asset._id %>/duplicate" method="POST" class="flex-1">
+                            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Duplicate</button>
+                        </form>
+                    </div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-lg">
+          <h2 class="text-xl font-bold mb-4">Aktivitas Terbaru</h2>
+          <div class="h-64 overflow-y-auto">
+            <ul>
+              <% if (locals.activities && activities.length > 0) { %>
+                <% activities.forEach(function(activity) { %>
+                  <li class="border-b last:border-b-0 py-3">
+                    <p class="text-sm text-gray-800"><strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %></p>
+                    <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
+                  </li>
+                <% }); %>
+              <% } else { %>
+                <p class="text-gray-500">Belum ada aktivitas terbaru di divisi Anda.</p>
+              <% } %>
+            </ul>
+          </div>
+        </div>
+    </div>
+  </main>
+
+  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden no-print">
+    <div class="flex justify-around py-2">
+      <a href="/spv/dashboard" class="flex flex-col items-center text-blue-600">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+        <span class="text-xs">Dashboard</span>
+      </a>
+      <a href="/spv/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
+        <span class="text-xs">Reports</span>
+      </a>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Only enable drag-and-drop on larger screens
-      if (window.innerWidth >= 640) {
-        // --- Initialize Sortable for Checklists ---
+      if (window.innerWidth >= 768) {
         var checklistTbody = document.getElementById('checklist-tbody');
-        Sortable.create(checklistTbody, {
-          animation: 150,
-          ghostClass: 'dragging',
-          onEnd: function(evt) {
-            var order = [];
-            checklistTbody.querySelectorAll('tr').forEach(function(row) {
-              order.push(row.getAttribute('data-id'));
-            });
-            fetch('/checklists/sort', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order: order })
-            })
-            .then(response => response.json())
-            .then(data => console.log(data.message))
-            .catch(err => console.error('Checklist sort error:', err));
-          }
-        });
-
-        // --- Initialize Sortable for Assets ---
+        Sortable.create(checklistTbody, { animation: 150, ghostClass: 'dragging', onEnd: function(evt) { var order = []; checklistTbody.querySelectorAll('tr').forEach(function(row) { order.push(row.getAttribute('data-id')); }); fetch('/checklists/sort', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: order }) }).then(response => response.json()).then(data => console.log(data.message)).catch(err => console.error('Checklist sort error:', err)); } });
         var assetTbody = document.getElementById('asset-tbody');
-        Sortable.create(assetTbody, {
-          animation: 150,
-          ghostClass: 'dragging',
-          onEnd: function(evt) {
-            var order = [];
-            assetTbody.querySelectorAll('tr').forEach(function(row) {
-              order.push(row.getAttribute('data-id'));
-            });
-            fetch('/assets/sort', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order: order })
-            })
-            .then(response => response.json())
-            .then(data => console.log(data.message))
-            .catch(err => console.error('Asset sort error:', err));
-          }
-        });
+        Sortable.create(assetTbody, { animation: 150, ghostClass: 'dragging', onEnd: function(evt) { var order = []; assetTbody.querySelectorAll('tr').forEach(function(row) { order.push(row.getAttribute('data-id')); }); fetch('/assets/sort', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: order }) }).then(response => response.json()).then(data => console.log(data.message)).catch(err => console.error('Asset sort error:', err)); } });
       }
     });
     
-    // --- Filtering logic for asset table ---
     const assetSearch = document.getElementById('asset-search');
     const assetFloorFilter = document.getElementById('asset-floor-filter');
     const assetCategoryFilter = document.getElementById('asset-category-filter');
-    const assetTbody = document.getElementById('asset-tbody');
 
     function filterAssets() {
       const searchTerm = assetSearch.value.toLowerCase();
       const selectedFloor = assetFloorFilter.value;
       const selectedCategory = assetCategoryFilter.value;
-      const rows = assetTbody.querySelectorAll('tr');
+      const assetItems = document.querySelectorAll('.asset-item');
       
-      rows.forEach(row => {
-        const assetName = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
-        const assetFloor = row.getAttribute('data-floor');
-        const assetCategory = row.getAttribute('data-category');
+      assetItems.forEach(item => {
+        const assetName = item.getAttribute('data-name');
+        const assetFloor = item.getAttribute('data-floor');
+        const assetCategory = item.getAttribute('data-category');
         
         let show = true;
-        if (searchTerm && !assetName.includes(searchTerm)) {
-          show = false;
-        }
-        if (selectedFloor !== 'all' && assetFloor !== selectedFloor) {
-          show = false;
-        }
-        if (selectedCategory !== 'all' && assetCategory !== selectedCategory) {
-          show = false;
-        }
-        row.style.display = show ? '' : 'none';
+        if (searchTerm && !assetName.includes(searchTerm)) { show = false; }
+        if (selectedFloor !== 'all' && assetFloor !== selectedFloor) { show = false; }
+        if (selectedCategory !== 'all' && assetCategory !== selectedCategory) { show = false; }
+        item.style.display = show ? '' : 'none';
       });
     }
 
