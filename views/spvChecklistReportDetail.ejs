@@ -8,44 +8,32 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-background-color: #f8f9fa;
+            background-color: #f8f9fa;
         }
-        .status-ok { color: green !important;
-}
-        .status-fail { color: red !important;
-}
-        .rejected-status { color: #dc3545 !important;
-}
-        .verified-status { color: green !important;
-}
+        .status-ok { color: green !important; }
+        .status-fail { color: red !important; }
+        .rejected-status { color: #dc3545 !important; }
+        .verified-status { color: green !important; }
 
         @media screen {
-            .print-only { display: none;
-}
+            .print-only { display: none; }
             .report-card {
                 box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-border-radius: 0.5rem;
+                border-radius: 0.5rem;
             }
         }
 
         @media print {
-            .no-print, .screen-only { display: none !important;
-}
-            body { margin: 0; font-size: 10pt; background-color: #fff;
-}
-            .print-table { width: 100%; border-collapse: collapse;
-}
-            .print-table th, .print-table td { border: 1px solid #dee2e6;
-padding: 6px; }
-            thead { display: table-header-group;
-}
-            tbody { display: table-row-group;
-}
-            tr, .task-item { page-break-inside: avoid;
-}
+            .no-print, .screen-only { display: none !important; }
+            body { margin: 0; font-size: 10pt; background-color: #fff; }
+            .print-table { width: 100%; border-collapse: collapse; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 6px; vertical-align: middle; } /* Added vertical-align */
+            thead { display: table-header-group; }
+            tbody { display: table-row-group; }
+            tr, .task-item { page-break-inside: avoid; }
             .status-ok, .status-fail, .rejected-status, .verified-status, .badge {
                 -webkit-print-color-adjust: exact !important;
-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -60,8 +48,7 @@ print-color-adjust: exact !important;
     <% if (locals.message && message.text) { %>
         <div class="alert <%= message.type === 'success' ? 'alert-success' : 'alert-danger' %> no-print" role="alert">
             <%= message.text %>
-   
-     </div>
+        </div>
     <% } %>
 
     <div class="row g-4 mb-4">
@@ -69,36 +56,26 @@ print-color-adjust: exact !important;
             <div class="card h-100 report-card">
                 <div class="card-body">
                     <h5 class="card-title mb-3">Asset Details</h5>
-                  
-  <p><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></p>
-                    <p><strong>Category:</strong> <%= assignment.asset ?
-assignment.asset.category.name : assignment.assetSnapshot.category %></p>
-                    <p class="mb-0"><strong>Location:</strong> <%= assignment.asset ?
-`${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %> - <%= assignment.asset ?
-assignment.asset.location : assignment.assetSnapshot.location %></p>
+                    <p><strong>Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></p>
+                    <p><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></p>
+                    <p class="mb-0"><strong>Location:</strong> <%= assignment.asset ? `${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %> - <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></p>
                 </div>
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card h-100 report-card">
                 <div class="card-body">
-                    
-<h5 class="card-title mb-3">Report Information</h5>
-                    <p><strong>Submitted By:</strong> <%= assignment.submittedByName ||
-'N/A' %></p>
+                    <h5 class="card-title mb-3">Report Information</h5>
+                    <p><strong>Submitted By:</strong> <%= assignment.submittedByName || 'N/A' %></p>
                     <p><strong>Submission Date:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
-                    <p><strong>SPV:</strong> <% if (assignment.verifiedBySpv) { %><span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName ||
-'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
-                    <p><strong>Manager:</strong> <% if (assignment.verifiedByManager) { %><span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName ||
-'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
+                    <p><strong>SPV:</strong> <% if (assignment.verifiedBySpv) { %><span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
+                    <p><strong>Manager:</strong> <% if (assignment.verifiedByManager) { %><span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
                     <p class="mb-0"><strong>Overall Status:</strong>
-                        <% if (assignment.verifiedStatus === 'rejected') { %><span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName ||
-'N/A' %></span><% } else if (assignment.verifiedByManager) { %><span class="verified-status fw-bold">Approved</span><% } else if (assignment.verifiedBySpv) { %><span class="text-primary fw-bold">Pending Manager Approval</span><% } else { %><span class="text-muted fw-bold">Pending SPV Approval</span><% } %>
-                        <% if (assignment.hasAlert) { %><span class="badge bg-warning text-dark ms-2">Alert</span><% } %>
+                        <% if (assignment.verifiedStatus === 'rejected') { %><span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName || 'N/A' %></span><% } else if (assignment.verifiedByManager) { %><span class="verified-status fw-bold">Approved</span><% } else if (assignment.verifiedBySpv) { %><span class="text-primary fw-bold">Pending Manager Approval</span><% } else { %><span class="text-muted fw-bold">Pending SPV Approval</span><% } %>
+                        <% if (assignment.hasAlert) { %><span class="badge bg-warning text-dark ms-2 no-print">Alert</span><% } %>
                     </p>
                 </div>
- 
-           </div>
+            </div>
         </div>
     </div>
 
@@ -108,48 +85,34 @@ assignment.asset.location : assignment.assetSnapshot.location %></p>
         </div>
         <div class="table-responsive">
             <table class="table table-striped mb-0">
-              
-  <thead class="table-light">
+                <thead class="table-light">
                     <tr>
                         <th class="ps-4" style="width: 50%;">Task Description</th>
                         <th class="ps-4">Response</th>
                     </tr>
-    
-            </thead>
+                </thead>
                 <tbody>
                     <% assignment.tasksSnapshot.forEach(task => { %>
                         <tr>
-                        
-    <td class="ps-4"><%= task.description %></td>
+                            <td class="ps-4"><%= task.description %></td>
                             <td class="ps-4">
-                                <% const response = assignment.responses[task.originalTaskId.toString()];
-let displayResponse = response; let responseClass = ''; if (task.inputType === 'measurement' && response !== null) { const value = parseFloat(response);
-if (!isNaN(value)) { if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) { responseClass = 'status-fail';
-} else { responseClass = 'status-ok'; } } displayResponse = `${value} ${task.expectedUnit || ''}`;
-} else if (task.inputType === 'functional') { if (response === 'fail') { responseClass = 'status-fail'; displayResponse = 'Fail';
-} else { responseClass = 'status-ok'; displayResponse = 'OK'; } } else if (Array.isArray(response)) { displayResponse = '';
-response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`; });
-} %>
+                                <% const response = assignment.responses[task.originalTaskId.toString()]; let displayResponse = response; let responseClass = ''; if (task.inputType === 'measurement' && response !== null) { const value = parseFloat(response); if (!isNaN(value)) { if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) { responseClass = 'status-fail'; } else { responseClass = 'status-ok'; } } displayResponse = `${value} ${task.expectedUnit || ''}`; } else if (task.inputType === 'functional') { if (response === 'fail') { responseClass = 'status-fail'; displayResponse = 'Fail'; } else { responseClass = 'status-ok'; displayResponse = 'Pass'; } } else if (Array.isArray(response)) { displayResponse = ''; response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`; }); } %>
                                 <span class="task-response <%= responseClass %>"><%- displayResponse %></span>
                             </td>
                         </tr>
-         
-           <% });
-%>
+                    <% }); %>
                     <% if (assignment.note) { %>
                         <tr>
                             <td class="fw-bold ps-4">Technician's Note:</td>
-                     
-       <td class="ps-4"><%= assignment.note %></td>
+                            <td class="ps-4"><%= assignment.note %></td>
                         </tr>
                     <% } %>
                 </tbody>
             </table>
         </div>
     </div>
-
     
-<div class="mt-4 text-center no-print">
+    <div class="mt-4 text-center no-print">
         <button onclick="window.print()" class="btn btn-info">Print</button>
         <a href="/spv/report" class="btn btn-secondary">Back to Reports</a>
         <% if (assignment.verifiedStatus !== 'rejected' && !assignment.verifiedBySpv) { %>
@@ -157,8 +120,7 @@ response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><
             <input type="hidden" name="fromDetail" value="true">
             <button type="submit" class="btn btn-success">Verify</button>
         </form>
-      
-  <form action="/spv/report/<%= assignment._id %>/reject" method="POST" class="d-inline">
+        <form action="/spv/report/<%= assignment._id %>/reject" method="POST" class="d-inline">
             <input type="hidden" name="fromDetail" value="true">
             <button type="submit" class="btn btn-danger">Reject</button>
         </form>
@@ -170,42 +132,36 @@ response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><
     <table class="table table-bordered print-table">
         <thead>
             <tr>
-                <th colspan="2" class="text-center fs-4 p-3 border-bottom-0">
-                    <img src="/image/logo.png" alt="Company Logo" style="height: 40px; display: inline-block; vertical-align: middle;">
-                    <span style="vertical-align: middle; margin-left: 15px;">Maintenance Report</span>
+                <th colspan="2" class="p-3">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span class="fs-4" style="vertical-align: middle;">Maintenance Report</span>
+                        <img src="/image/logo.png" alt="Company Logo" style="height: 40px;">
+                    </div>
                 </th>
             </tr>
             <tr>
-                <td colspan="2" class="text-center border-top-0"><strong><%= assignment.checklistTitle %></strong></td>
+                <td colspan="2" class="text-center"><strong><%= assignment.checklistTitle %></strong></td>
             </tr>
             <tr>
-                <td class="p-2" style="width: 50%;
-vertical-align: top;">
+                <td class="p-2" style="width: 50%; vertical-align: top;">
                     <p class="mb-1"><strong>Asset Name:</strong> <%= assignment.asset ? assignment.asset.name : assignment.assetSnapshot.name %></p>
                     <p class="mb-1"><strong>Category:</strong> <%= assignment.asset ? assignment.asset.category.name : assignment.assetSnapshot.category %></p>
                     <p class="mb-0"><strong>Location:</strong> <%= assignment.asset ? `${assignment.asset.floor.name} / ${assignment.asset.zone.name}` : `${assignment.assetSnapshot.floor} / ${assignment.assetSnapshot.zone}` %> - <%= assignment.asset ? assignment.asset.location : assignment.assetSnapshot.location %></p>
-  
-              </td>
-                <td class="p-2" style="width: 50%;
-vertical-align: top;">
+                </td>
+                <td class="p-2" style="width: 50%; vertical-align: top;">
                     <p class="mb-1"><strong>Submitted By:</strong> <%= assignment.submittedByName || 'N/A' %></p>
                     <p class="mb-1"><strong>Submission Date:</strong> <%= new Date(assignment.completedAt).toLocaleString() %></p>
                     <p class="mb-0"><strong>SPV:</strong> <% if (assignment.verifiedBySpv) { %><span class="verified-status">Verified by <%= assignment.verifiedBySpvUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
-       
-             <p class="mb-0"><strong>Manager:</strong> <% if (assignment.verifiedByManager) { %><span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
+                    <p class="mb-0"><strong>Manager:</strong> <% if (assignment.verifiedByManager) { %><span class="verified-status">Verified by <%= assignment.verifiedByManagerUserName || 'N/A' %></span><% } else { %><span>Pending</span><% } %></p>
                 </td>
             </tr>
             <tr>
                 <th class="p-2">Overall Status</th>
-          
-      <td class="p-2">
-                    <% if (assignment.verifiedStatus === 'rejected') { %><span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName ||
-'N/A' %></span><% } else if (assignment.verifiedByManager) { %><span class="verified-status fw-bold">Approved</span><% } else if (assignment.verifiedBySpv) { %><span class="text-primary fw-bold">Pending Manager Approval</span><% } else { %><span class="text-muted fw-bold">Pending SPV Approval</span><% } %>
-                    <% if (assignment.hasAlert) { %><span class="badge bg-warning text-dark ms-2">Alert</span><% } %>
+                <td class="p-2">
+                    <% if (assignment.verifiedStatus === 'rejected') { %><span class="rejected-status fw-bold">Rejected by <%= assignment.rejectedByName || 'N/A' %></span><% } else if (assignment.verifiedByManager) { %><span class="verified-status fw-bold">Approved</span><% } else if (assignment.verifiedBySpv) { %><span class="text-primary fw-bold">Pending Manager Approval</span><% } else { %><span class="text-muted fw-bold">Pending SPV Approval</span><% } %>
                 </td>
             </tr>
-            <tr 
-class="table-light">
+            <tr class="table-light">
                 <th>Task Description</th>
                 <th>Response</th>
             </tr>
@@ -213,28 +169,19 @@ class="table-light">
         <tbody>
             <% assignment.tasksSnapshot.forEach(task => { %>
                 <tr class="task-item">
-      
-              <td><%= task.description %></td>
+                    <td><%= task.description %></td>
                     <td>
-                        <% const response = assignment.responses[task.originalTaskId.toString()]; let displayResponse = response; let responseClass = ''; if (task.inputType === 'measurement' && response !== null) { const value = parseFloat(response);
-if (!isNaN(value)) { if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) { responseClass = 'status-fail';
-} else { responseClass = 'status-ok'; } } displayResponse = `${value} ${task.expectedUnit || ''}`;
-} else if (task.inputType === 'functional') { if (response === 'fail') { responseClass = 'status-fail'; displayResponse = 'Fail';
-} else { responseClass = 'status-ok'; displayResponse = 'OK'; } } else if (Array.isArray(response)) { displayResponse = '';
-response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`; });
-} %>
+                        <% const response = assignment.responses[task.originalTaskId.toString()]; let displayResponse = response; let responseClass = ''; if (task.inputType === 'measurement' && response !== null) { const value = parseFloat(response); if (!isNaN(value)) { if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) { responseClass = 'status-fail'; } else { responseClass = 'status-ok'; } } displayResponse = `${value} ${task.expectedUnit || ''}`; } else if (task.inputType === 'functional') { if (response === 'fail') { responseClass = 'status-fail'; displayResponse = 'Fail'; } else { responseClass = 'status-ok'; displayResponse = 'Pass'; } } else if (Array.isArray(response)) { displayResponse = ''; response.forEach(url => { displayResponse += `<a href="${url}" target="_blank"><img src="${url}" style="max-width: 100px; margin-right: 5px; border-radius: 5px; display: inline-block;"></a>`; }); } %>
                         <span class="task-response <%= responseClass %>"><%- displayResponse %></span>
                     </td>
                 </tr>
-            <% });
-%>
+            <% }); %>
             <% if (assignment.note) { %>
                 <tr>
                     <td class="fw-bold">Technician's Note:</td>
                     <td><%= assignment.note %></td>
                 </tr>
-        
-    <% } %>
+            <% } %>
         </tbody>
     </table>
 </div>
