@@ -20,14 +20,23 @@
   <div class="max-w-6xl mx-auto p-4 pb-20">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800">My Maintenance Tasks</h2>
-        <a href="/technician/report" class="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
-            View My Reports
-            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-        </a>
+        <div class="flex space-x-2 mt-2 sm:mt-0">
+          <button id="scan-qr-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
+              Scan QR Code
+              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          </button>
+          <a href="/technician/report" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
+              View My Reports
+              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+          </a>
+        </div>
     </div>
 
+    <div id="qr-reader" class="hidden mx-auto md:w-96"></div>
+
+
     <div class="mb-6 p-4 bg-white rounded-lg shadow">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <input 
                 type="text" 
                 id="searchInput" 
@@ -38,13 +47,13 @@
                 <option value="">All Floors</option>
                 <% floors.forEach(function(floor) { %>
                 <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
-                <% }); %>
+                 <% }); %>
             </select>
             <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Categories</option>
                 <% assetCategories.forEach(function(cat) { %>
                 <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
-                <% }); %>
+                 <% }); %>
             </select>
         </div>
     </div>
@@ -97,7 +106,7 @@
           <div class="bg-gray-100 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-200 transition"
                onclick="toggleDropdown('<%= uniqueGroupId %>')">
             <div class="flex items-center">
-                <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
+                 <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
                 <div>
                     <p class="text-md text-gray-800"><%= assetName %></p>
                     <p class="text-xs text-gray-500">
@@ -109,7 +118,7 @@
           </div>
 
           <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
-            <% group.checklists.forEach(function(assignment) { %>
+             <% group.checklists.forEach(function(assignment) { %>
               <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
                 <div>
                     <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
@@ -118,7 +127,7 @@
                 <a href="/technician/checklist/<%= assignment._id %>" 
                    class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
                   Start Checklist
-                </a>
+                 </a>
               </div>
             <% }); %>
           </div>
@@ -140,45 +149,90 @@
       </a>
       <a href="/logout" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"></path></svg>
-        <span class="text-xs">Logout</span>
+         <span class="text-xs">Logout</span>
       </a>
     </div>
   </div>
 
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script>
-    function toggleDropdown(id) {
-      const dropdown = document.getElementById(id);
-      const arrow = document.getElementById('arrow-' + id);
-      if (dropdown.classList.contains('hidden')) {
-        dropdown.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
-      } else {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
+    document.addEventListener('DOMContentLoaded', (event) => {
+      function toggleDropdown(id) {
+        const dropdown = document.getElementById(id);
+        const arrow = document.getElementById('arrow-' + id);
+        if (dropdown.classList.contains('hidden')) {
+          dropdown.classList.remove('hidden');
+          arrow.classList.add('rotate-180');
+        } else {
+          dropdown.classList.add('hidden');
+          arrow.classList.remove('rotate-180');
+        }
       }
-    }
 
-    function filterAssets() {
-      const searchValue = document.getElementById('searchInput').value.toLowerCase();
-      const floorValue = document.getElementById('floorFilter').value.toLowerCase();
-      const categoryValue = document.getElementById('categoryFilter').value.toLowerCase();
+      function filterAssets() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const floorValue = document.getElementById('floorFilter').value.toLowerCase();
+        const categoryValue = document.getElementById('categoryFilter').value.toLowerCase();
 
-      document.querySelectorAll('.asset-card').forEach(card => {
-        const assetName = card.getAttribute('data-name') || "";
-        const assetFloor = card.getAttribute('data-floor') || "";
-        const assetCategory = card.getAttribute('data-category') || "";
-        
-        const isVisible = assetName.includes(searchValue) &&
-                          (floorValue === "" || assetFloor === floorValue) &&
-                          (categoryValue === "" || assetCategory === categoryValue);
+        document.querySelectorAll('.asset-card').forEach(card => {
+          const assetName = card.getAttribute('data-name') || "";
+          const assetFloor = card.getAttribute('data-floor') || "";
+          const assetCategory = card.getAttribute('data-category') || "";
+          
+          const isVisible = assetName.includes(searchValue) &&
+                            (floorValue === "" || assetFloor === floorValue) &&
+                            (categoryValue === "" || assetCategory === categoryValue);
 
-        card.style.display = isVisible ? 'flex' : 'none';
+          card.style.display = isVisible ? '' : 'none';
+        });
+      }
+
+      document.getElementById('searchInput').addEventListener('input', filterAssets);
+      document.getElementById('floorFilter').addEventListener('change', filterAssets);
+      document.getElementById('categoryFilter').addEventListener('change', filterAssets);
+
+      // --- QR Code Scanner Logic ---
+      const scanBtn = document.getElementById('scan-qr-btn');
+      const qrReaderElement = document.getElementById('qr-reader');
+      const html5QrCode = new Html5Qrcode("qr-reader");
+
+      const onScanSuccess = (decodedText, decodedResult) => {
+        console.log(`Scan result: ${decodedText}`);
+        html5QrCode.stop().then(() => {
+          window.location.href = `/technician/asset/${decodedText}`;
+        }).catch(err => {
+          console.error("Error stopping the scanner after success:", err);
+          window.location.href = `/technician/asset/${decodedText}`;
+        });
+      };
+
+      const onScanFailure = (error) => {
+        // This callback is called frequently, so it's best to keep it silent
+        // unless you need to debug.
+      };
+
+      scanBtn.addEventListener('click', () => {
+        const isScannerHidden = qrReaderElement.classList.contains('hidden');
+
+        if (isScannerHidden) {
+          qrReaderElement.classList.remove('hidden');
+          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+          html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .catch(err => {
+              console.error(`Unable to start scanning: ${err}`);
+              alert(`Could not start camera. Please ensure you are on a secure (https) connection and have granted camera permissions in your browser.`);
+              qrReaderElement.classList.add('hidden');
+            });
+        } else {
+          html5QrCode.stop()
+            .then(() => qrReaderElement.classList.add('hidden'))
+            .catch(err => {
+              console.error("Failed to stop scanner cleanly:", err);
+              qrReaderElement.classList.add('hidden');
+            });
+        }
       });
-    }
-
-    document.getElementById('searchInput').addEventListener('input', filterAssets);
-    document.getElementById('floorFilter').addEventListener('change', filterAssets);
-    document.getElementById('categoryFilter').addEventListener('change', filterAssets);
+    });
   </script>
 </body>
 </html>

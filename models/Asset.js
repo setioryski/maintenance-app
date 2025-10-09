@@ -11,7 +11,8 @@ const assetSchema = new mongoose.Schema({
   floor: { type: mongoose.Schema.Types.ObjectId, ref: 'Floor' },
   zone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone' },
   division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' },
-  order: { type: Number, default: 0 } // Add this line
+  order: { type: Number, default: 0 }, // Add this line
+  qrCode: { type: String } // Add this line for QR Code
 });
 
 // ADD THIS HOOK

@@ -1,7 +1,8 @@
 // app.js
 const express = require('express');
-const http = require('http'); // Native HTTP module
-const socketIo = require('socket.io'); // Socket.io for real-time communication
+const https = require('https'); // Use 'https'
+const fs = require('fs');      // Use the file system module
+const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -10,18 +11,23 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const asyncLib = require('async');
 const sharp = require('sharp');
-const fs = require('fs');
 require('dotenv').config();
 const app = express();
 const ChecklistAssignment = require('./models/ChecklistAssignment');
 const router = express.Router();
+const qrcode = require('qrcode');
 
+// 👇 SSL certificate options using mkcert files
+const options = {
+  key: fs.readFileSync('localhost+1-key.pem'), // 👈 Confirms this file exists in your root
+  cert: fs.readFileSync('localhost+1.pem')   // 👈 Confirms this file exists in your root
+};
 
-
-// Create HTTP server and attach Socket.io
-const server = http.createServer(app);
+// Create HTTPS server and attach Socket.io
+const server = https.createServer(options, app);
 const io = socketIo(server);
 
+// ... (the rest of your app.js code remains the same) ...
 // Set up view engine and static files
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -345,7 +351,7 @@ app.post('/admin/users/:id/edit', ensureAuthenticated, ensureSuperuser, async (r
         userToUpdate.name = name;
         userToUpdate.email = email;
         userToUpdate.role = role;
-        userToUpdate.division = (role === 'spv' || role === 'technician') ? division : null;
+        userToUpdate.division = (role === 'spv' || user.role === 'technician') ? division : null;
 
         if (password) {
             userToUpdate.password = await bcrypt.hash(password, 10);
@@ -880,6 +886,10 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
         const newAsset = new Asset({ name, description, location, category, floor, zone, division });
         await newAsset.save();
         
+        const qrCodeDataUrl = await qrcode.toDataURL(newAsset._id.toString());
+        newAsset.qrCode = qrCodeDataUrl;
+        await newAsset.save();
+
         await logActivity(req.session.userId, `created a new asset: ${name}.`);
 
         req.session.message = { type: 'success', text: 'Asset created successfully.' };
@@ -1479,6 +1489,41 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
         res.render('technicianChecklistReportDetail', {
             assignment
         });
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.get('/asset/:id/qr', ensureAuthenticated, ensureSpv, async (req, res) => {
+    try {
+        const asset = await Asset.findById(req.params.id);
+        if (!asset) {
+            return res.status(404).send('Asset not found');
+        }
+
+        const qrCodeDataUrl = await qrcode.toDataURL(asset._id.toString());
+        res.send(`<img src="${qrCodeDataUrl}" alt="QR Code for ${asset.name}">`);
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (req, res) => {
+    try {
+        const asset = await Asset.findById(req.params.id)
+            .populate('floor')
+            .populate('category')
+            .populate('zone');
+
+        if (!asset) {
+            return res.status(404).send('Asset not found');
+        }
+
+        const assignments = await ChecklistAssignment.find({ asset: asset._id, isTemplate: true })
+            .populate('checklist');
+
+        res.render('assetDetail', { asset, assignments });
     } catch (err) {
         res.status(500).send(err.message);
     }
