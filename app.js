@@ -17,10 +17,10 @@ const ChecklistAssignment = require('./models/ChecklistAssignment');
 const router = express.Router();
 const qrcode = require('qrcode');
 
-// 👇 SSL certificate options using mkcert files
+// 燥 SSL certificate options using mkcert files
 const options = {
-  key: fs.readFileSync('localhost+1-key.pem'), // 👈 Confirms this file exists in your root
-  cert: fs.readFileSync('localhost+1.pem')   // 👈 Confirms this file exists in your root
+  key: fs.readFileSync('localhost+1-key.pem'), // 争 Confirms this file exists in your root
+  cert: fs.readFileSync('localhost+1.pem')   // 争 Confirms this file exists in your root
 };
 
 // Create HTTPS server and attach Socket.io
@@ -77,7 +77,7 @@ const Zone = require('./models/Zone');
 const Activity = require('./models/Activity');
 
 
-// FUNGSI BARU UNTUK LOG AKTIVITAS
+// FUNGSI BARU UNTUN LOG AKTIVITAS
 async function logActivity(userId, action, divisionId = null) {
     try {
         const user = await User.findById(userId).populate('division');
@@ -1251,7 +1251,8 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
                 division: req.session.userDivision
             })
             .populate('floor')
-            .populate('category');
+            .populate('category')
+            .populate('zone');
         const assetIds = assets.map(a => a._id);
 
         const assignments = await ChecklistAssignment.find({
@@ -1263,7 +1264,7 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
             .populate('checklist')
             .populate({
                 path: 'asset',
-                populate: ['floor', 'category']
+                populate: ['floor', 'category', 'zone']
             });
 
         const floors = await Floor.find({});
