@@ -1,12 +1,13 @@
-// app.js
 const express = require('express');
-const https = require('https'); // Use 'https'
-const fs = require('fs');      // Use the file system module
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const asyncLib = require('async');
@@ -17,20 +18,38 @@ const ChecklistAssignment = require('./models/ChecklistAssignment');
 const router = express.Router();
 const qrcode = require('qrcode');
 
-// 燥 SSL certificate options using mkcert files
-const options = {
-  key: fs.readFileSync('localhost+1-key.pem'), // 争 Confirms this file exists in your root
-  cert: fs.readFileSync('localhost+1.pem')   // 争 Confirms this file exists in your root
-};
-
-// Create HTTPS server and attach Socket.io
-const server = https.createServer(options, app);
+// --- SERVER CREATION LOGIC (MOVED BACK INTO APP.JS) ---
+let server;
+if (process.env.NODE_ENV === 'production') {
+  console.log('Running in production mode (HTTP server).');
+  server = http.createServer(app);
+} else {
+  console.log('Running in development mode (HTTPS server).');
+  try {
+    const options = {
+      key: fs.readFileSync('localhost+1-key.pem'),
+      cert: fs.readFileSync('localhost+1.pem')
+    };
+    server = https.createServer(options, app);
+  } catch (error) {
+    console.error('Could not find SSL certificates for development. Falling back to HTTP.');
+    server = http.createServer(app);
+  }
+}
 const io = socketIo(server);
+// --- END OF SERVER CREATION LOGIC ---
 
-// ... (the rest of your app.js code remains the same) ...
 // Set up view engine and static files
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// --- THE FIX: TRUST THE REVERSE PROXY ---
+// This tells Express to trust the 'X-Forwarded-*' headers set by Nginx
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+// --- END OF THE FIX ---
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 //Parsing JSON Requests
@@ -41,16 +60,28 @@ app.use(express.urlencoded({
 }));
 
 
-// Configure body parser and session
+// Configure body parser
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+
+// --- UPDATED PRODUCTION-READY SESSION CONFIGURATION ---
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'mysecret',
+    secret: process.env.SESSION_SECRET || 'a_very_strong_secret_for_production',
     resave: false,
-    saveUninitialized: true, // Required for flash messages
-    cookie: { maxAge: 172800000 } // Flash messages will persist for 2 days
+    saveUninitialized: false, // Recommended for production to prevent empty session records
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        collectionName: 'sessions', // You can name the collection where sessions are stored
+        ttl: 14 * 24 * 60 * 60 // Session time to live in seconds (e.g., 14 days)
+    }),
+    cookie: {
+        maxAge: 14 * 24 * 60 * 60 * 1000, // Matches the ttl in milliseconds
+        secure: process.env.NODE_ENV === 'production' // Use secure cookies in production (requires HTTPS)
+    }
 }));
+// --- END OF UPDATED SESSION CONFIGURATION ---
+
 
 // Flash message middleware to make messages available in views
 app.use((req, res, next) => {
@@ -281,9 +312,9 @@ app.post('/login', async (req, res) => {
         req.session.userId = user._id;
         req.session.userRole = user.role;
         req.session.userDivision = (user.role === 'spv' || user.role === 'technician') && user.division ? user.division.toString() : null;
-        
+
         await logActivity(user._id, `logged in to the system.`);
-        
+
         res.redirect('/');
     } catch (err) {
         res.status(500).send(err.message);
@@ -324,7 +355,7 @@ app.post('/admin/users', ensureAuthenticated, ensureSuperuser, async (req, res) 
         }
         const newUser = new User({ name, email, password: hashedPassword, role, division: division || null });
         await newUser.save();
-        
+
         await logActivity(req.session.userId, `created a new user: ${name} (${role}).`);
         req.session.message = { type: 'success', text: 'User created successfully.' };
         res.redirect('/admin/users');
@@ -531,11 +562,11 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
                 }
             }
         }
-        
+
         if (division !== 'all') {
             matchCondition.division = division;
         }
-        
+
         if (submittedBy !== 'all') {
             matchCondition.submittedBy = submittedBy;
         }
@@ -553,7 +584,7 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
         if (floor !== 'all') {
             assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
         }
-        
+
         const divisions = await Division.find({});
         const floors = await Floor.find({});
         const technicians = await User.find({ role: 'technician' });
@@ -591,7 +622,7 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
         ).populate('asset');
 
         await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`, assignment.division);
-        
+
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report verified successfully.' };
             return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
@@ -658,7 +689,7 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
         if (!assignment || !assignment.completedAt) {
             return res.status(404).send('Checklist not found or not completed');
         }
-        
+
         res.render('managerChecklistReportDetail', {
             assignment
         });
@@ -693,7 +724,7 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
                 }
             }
         }
-        
+
         if (submittedBy !== 'all') {
             query.submittedBy = submittedBy;
         }
@@ -705,7 +736,7 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
             })
             .populate('submittedBy')
             .populate('rejectedBy');
-        
+
         if (floor !== 'all') {
             assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
         }
@@ -741,9 +772,9 @@ app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, asy
                 verifiedStatus: 'pending'
             }
         ).populate('asset');
-        
+
         await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`);
-        
+
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report verified successfully.' };
             return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
@@ -772,9 +803,9 @@ app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, asy
             rejectedByName: user.name,
             verifiedBySpv: false
         }).populate('asset');
-        
+
         await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`);
-        
+
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report rejected successfully.' };
             return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
@@ -840,7 +871,7 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
                 { role: 'manager' }
             ]
         }).sort({ timestamp: -1 }).limit(20);
-        
+
         res.render('spvDashboard', {
             checklists: checklistData,
             assets,
@@ -885,7 +916,7 @@ app.post('/assets', ensureAuthenticated, ensureSpv, async (req, res) => {
 
         const newAsset = new Asset({ name, description, location, category, floor, zone, division });
         await newAsset.save();
-        
+
         const qrCodeDataUrl = await qrcode.toDataURL(newAsset._id.toString());
         newAsset.qrCode = qrCodeDataUrl;
         await newAsset.save();
@@ -919,7 +950,7 @@ app.get('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsTo
 app.post('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
     try {
         const { name, description, location, category, floor, zone } = req.body;
-        
+
         const existingAsset = await Asset.findOne({ name: name, division: req.session.userDivision, _id: { $ne: req.params.id } });
         if (existingAsset) {
             req.session.message = { type: 'error', text: `Another asset with name "${name}" already exists.` };
@@ -933,9 +964,9 @@ app.post('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsT
         req.asset.floor = floor;
         req.asset.zone = zone;
         await req.asset.save();
-        
+
         await logActivity(req.session.userId, `edited asset: ${name}.`);
-        
+
         req.session.message = { type: 'success', text: 'Asset updated successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -947,7 +978,7 @@ app.post('/assets/:id/edit', ensureAuthenticated, ensureSpv, ensureAssetBelongsT
 app.post('/assets/:id/duplicate', ensureAuthenticated, ensureSpv, ensureAssetBelongsToUser, async (req, res) => {
     try {
         const originalAsset = req.asset;
-        
+
         const copyRegex = /^(.*) \(Copy (\d+)\)$/;
         const baseNameMatch = originalAsset.name.match(copyRegex);
         const baseName = baseNameMatch ? baseNameMatch[1].trim() : originalAsset.name.trim();
@@ -982,9 +1013,9 @@ app.post('/assets/:id/duplicate', ensureAuthenticated, ensureSpv, ensureAssetBel
         });
 
         await newAsset.save();
-        
+
         await logActivity(req.session.userId, `duplicated asset: ${originalAsset.name} to ${newName}.`);
-        
+
         req.session.message = { type: 'success', text: `Asset "${originalAsset.name}" duplicated successfully as "${newName}".` };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -998,9 +1029,9 @@ app.get('/assets/:id/delete', ensureAuthenticated, ensureSpv, ensureAssetBelongs
     try {
         const assetName = req.asset.name;
         await Asset.findByIdAndDelete(req.params.id);
-        
+
         await logActivity(req.session.userId, `deleted asset: ${assetName}.`);
-        
+
         req.session.message = { type: 'success', text: 'Asset deleted successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
@@ -1054,7 +1085,7 @@ app.post('/checklists', ensureAuthenticated, ensureSpv, async (req, res) => {
             division: req.session.userDivision // Tambahkan divisi saat membuat
         });
         await newChecklist.save();
-        
+
         await logActivity(req.session.userId, `created a new checklist: ${title}.`);
 
         res.redirect('/spv/dashboard');
@@ -1124,7 +1155,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, ensureChecklist
 
         checklist.tasks = tasks;
         await checklist.save();
-        
+
         await logActivity(req.session.userId, `edited checklist: ${title}.`);
 
         res.redirect('/spv/dashboard');
@@ -1187,7 +1218,7 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureCheckli
         if (newAssignments.length > 0) {
             await ChecklistAssignment.insertMany(newAssignments);
         }
-        
+
         await logActivity(req.session.userId, `assigned checklist "${checklist.title}" to ${assetsToAssign.length} assets.`);
 
         res.redirect('/spv/dashboard');
@@ -1203,9 +1234,9 @@ app.get('/checklists/:id/delete', ensureAuthenticated, ensureSpv, ensureChecklis
         await Checklist.deleteOne({
             _id: req.params.id
         });
-        
+
         await logActivity(req.session.userId, `deleted checklist: ${checklistTitle}.`);
-        
+
         res.redirect('/spv/dashboard');
     } catch (err) {
         res.status(500).send(err.message);
@@ -1216,7 +1247,7 @@ app.post('/checklists/sort', ensureAuthenticated, ensureSpv, async (req, res) =>
     try {
         const {
             order
-        } = req.body; 
+        } = req.body;
         for (let i = 0; i < order.length; i++) {
             await Checklist.findByIdAndUpdate(order[i], {
                 order: i
@@ -1269,7 +1300,7 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
 
         const floors = await Floor.find({});
         const assetCategories = await AssetCategory.find({});
-        
+
         // Ambil aktivitas untuk Teknisi
         const activities = await Activity.find({
             $or: [
@@ -1318,7 +1349,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
                 path: 'asset',
                 populate: ['floor', 'category', 'zone', 'division']
             });
-            
+
         if (!templateAssignment || !templateAssignment.asset) {
             return res.status(404).send('Checklist assignment or associated asset not found.');
         }
@@ -1345,18 +1376,18 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
         for (const task of tasksSnapshot) {
             if (task.inputType === 'functional' && responses[task.originalTaskId.toString()] === 'fail') {
                 hasAlert = true;
-                break; 
+                break;
             } else if (task.inputType === 'measurement') {
                 const value = parseFloat(responses[task.originalTaskId.toString()]);
                 if (!isNaN(value) && task.minRange != null && task.maxRange != null) {
                     if (value < task.minRange || value > task.maxRange) {
                         hasAlert = true;
-                        break; 
+                        break;
                     }
                 }
             }
         }
-        
+
         const assetSnapshot = {
             name: templateAssignment.asset.name,
             description: templateAssignment.asset.description,
@@ -1439,7 +1470,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
         const { submittedBy = 'all' } = req.query;
-        
+
         const query = {
             completedAt: { $ne: null }
         };
@@ -1457,7 +1488,7 @@ app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req,
         const assignments = await ChecklistAssignment.find(query)
             .populate('asset')
             .populate('submittedBy');
-            
+
         // For the filter dropdown, we only need the current user
         const technicians = await User.find({ _id: req.session.userId });
 
@@ -1482,7 +1513,7 @@ app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnicia
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
-            
+
         if (!assignment || !assignment.completedAt) {
             return res.status(404).send('Completed checklist not found.');
         }
@@ -1534,6 +1565,8 @@ app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (r
 // START SERVER
 // ------------------------------
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
+
+
