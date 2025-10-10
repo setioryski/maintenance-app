@@ -1,8 +1,6 @@
-// app.js
+// setioryski/maintenance-app/maintenance-app-new9/app.js
 const express = require('express');
-const https = require('https'); // Use 'https'
-const fs = require('fs');      // Use the file system module
-const socketIo = require('socket.io');
+const fs = require('fs'); // --- FIX: Re-added the fs module ---
 const mongoose = require('mongoose');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -13,19 +11,13 @@ const asyncLib = require('async');
 const sharp = require('sharp');
 require('dotenv').config();
 const app = express();
+const createServer = require('./server'); // Import the new server logic
 const ChecklistAssignment = require('./models/ChecklistAssignment');
 const router = express.Router();
 const qrcode = require('qrcode');
 
-// 燥 SSL certificate options using mkcert files
-const options = {
-  key: fs.readFileSync('localhost+1-key.pem'), // 争 Confirms this file exists in your root
-  cert: fs.readFileSync('localhost+1.pem')   // 争 Confirms this file exists in your root
-};
-
-// Create HTTPS server and attach Socket.io
-const server = https.createServer(options, app);
-const io = socketIo(server);
+// --- CREATE SERVER AND IO FROM THE SEPARATE FILE ---
+const { server, io } = createServer(app);
 
 // ... (the rest of your app.js code remains the same) ...
 // Set up view engine and static files
