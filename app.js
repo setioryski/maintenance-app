@@ -1564,10 +1564,6 @@ app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (r
     }
 });
 
-// ADD THIS ROUTE
-app.get('/pwa-start', (req, res) => {
-    res.render('pwa-start');
-});
 
 
 // ------------------------------
