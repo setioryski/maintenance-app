@@ -52,7 +52,7 @@
 
       // Populate asset details
       document.getElementById('asset-name').textContent = asset.name;
-      document.getElementById('asset-location').textContent = `Fl. ${asset.floor?.name || 'N/A'} / Zone ${asset.zone?.name || 'N/A'} / ${asset.location}`;
+      document.getElementById('asset-location').textContent = asset.location || 'Location not available';
       document.getElementById('asset-description').textContent = asset.description;
 
       // Populate assignments list
@@ -60,13 +60,13 @@
       if (assignments.length > 0) {
         assignmentsList.innerHTML = ''; // Clear previous entries
         assignments.forEach(assignment => {
-          // The checklist object is now nested inside the assignment object
           const checklist = assignment.checklist;
           const assignmentEl = document.createElement('div');
           assignmentEl.className = 'flex justify-between items-center p-4 border rounded-md hover:bg-gray-50';
+          // CORRECTED: Link to the new offline checklist page
           assignmentEl.innerHTML = `
             <p class="font-semibold text-gray-800">${checklist ? checklist.title : 'Checklist not found offline'}</p>
-            <a href="/technician/checklist/${assignment._id}" class="text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
+            <a href="/offline-checklist.html#${assignment._id}" class="text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
               Start Checklist
             </a>
           `;

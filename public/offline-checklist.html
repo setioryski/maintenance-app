@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Offline Maintenance Checklist</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-gray-100">
+  <div id="loading" class="text-center p-6">Loading checklist...</div>
+  <div id="content" class="max-w-3xl mx-auto p-4 sm:p-6 pb-24 hidden">
+    <div class="bg-white shadow-lg rounded-lg p-6">
+      <div class="text-center border-b pb-4 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Maintenance Checklist (Offline)</h1>
+        <p class="text-sm text-gray-500" id="current-date"></p>
+      </div>
+
+      <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+        <h2 class="font-bold text-lg text-blue-800" id="checklist-title"></h2>
+        <p class="text-sm text-gray-700 mt-1">
+          Asset: <strong id="asset-name"></strong>
+        </p>
+        <p class="text-xs text-gray-500" id="asset-location"></p>
+      </div>
+
+      <form id="checklist-form" method="POST">
+        <div id="task-list" class="space-y-6"></div>
+        <div class="mt-8">
+          <label class="block text-gray-700 font-bold mb-2" for="note">Notes / Remarks</label>
+          <textarea
+            id="note"
+            name="note"
+            rows="4"
+            class="w-full border border-gray-300 rounded-lg p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add any relevant notes here..."
+          ></textarea>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+    <div class="max-w-3xl mx-auto flex justify-between items-center">
+      <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr; Back to Dashboard</a>
+      <button
+        type="submit"
+        id="submit-btn"
+        form="checklist-form"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300"
+      >
+        Submit Checklist
+      </button>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
+  <script src="/js/db.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const assignmentId = window.location.hash.substring(1);
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+      
+      if (!assignmentId) {
+        loadingEl.textContent = 'Error: No Assignment ID provided.';
+        return;
+      }
+
+      const data = await getChecklistDataOffline(assignmentId);
+
+      if (!data || !data.assignment || !data.asset || !data.checklist) {
+        loadingEl.textContent = 'Error: Could not load checklist data offline. Please go online and sync from the dashboard.';
+        return;
+      }
+
+      const { assignment, asset, checklist } = data;
+
+      // Populate header info
+      document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('checklist-title').textContent = checklist.title;
+      document.getElementById('asset-name').textContent = asset.name;
+      document.getElementById('asset-location').textContent = `Location: ${asset.location}`;
+
+      // Populate tasks
+      const taskList = document.getElementById('task-list');
+      if (checklist.tasks && checklist.tasks.length > 0) {
+        checklist.tasks.forEach((task, index) => {
+          const taskEl = document.createElement('div');
+          taskEl.className = 'border p-4 rounded-lg shadow-sm task-item bg-white';
+          taskEl.dataset.taskId = task._id;
+
+          let taskHTML = `
+            <input type="hidden" name="taskIds[]" value="${task._id}">
+            <label class="block text-gray-800 font-semibold mb-3">
+              <span class="text-blue-600 mr-2">${index + 1}.</span>${task.description}
+          `;
+          if (task.expectedUnit) {
+            taskHTML += `<span class="text-xs font-normal text-gray-500">(Unit: ${task.expectedUnit}${task.minRange != null && task.maxRange != null ? `, Range: ${task.minRange}-${task.maxRange}` : ''})</span>`;
+          }
+          taskHTML += `</label>`;
+
+          if (task.inputType === 'functional') {
+            taskHTML += `
+              <div class="flex space-x-4">
+                <div class="flex-1 p-3 text-center text-green-800 bg-green-100 rounded-lg border-2 border-green-200 cursor-pointer functional-button" data-value="pass">
+                  <input type="radio" name="results[${task._id}]" value="pass" required class="sr-only"/> Pass
+                </div>
+                <div class="flex-1 p-3 text-center text-red-800 bg-red-100 rounded-lg border-2 border-red-200 cursor-pointer functional-button" data-value="fail">
+                  <input type="radio" name="results[${task._id}]" value="fail" required class="sr-only"/> Fail
+                </div>
+              </div>`;
+          } else if (task.inputType === 'measurement') {
+            taskHTML += `
+              <input type="number" step="any" name="results[${task._id}]" placeholder="Enter value..." class="shadow-sm border rounded w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required />`;
+          }
+          taskEl.innerHTML = taskHTML;
+          taskList.appendChild(taskEl);
+        });
+      } else {
+        taskList.innerHTML = '<p class="text-center text-gray-600">No tasks available for this checklist.</p>';
+      }
+
+      loadingEl.classList.add('hidden');
+      contentEl.classList.remove('hidden');
+
+      // Add event listeners after elements are created
+      setupEventListeners(assignmentId);
+    });
+
+    function setupEventListeners(assignmentId) {
+      const form = document.getElementById('checklist-form');
+      const submitBtn = document.getElementById('submit-btn');
+
+      if (form) {
+        submitBtn.addEventListener('click', async function(event) {
+          event.preventDefault();
+          
+          let allTasksCompleted = true;
+          // (Your form validation logic here)
+
+          if (!allTasksCompleted) {
+            alert('Please complete all checklist items before submitting.');
+            return;
+          }
+          
+          const formData = new FormData(form);
+          const submissionData = {
+            assignmentId: assignmentId,
+            results: {},
+            note: formData.get('note')
+          };
+
+          formData.forEach((value, key) => {
+            if (key.startsWith('results[')) {
+              const taskId = key.match(/\[(.*?)\]/)[1];
+              submissionData.results[taskId] = value;
+            }
+          });
+
+          await addPendingSubmission(submissionData);
+          alert('You are offline. Your submission has been saved and will be synced automatically when you are back online.');
+          window.location.href = '/technician/dashboard';
+        });
+      }
+
+      document.querySelectorAll('.functional-button').forEach(button => {
+        button.addEventListener('click', () => {
+          const radio = button.querySelector('input[type="radio"]');
+          radio.checked = true;
+          const taskItem = button.closest('.task-item');
+          if (taskItem) {
+            const allButtons = taskItem.querySelectorAll('.functional-button');
+            allButtons.forEach(btn => {
+              const btnRadio = btn.querySelector('input[type="radio"]');
+              if (btnRadio.checked) {
+                if (btn.dataset.value === 'pass') {
+                  btn.classList.remove('bg-green-100', 'text-green-800');
+                  btn.classList.add('bg-green-600', 'text-white');
+                } else {
+                  btn.classList.remove('bg-red-100', 'text-red-800');
+                  btn.classList.add('bg-red-600', 'text-white');
+                }
+              } else {
+                if (btn.dataset.value === 'pass') {
+                  btn.classList.add('bg-green-100', 'text-green-800');
+                  btn.classList.remove('bg-green-600', 'text-white');
+                } else {
+                  btn.classList.add('bg-red-100', 'text-red-800');
+                  btn.classList.remove('bg-red-600', 'text-white');
+                }
+              }
+            });
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

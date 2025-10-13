@@ -2,11 +2,12 @@
 importScripts('https://unpkg.com/dexie@3.2.5/dist/dexie.js');
 importScripts('/js/db.js');
 
-const CACHE_NAME = 'maintenance-app-cache-v4'; // <-- Version bumped to v4
+const CACHE_NAME = 'maintenance-app-cache-v4';
 const urlsToCache = [
   '/login',
   '/technician/dashboard',
-  '/offline-asset.html', // <-- ADD THIS LINE
+  '/offline-asset.html',
+  '/offline-checklist.html',
   '/manifest.json',
   '/image/logo.png',
   'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
@@ -38,14 +39,12 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Always try to fetch from the network first for navigation requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
-  // For other requests, serve from cache first
   event.respondWith(
     caches.match(event.request).then(response => {
       return response || fetch(event.request);
@@ -53,7 +52,6 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// BACKGROUND SYNC EVENT
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-checklist-submissions') {
     console.log('Background sync triggered for checklist submissions.');
@@ -68,6 +66,8 @@ async function syncSubmissions() {
   }
 
   console.log(`Syncing ${pending.length} pending submissions.`);
+  let successfulSyncs = 0;
+  let failedSyncs = 0;
 
   for (const submission of pending) {
     try {
@@ -78,16 +78,33 @@ async function syncSubmissions() {
       });
 
       if (response.ok) {
-        // If sync is successful, delete it from IndexedDB
         await deletePendingSubmission(submission.id);
+        successfulSyncs++;
         console.log(`Successfully synced submission for assignment ${submission.assignmentId}`);
       } else {
+        failedSyncs++;
         console.error(`Failed to sync submission. Server responded with ${response.status}`);
       }
     } catch (error) {
+      failedSyncs++;
       console.error('Error during fetch for sync:', error);
-      // If there's a network error, break the loop and try again later.
+      // Stop trying if there's a network error
       break;
     }
+  }
+
+  // After attempting all syncs, show a notification
+  if (self.registration.showNotification) {
+      if (failedSyncs > 0) {
+          self.registration.showNotification('Sync Failed', {
+              body: `Could not sync ${failedSyncs} submission(s). Please check your connection and try again.`,
+              icon: '/image/logo.png'
+          });
+      } else if (successfulSyncs > 0) {
+          self.registration.showNotification('Sync Complete', {
+              body: `${successfulSyncs} offline submission(s) have been successfully uploaded.`,
+              icon: '/image/logo.png'
+          });
+      }
   }
 }

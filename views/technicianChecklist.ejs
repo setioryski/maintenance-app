@@ -16,22 +16,23 @@
 
       <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
     
+ 
      <h2 class="font-bold text-lg text-blue-800"><%= assignment.checklist ?
-assignment.checklist.title : 'N/A' %></h2>
+ assignment.checklist.title : 'N/A' %></h2>
         <p class="text-sm text-gray-700 mt-1">
           Asset: <strong><%= assignment.asset ?
-assignment.asset.name : 'N/A' %></strong>
+ assignment.asset.name : 'N/A' %></strong>
         </p>
          <p class="text-xs text-gray-500">
           Location: Fl.
-<%= (assignment.asset.floor && assignment.asset.floor.name) ? assignment.asset.floor.name : 'N/A' %>, Zone <%= (assignment.asset.zone && assignment.asset.zone.name) ?
-assignment.asset.zone.name : 'N/A' %> - <%= assignment.asset.location %>
+ <%= (assignment.asset.floor && assignment.asset.floor.name) ? assignment.asset.floor.name : 'N/A' %>, Zone <%= (assignment.asset.zone && assignment.asset.zone.name) ?
+ assignment.asset.zone.name : 'N/A' %> - <%= assignment.asset.location %>
         </p>
       </div>
 
       <form id="checklist-form" method="POST" enctype="multipart/form-data">
         <% const tasks = (assignment.checklist && assignment.checklist.tasks) ?
-assignment.checklist.tasks : []; %>
+ assignment.checklist.tasks : []; %>
 
         <% if (tasks.length > 0) { %>
           <div class="space-y-6">
@@ -40,41 +41,48 @@ assignment.checklist.tasks : []; %>
               <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
               <label class="block text-gray-800 font-semibold 
+ 
  mb-3">
                 <span class="text-blue-600 mr-2"><%= index + 1 %>.</span><%= task.description %>
                 <% if (task.expectedUnit) { %> 
                   <span class="text-xs font-normal text-gray-500">(Unit: <%= task.expectedUnit %><% if (task.minRange != null && task.maxRange != null) { %>, Range: <%= task.minRange %>-<%= task.maxRange %><% } %>)</span> 
-            
+           
+  
      <% } %>
               </label>
 
               <% if (task.inputType === 'functional') { %>
                 <div class="flex space-x-4">
                   <div class="flex-1 p-3 text-center text-green-800 bg-green-100 rounded-lg border-2 border-green-200 cursor-pointer transition-colors duration-200 functional-button" data-value="pass">
-           
+         
+   
          <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only"/>
                     Pass
                   </div>
                   <div class="flex-1 p-3 text-center text-red-800 bg-red-100 rounded-lg border-2 border-red-200 cursor-pointer transition-colors duration-200 functional-button" data-value="fail">
-               
+             
+   
      <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only"/>
                     Fail
                   </div>
                 </div>
               <% } else if (task.inputType === 'measurement') { %>
-            
+          
+   
      <input
                   type="number"
                   step="any"
                   name="results[<%= task._id %>]"
                   placeholder="Enter value..."
-                  class="shadow-sm border rounded 
+                  
+ class="shadow-sm border rounded 
  w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               <% } %>
             </div>
-          <% }); %>
+          <% });
+ %>
           </div>
         <% } else { %>
           <p class="text-center text-gray-600">No tasks available for this checklist.</p>
@@ -85,6 +93,7 @@ assignment.checklist.tasks : []; %>
           <textarea
             id="note"
    
+ 
          name="note"
             rows="4"
             class="w-full border border-gray-300 rounded-lg p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -97,9 +106,10 @@ assignment.checklist.tasks : []; %>
 
   <footer class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
    
+ 
    <div class="max-w-3xl mx-auto flex justify-between items-center">
         <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr;
-Back to Dashboard</a>
+ Back to Dashboard</a>
         <button
           type="submit"
           id="submit-btn"
@@ -112,104 +122,108 @@ Back to Dashboard</a>
   </footer>
 
   <script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
-  <script src="/js/db.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('checklist-form');
-        const submitBtn = document.getElementById('submit-btn');
+  <script 
+ src="/js/db.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('checklist-form');
+    const submitBtn = document.getElementById('submit-btn');
 
-        if (form) {
-            submitBtn.addEventListener('click', async function(event) {
-                event.preventDefault(); // Stop the default form submission
+    if (form) {
+      submitBtn.addEventListener('click', async (event) => {
+        event.preventDefault(); // Prevent normal form submission
 
-                // --- Form Validation (remains the same) ---
-                let allTasksCompleted = true;
-                const taskElements = document.querySelectorAll('.task-item');
-                taskElements.forEach(taskElement => {
-                    const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
-                    const measurementInput = taskElement.querySelector('input[type="number"]');
-                    taskElement.style.border = '1px solid #e5e7eb';
-                    if (measurementInput) {
-                        measurementInput.classList.remove('border-red-500', 'ring-red-500', 'border-2');
-                    }
-                    if (functionalRadios.length > 0) {
-                        if (!Array.from(functionalRadios).some(radio => radio.checked)) {
-                            allTasksCompleted = false;
-                            taskElement.style.border = '2px solid red';
-                        }
-                    }
-                    if (measurementInput) {
-                        if (measurementInput.value.trim() === '') {
-                            allTasksCompleted = false;
-                            measurementInput.classList.add('border-red-500', 'ring-red-500', 'border-2');
-                        }
-                    }
-                });
-                if (!allTasksCompleted) {
-                    alert('Please complete all checklist items before submitting.');
-                    return;
-                }
-                
-                // --- Offline/Online Submission Logic ---
-                const formData = new FormData(form);
-                const submissionData = {
-                  assignmentId: '<%= assignment._id %>',
-                  results: {},
-                  note: formData.get('note')
-                };
+        // --- Validate all tasks ---
+        let allTasksCompleted = true;
+        const taskElements = document.querySelectorAll('.task-item');
 
-                formData.forEach((value, key) => {
-                    if (key.startsWith('results[')) {
-                        const taskId = key.match(/\[(.*?)\]/)[1];
-                        submissionData.results[taskId] = value;
-                    }
-                });
+        taskElements.forEach((taskElement) => {
+          const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
+          const measurementInput = taskElement.querySelector('input[type="number"]');
 
-                if (navigator.onLine) {
-                    // If online, submit directly to the server
-                    form.action = "/technician/checklist/<%= assignment._id %>/submit";
-                    form.submit();
-                } else {
-                    // If offline, save to IndexedDB
-                    await addPendingSubmission(submissionData);
-                    alert('You are offline. Your submission has been saved and will be synced automatically when you are back online.');
-                    window.location.href = '/technician/dashboard';
-                }
-            });
+          // Reset previous borders
+          taskElement.style.border = '1px solid #e5e7eb';
+          if (measurementInput) {
+            measurementInput.classList.remove('border-red-500', 'ring-red-500', 'border-2');
+          }
+
+          // Check functional tasks
+          if (functionalRadios.length > 0) {
+            const checked = Array.from(functionalRadios).some(radio => radio.checked);
+            if (!checked) {
+              allTasksCompleted = false;
+              taskElement.style.border = '2px solid red';
+            }
+          }
+
+          // Check measurement tasks
+          if (measurementInput && measurementInput.value.trim() === '') {
+            allTasksCompleted = false;
+            measurementInput.classList.add('border-red-500', 'ring-red-500', 'border-2');
+          }
+        });
+
+        if (!allTasksCompleted) {
+          alert('Please complete all checklist items before submitting.');
+          return;
         }
 
-        // --- Functional Button UI Script (remains the same) ---
-        document.querySelectorAll('.functional-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const radio = button.querySelector('input[type="radio"]');
-                radio.checked = true;
-                const taskItem = button.closest('.task-item');
-                if (taskItem) {
-                    const allButtons = taskItem.querySelectorAll('.functional-button');
-                    allButtons.forEach(btn => {
-                        const btnRadio = btn.querySelector('input[type="radio"]');
-                        if (btnRadio.checked) {
-                            if (btn.dataset.value === 'pass') {
-                                btn.classList.remove('bg-green-100', 'text-green-800');
-                                btn.classList.add('bg-green-600', 'text-white');
-                            } else {
-                                btn.classList.remove('bg-red-100', 'text-red-800');
-                                btn.classList.add('bg-red-600', 'text-white');
-                            }
-                        } else {
-                            if (btn.dataset.value === 'pass') {
-                                btn.classList.add('bg-green-100', 'text-green-800');
-                                btn.classList.remove('bg-green-600', 'text-white');
-                            } else {
-                                btn.classList.add('bg-red-100', 'text-red-800');
-                                btn.classList.remove('bg-red-600', 'text-white');
-                            }
-                        }
-                    });
-                }
-            });
+        // --- Prepare form data ---
+        const formData = new FormData(form);
+        const submissionData = {
+          assignmentId: '<%= assignment._id %>',
+          results: {},
+          note: formData.get('note')
+        };
+
+        formData.forEach((value, key) => {
+          if (key.startsWith('results[')) {
+            const match = key.match(/\[(.*?)\]/);
+            if (match) submissionData.results[match[1]] = value;
+          }
         });
+
+        // --- Submit ---
+        if (navigator.onLine) {
+          form.action = '/technician/checklist/<%= assignment._id %>/submit';
+          form.submit();
+        } else {
+          await addPendingSubmission(submissionData);
+          alert('You are offline. Your submission has been saved and will sync automatically when online.');
+          window.location.href = '/technician/dashboard';
+        }
+      });
+    }
+
+    // --- Functional Button UI Logic ---
+    document.querySelectorAll('.functional-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const radio = button.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+
+        const taskItem = button.closest('.task-item');
+        if (!taskItem) return;
+
+        taskItem.querySelectorAll('.functional-button').forEach((btn) => {
+          const btnRadio = btn.querySelector('input[type="radio"]');
+          const isChecked = btnRadio && btnRadio.checked;
+
+          if (btn.dataset.value === 'pass') {
+            btn.classList.toggle('bg-green-600', isChecked);
+            btn.classList.toggle('text-white', isChecked);
+            btn.classList.toggle('bg-green-100', !isChecked);
+            btn.classList.toggle('text-green-800', !isChecked);
+          } else {
+            btn.classList.toggle('bg-red-600', isChecked);
+            btn.classList.toggle('text-white', isChecked);
+            btn.classList.toggle('bg-red-100', !isChecked);
+            btn.classList.toggle('text-red-800', !isChecked);
+          }
+        });
+      });
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>

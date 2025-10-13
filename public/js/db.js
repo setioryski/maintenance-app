@@ -1,20 +1,13 @@
 // public/js/db.js
 const db = new Dexie('maintenanceApp');
 
-// VERSI 3: Menambahkan tabel 'checklists'
 db.version(3).stores({
   pendingSubmissions: '++id, assignmentId',
   assets: '&_id, name, floor',
   assignments: '&_id, asset, checklist',
-  checklists: '&_id, title' // Tabel baru untuk menyimpan detail checklist
+  checklists: '&_id, title'
 });
 
-/**
- * Menyimpan semua data penting (assets, assignment, checklist) ke database lokal.
- * @param {Array} assets - Array berisi objek asset.
- * @param {Array} assignments - Array berisi objek assignment.
- * @param {Array} checklists - Array berisi objek checklist.
- */
 async function cacheData(assets, assignments, checklists) {
   try {
     await db.transaction('rw', db.assets, db.assignments, db.checklists, async () => {
@@ -32,20 +25,19 @@ async function cacheData(assets, assignments, checklists) {
   }
 }
 
-/**
- * Mengambil data asset dan assignment-nya dari database lokal.
- * @param {string} assetId - ID dari asset yang akan diambil.
- */
 async function getAssetAndAssignmentsOffline(assetId) {
     try {
         const asset = await db.assets.get(assetId);
-        const assignments = await db.assignments.where({ asset: assetId }).toArray();
+        
+        const allAssignments = await db.assignments.toArray();
+        const assignments = allAssignments.filter(a => a.asset && a.asset._id === assetId);
 
-        // Ambil detail checklist untuk setiap assignment
         for (let i = 0; i < assignments.length; i++) {
-            assignments[i].checklist = await db.checklists.get(assignments[i].checklist);
+            if (assignments[i].checklist) {
+                const checklistId = assignments[i].checklist._id || assignments[i].checklist;
+                assignments[i].checklist = await db.checklists.get(checklistId);
+            }
         }
-
         return { asset, assignments };
     } catch (error) {
         console.error('Gagal mengambil data asset offline:', error);
@@ -53,14 +45,23 @@ async function getAssetAndAssignmentsOffline(assetId) {
     }
 }
 
-
-// --- Fungsi untuk submission yang tertunda (tidak ada perubahan) ---
+async function getChecklistDataOffline(assignmentId) {
+    try {
+        const assignment = await db.assignments.get(assignmentId);
+        if (!assignment) return null;
+        const asset = await db.assets.get(assignment.asset._id);
+        const checklist = await db.checklists.get(assignment.checklist._id);
+        return { assignment, asset, checklist };
+    } catch (error) {
+        console.error('Gagal mengambil data checklist offline:', error);
+        return null;
+    }
+}
 
 async function addPendingSubmission(submissionData) {
   try {
     await db.pendingSubmissions.add(submissionData);
     console.log('Submission berhasil disimpan lokal untuk sinkronisasi.');
-    // Daftarkan background sync
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       navigator.serviceWorker.ready.then(function(swRegistration) {
         return swRegistration.sync.register('sync-checklist-submissions');
@@ -87,4 +88,46 @@ async function deletePendingSubmission(id) {
   } catch (error) {
     console.error('Gagal menghapus submission yang telah sinkron:', error);
   }
+}
+
+async function countPendingSubmissions() {
+    try {
+        return await db.pendingSubmissions.count();
+    } catch (error) {
+        console.error('Gagal menghitung submission yang tertunda:', error);
+        return 0;
+    }
+}
+
+// NEW FUNCTION TO MANUALLY TRIGGER SYNC
+async function forceSync() {
+    const pending = await getPendingSubmissions();
+    if (pending.length === 0) {
+        return { successful: 0, failed: 0 };
+    }
+
+    let successfulSyncs = 0;
+    let failedSyncs = 0;
+
+    for (const submission of pending) {
+        try {
+            const response = await fetch('/api/sync/checklist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submission),
+            });
+
+            if (response.ok) {
+                await deletePendingSubmission(submission.id);
+                successfulSyncs++;
+            } else {
+                failedSyncs++;
+            }
+        } catch (error) {
+            failedSyncs++;
+            // If any fetch fails, stop and rely on background sync for the rest
+            break;
+        }
+    }
+    return { successful: successfulSyncs, failed: failedSyncs };
 }

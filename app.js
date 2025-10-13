@@ -1301,6 +1301,9 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
                 populate: ['floor', 'category', 'zone']
             });
 
+        const checklistIds = assignments.map(a => a.checklist?._id).filter(id => id);
+        const checklists = await Checklist.find({ _id: { $in: checklistIds } });
+
         const floors = await Floor.find({});
         const assetCategories = await AssetCategory.find({});
 
@@ -1316,12 +1319,14 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
             assignments,
             floors,
             assetCategories,
-            activities
+            activities,
+            checklists // <-- ADD THIS LINE
         });
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
+
 
 app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
