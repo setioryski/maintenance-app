@@ -1564,6 +1564,111 @@ app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (r
     }
 });
 
+// ===============================================
+// API ROUTE FOR BACKGROUND SYNC
+// ===============================================
+app.post('/api/sync/checklist', async (req, res) => {
+    // This route should be "unprotected" by ensureAuthenticated because
+    // the service worker sends it, and it doesn't have session cookies.
+    // We will find the user based on a placeholder if needed, or assume a generic sync user.
+
+    try {
+        const { assignmentId, results, note } = req.body;
+
+        const templateAssignment = await ChecklistAssignment.findById(assignmentId)
+            .populate('checklist')
+            .populate({
+                path: 'asset',
+                populate: ['floor', 'category', 'zone', 'division']
+            });
+
+        if (!templateAssignment || !templateAssignment.asset) {
+            return res.status(404).json({ success: false, message: 'Original assignment not found.' });
+        }
+        
+        // IMPORTANT: We need to know WHO submitted this.
+        // Since the service worker has no session, you must decide how to attribute this.
+        // For now, we will mark it as submitted by the first technician in that division.
+        // A better long-term solution might be to save the userId in IndexedDB as well.
+        const user = await User.findOne({ division: templateAssignment.asset.division._id, role: 'technician' });
+        if (!user) {
+             return res.status(401).json({ success: false, message: 'No technician found for this division to attribute sync to.' });
+        }
+
+
+        let hasAlert = false;
+        const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
+            originalTaskId: t._id,
+            description: t.description,
+            inputType: t.inputType,
+            expectedUnit: t.expectedUnit || '',
+            minRange: t.minRange,
+            maxRange: t.maxRange,
+        }));
+
+        for (const task of tasksSnapshot) {
+            const responseValue = results[task.originalTaskId.toString()];
+            if (task.inputType === 'functional' && responseValue === 'fail') {
+                hasAlert = true;
+                break;
+            } else if (task.inputType === 'measurement') {
+                const value = parseFloat(responseValue);
+                if (!isNaN(value) && task.minRange != null && task.maxRange != null) {
+                    if (value < task.minRange || value > task.maxRange) {
+                        hasAlert = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const assetSnapshot = {
+            name: templateAssignment.asset.name,
+            description: templateAssignment.asset.description,
+            location: templateAssignment.asset.location,
+            category: templateAssignment.asset.category ? templateAssignment.asset.category.name : 'N/A',
+            floor: templateAssignment.asset.floor ? templateAssignment.asset.floor.name : 'N/A',
+            zone: templateAssignment.asset.zone ? templateAssignment.asset.zone.name : 'N/A',
+            division: templateAssignment.asset.division ? templateAssignment.asset.division.name : 'N/A'
+        };
+
+        const completedAssignment = new ChecklistAssignment({
+            checklist: templateAssignment.checklist._id,
+            checklistTitle: templateAssignment.checklist.title,
+            asset: templateAssignment.asset._id,
+            assetSnapshot: assetSnapshot,
+            division: templateAssignment.asset.division._id,
+            assignedAt: templateAssignment.assignedAt,
+            tasksSnapshot,
+            responses: results,
+            completedAt: new Date(),
+            submittedBy: user._id, // Attributed user
+            submittedByName: user.name,
+            isTemplate: false,
+            note: note || '',
+            hasAlert: hasAlert
+        });
+
+        await completedAssignment.save();
+
+        // Log activity for the attributed user
+        await logActivity(user._id, `submitted a report (synced from offline) for asset: ${templateAssignment.asset.name}.`);
+
+        if (hasAlert) {
+            io.emit('alert', {
+                message: `Alert (from offline sync): Checklist for asset ${templateAssignment.asset.name} requires attention!`,
+                assignmentId: completedAssignment._id
+            });
+        }
+
+        res.status(200).json({ success: true, message: 'Sync successful.' });
+
+    } catch (err) {
+        console.error('Error during background sync submission:', err);
+        res.status(500).json({ success: false, message: 'Internal server error during sync.' });
+    }
+});
+
 
 
 // ------------------------------

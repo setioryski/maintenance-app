@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <title>Technician Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
- <link rel="manifest" href="/manifest.json">
+  
+  <link rel="manifest" href="/manifest.json">
 
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,6 +15,7 @@
   <meta name="theme-color" content="#4a90e2"/>
 
   <link rel="apple-touch-icon" href="/image/logo.png">
+
 </head>
 <body class="bg-gray-50">
 
@@ -25,13 +27,15 @@
         </div>
         <div class="hidden md:block">
           <div class="ml-10 flex items-baseline space-x-4">
-            <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+ 
+           <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
             <a href="/technician/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">My Reports</a>
             <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
           </div>
         </div>
         <div class="md:hidden">
-          <a href="/logout" class="text-gray-500 text-sm">Logout</a>
+          <a 
+ href="/logout" class="text-gray-500 text-sm">Logout</a>
         </div>
       </div>
     </div>
@@ -44,14 +48,16 @@
           <h1 class="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
           <p class="text-sm text-gray-500">Here are your assigned maintenance tasks and recent activities.</p>
         </div>
-        <div class="flex space-x-2 mt-4 md:mt-0">
+  
+       <div class="flex space-x-2 mt-4 md:mt-0">
           <button id="scan-qr-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Scan QR Code
           </button>
         </div>
       </div>
-      
+  
+     
       <div id="qr-reader" class="hidden mx-auto md:w-96 mb-6"></div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -60,23 +66,27 @@
             <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
 
             <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 
+ gap-4">
                 <input 
                   type="text" 
                   id="searchInput" 
                   placeholder="Search by asset name..." 
-                  class="col-span-1 sm:col-span-3 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="col-span-1 sm:col-span-3 border border-gray-300 rounded-md 
+ px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                 <select id="floorFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">All Floors</option>
                   <% floors.forEach(function(floor) { %>
-                    <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
+             
+       <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
                   <% }); %>
                 </select>
                 <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">All Categories</option>
                   <% assetCategories.forEach(function(cat) { %>
-                    <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
+                 
+   <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
                   <% }); %>
                 </select>
               </div>
@@ -84,75 +94,88 @@
             
             <%
               const getAssetIcon = (name) => {
-                name = (name || '').toLowerCase();
+               
+ name = (name || '').toLowerCase();
                 if (name.includes('cctv')) return '📷';
                 if (name.includes('panoramic')) return '🌅';
                 if (name.includes('smoke') || name.includes('fire')) return '🔥';
-                if (name.includes('ahu')) return '💨';
+if (name.includes('ahu')) return '💨';
                 if (name.includes('elevator')) return '↕️';
                 if (name.includes('generator')) return '⚡️';
                 return '📦';
               };
-
-              const validAssignments = assignments.filter(a => a.checklist && a.asset);
+const validAssignments = assignments.filter(a => a.checklist && a.asset);
               if (validAssignments.length === 0) { 
             %>
               <div class="text-center py-12">
                 <h3 class="text-lg font-medium text-gray-700">No maintenance tasks assigned.</h3>
                 <p class="text-gray-500 mt-1">Please check back later.</p>
               </div>
-            <% } else { 
+  
+           <% } else { 
               const groupedAssignments = {};
-              validAssignments.forEach(function(assignment) {
+validAssignments.forEach(function(assignment) {
                 const assetId = assignment.asset._id.toString();
                 if (!groupedAssignments[assetId]) {
                   groupedAssignments[assetId] = {
                     asset: assignment.asset,
-                    checklists: []
+                    checklists: 
+[]
                   };
                 }
                 groupedAssignments[assetId].checklists.push(assignment);
               });
-            %>
+%>
               <div class="space-y-4">
                 <% Object.keys(groupedAssignments).forEach(function(assetId) {
                   const group = groupedAssignments[assetId];
                   const asset = group.asset;
                   const assetName = asset.name;
-                  const uniqueGroupId = `asset-group-${assetId}`;
+    
+               const uniqueGroupId = `asset-group-${assetId}`;
                 %>
                   <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
                        data-name="<%= assetName.toLowerCase() %>"
-                       data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
+                  
+      data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
                        data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
                     
                     <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
-                         onclick="toggleDropdown('<%= uniqueGroupId %>')">
+              
+           onclick="toggleDropdown('<%= uniqueGroupId %>')">
                       <div class="flex items-center">
                         <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
                         <div>
-                          <p class="text-md text-gray-800"><%= assetName %></p>
+           
+               <p class="text-md text-gray-800"><%= assetName %></p>
                           <p class="text-xs text-gray-500">
-                            Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location %>
+                            Fl.
+<%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name ||
+'N/A' %> / <%= asset.location %>
                           </p>
                         </div>
                       </div>
-                      <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
+                      <span 
+ id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
                     </div>
 
                     <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
                       <% group.checklists.forEach(function(assignment) { %>
-                        <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
+                      
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
                           <div>
                             <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
-                            <p class="text-xs text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
+                            <p class="text-xs text-gray-500">Assigned: 
+<%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
                           </div>
                           <a href="/technician/checklist/<%= assignment._id %>" 
                              class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
-                            Start Checklist
+ 
+                           Start Checklist
                           </a>
                         </div>
-                      <% }); %>
+                      
+<% }); %>
                     </div>
                   </div>
                 <% }); %>
@@ -165,11 +188,13 @@
           <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
           <div class="h-96 overflow-y-auto">
             <ul>
-              <% if (locals.activities && activities.length > 0) { %>
+    
+           <% if (locals.activities && activities.length > 0) { %>
                 <% activities.forEach(function(activity) { %>
                   <li class="border-b last:border-b-0 py-3">
                     <p class="text-sm text-gray-800"><strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %></p>
-                    <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
+            
+         <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
                   </li>
                 <% }); %>
               <% } else { %>
@@ -182,13 +207,15 @@
     </div>
   </main>
 
-  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden">
+  <div class="fixed inset-x-0 
+ bottom-0 bg-white border-t shadow-lg md:hidden">
     <div class="flex justify-around py-2">
       <a href="/technician/dashboard" class="flex flex-col items-center text-blue-600">
         <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
         <span class="text-xs">Dashboard</span>
       </a>
-      <a href="/technician/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
+      <a href="/technician/report" class="flex flex-col items-center 
+ text-gray-500 hover:text-blue-600">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
         <span class="text-xs">My Reports</span>
       </a>
@@ -196,43 +223,45 @@
   </div>
 
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
+  <script src="/js/db.js"></script>
+
   <script>
-    function toggleDropdown(id) {
-      const dropdown = document.getElementById(id);
-      const arrow = document.getElementById('arrow-' + id);
-      if (dropdown.classList.contains('hidden')) {
-        dropdown.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
-      } else {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
-      }
+    // --- PWA Service Worker Registration ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
     }
 
+    // --- Embed Server Data for Offline Caching ---
+    const assignmentsData = <%- JSON.stringify(assignments || []) %>;
+    
+    const assetsData = assignmentsData.reduce((acc, current) => {
+        if (current.asset && !acc.find(item => item._id === current.asset._id)) {
+            acc.push(current.asset);
+        }
+        return acc;
+    }, []);
+    
+    const checklistsData = assignmentsData.reduce((acc, current) => {
+        if (current.checklist && !acc.find(item => item._id === current.checklist._id)) {
+            acc.push(current.checklist);
+        }
+        return acc;
+    }, []);
+
+    // --- Main Logic ---
     document.addEventListener('DOMContentLoaded', (event) => {
-      function filterAssets() {
-        const searchValue = document.getElementById('searchInput').value.toLowerCase();
-        const floorValue = document.getElementById('floorFilter').value.toLowerCase();
-        const categoryValue = document.getElementById('categoryFilter').value.toLowerCase();
-
-        document.querySelectorAll('.asset-card').forEach(card => {
-          const assetName = card.getAttribute('data-name') || "";
-          const assetFloor = card.getAttribute('data-floor') || "";
-          const assetCategory = card.getAttribute('data-category') || "";
-          
-          const isVisible = assetName.includes(searchValue) &&
-                            (floorValue === "" || assetFloor === floorValue) &&
-                            (categoryValue === "" || assetCategory === categoryValue);
-
-          card.style.display = isVisible ? '' : 'none';
-        });
+      
+      if (navigator.onLine) {
+          cacheData(assetsData, assignmentsData, checklistsData);
       }
 
-      document.getElementById('searchInput').addEventListener('input', filterAssets);
-      document.getElementById('floorFilter').addEventListener('change', filterAssets);
-      document.getElementById('categoryFilter').addEventListener('change', filterAssets);
-
-      // --- QR Code Scanner Logic ---
       const scanBtn = document.getElementById('scan-qr-btn');
       const qrReaderElement = document.getElementById('qr-reader');
       const html5QrCode = new Html5Qrcode("qr-reader");
@@ -240,28 +269,26 @@
       const onScanSuccess = (decodedText, decodedResult) => {
         console.log(`Scan result: ${decodedText}`);
         html5QrCode.stop().then(() => {
-          window.location.href = `/technician/asset/${decodedText}`;
+          if (navigator.onLine) {
+            window.location.href = `/technician/asset/${decodedText}`;
+          } else {
+            window.location.href = `/offline-asset.html#${decodedText}`;
+          }
         }).catch(err => {
-          console.error("Error stopping the scanner after success:", err);
-          window.location.href = `/technician/asset/${decodedText}`;
+          console.error("Error stopping the scanner:", err);
         });
       };
-
-      const onScanFailure = (error) => {
-        // This callback is called frequently, so it's best to keep it silent
-        // unless you need to debug.
-      };
-
+      
+      const onScanFailure = (error) => {};
       scanBtn.addEventListener('click', () => {
         const isScannerHidden = qrReaderElement.classList.contains('hidden');
-
         if (isScannerHidden) {
           qrReaderElement.classList.remove('hidden');
           const config = { fps: 10, qrbox: { width: 250, height: 250 } };
           html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
             .catch(err => {
               console.error(`Unable to start scanning: ${err}`);
-              alert(`Could not start camera. Please ensure you are on a secure (https) connection and have granted camera permissions in your browser.`);
+              alert(`Could not start camera.`);
               qrReaderElement.classList.add('hidden');
             });
         } else {
@@ -273,7 +300,41 @@
             });
         }
       });
+      
+      document.getElementById('searchInput').addEventListener('input', filterAssets);
+      document.getElementById('floorFilter').addEventListener('change', filterAssets);
+      document.getElementById('categoryFilter').addEventListener('change', filterAssets);
     });
+
+    function filterAssets() {
+      const searchValue = document.getElementById('searchInput').value.toLowerCase();
+      const floorValue = document.getElementById('floorFilter').value.toLowerCase();
+      const categoryValue = document.getElementById('categoryFilter').value.toLowerCase();
+
+      document.querySelectorAll('.asset-card').forEach(card => {
+        const assetName = card.getAttribute('data-name') || "";
+        const assetFloor = card.getAttribute('data-floor') || "";
+        const assetCategory = card.getAttribute('data-category') || "";
+        
+        const isVisible = assetName.includes(searchValue) &&
+                          (floorValue === "" || assetFloor === floorValue) &&
+                          (categoryValue === "" || assetCategory.includes(categoryValue));
+
+        card.style.display = isVisible ? '' : 'none';
+      });
+    }
+
+    function toggleDropdown(id) {
+      const dropdown = document.getElementById(id);
+      const arrow = document.getElementById('arrow-' + id);
+      if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+      } else {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+      }
+    }
   </script>
 </body>
 </html>
