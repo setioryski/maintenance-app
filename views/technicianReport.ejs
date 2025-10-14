@@ -12,7 +12,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             <h1 class="text-xl font-bold text-gray-800">My Submitted Reports</h1>
-            <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr; Back to Dashboard</a>
+            <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr;
+Back to Dashboard</a>
         </div>
     </div>
 </header>
@@ -22,56 +23,69 @@
         <form method="GET" action="/technician/report">
             <label for="submitted_by_filter" class="block text-sm font-medium text-gray-700">Filter Reports</label>
             <select name="submittedBy" id="submitted_by_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
-                <option value="all" <%= currentSubmittedBy === 'all' ? 'selected' : '' %>>All (My Reports)</option>
+                <option value="all" <%= 
+currentSubmittedBy === 'all' ? 'selected' : '' %>>All (My Reports)</option>
                 <% technicians.forEach(tech => { %>
                 <option value="<%= tech._id %>" <%= currentSubmittedBy === tech._id.toString() ? 'selected' : '' %>><%= tech.name %></option>
                 <% }) %>
             </select>
         </form>
-    </div>
+   
+ </div>
 
     <div class="overflow-x-auto bg-white shadow-lg rounded-lg">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset / Checklist</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted Date</th>
+                    <th 
+class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted Date</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+        
+    <tbody class="bg-white divide-y divide-gray-200">
             <% if (assignments.length > 0) { %>
-                <% assignments.forEach(assignment => { %>
-                <tr class="hover:bg-gray-50 <%= assignment.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
+                <% assignments.forEach(report => { %>
+                <tr class="hover:bg-gray-50 <%= report.verifiedStatus === 'rejected' ?
+'bg-red-50' : '' %>">
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900"><%= (assignment.assetSnapshot && assignment.assetSnapshot.name) ? assignment.assetSnapshot.name : (assignment.asset ? assignment.asset.name : 'N/A') %></div>
-                        <div class="text-sm text-gray-500"><%= assignment.checklistTitle || 'N/A' %></div>
-                    </td>
+                        <div class="text-sm font-medium text-gray-900"><%= report.assetSnapshot.name %></div>
+                        <div class="text-sm text-gray-500"><%= report.checklistTitle || 'N/A' %></div>
+     
+               </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <%= new Date(assignment.completedAt).toLocaleString() %>
+                        <%= new Date(report.completedAt).toLocaleString() %>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <% if (assignment.verifiedStatus === 'rejected') { %>
+             
+       <td class="px-6 py-4 whitespace-nowrap">
+                        <% if (report.verifiedStatus === 'rejected') { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected</span>
-                        <% } else if (assignment.verifiedByManager) { %>
+                        
+<% } else if (report.verifiedByManager) { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
-                        <% } else if (assignment.verifiedBySpv) { %>
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Pending Manager</span>
+                        <% } else if (report.verifiedBySpv) { %>
+                            
+<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Pending Manager</span>
                         <% } else { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending SPV</span>
-                        <% } %>
+                        <% } 
+%>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="/technician/report/<%= assignment._id %>" class="text-indigo-600 hover:text-indigo-900 font-semibold">View Detail</a>
+                        <a href="/technician/report/<%= report._id %>" class="text-indigo-600 hover:text-indigo-900 font-semibold">View Detail</a>
                     </td>
-                </tr>
-                <% }); %>
+    
+            </tr>
+                <% });
+%>
             <% } else { %>
                 <tr>
                     <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-500">
                         <p class="font-medium">No Reports Found</p>
-                        <p class="text-gray-400 mt-1">You have not submitted any reports yet.</p>
+               
+         <p class="text-gray-400 mt-1">You have not submitted any reports yet.</p>
                     </td>
                 </tr>
             <% } %>

@@ -2,15 +2,18 @@
 importScripts('https://unpkg.com/dexie@3.2.5/dist/dexie.js');
 importScripts('/js/db.js');
 
-const CACHE_NAME = 'maintenance-app-cache-v4';
+const CACHE_NAME = 'maintenance-app-cache-v6'; // Incremented cache version
 const urlsToCache = [
   '/login',
   '/technician/dashboard',
   '/offline-asset.html',
   '/offline-checklist.html',
+  '/offline-report.html',
+  '/offline-report-detail.html',
   '/manifest.json',
   '/image/logo.png',
   'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
+  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
   'https://unpkg.com/dexie@3.2.5/dist/dexie.js',
   '/js/db.js'
 ];
@@ -31,6 +34,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => Promise.all(
       cacheNames.map(cacheName => {
         if (!cacheWhitelist.includes(cacheName)) {
+          console.log('Deleting old cache:', cacheName);
           return caches.delete(cacheName);
         }
       })
@@ -41,7 +45,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => caches.match(event.request.url) || caches.match('/technician/dashboard'))
     );
     return;
   }

@@ -1,6 +1,7 @@
 // cleanup-orphans.js
 require('dotenv').config();
 const mongoose = require('mongoose');
+const MaintenanceReport = require('./models/MaintenanceReport');
 const ChecklistAssignment = require('./models/ChecklistAssignment');
 
 async function cleanup() {
@@ -9,9 +10,15 @@ async function cleanup() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB for cleanup.');
 
-    // Delete any assignments whose checklist ref is null
-    const result = await ChecklistAssignment.deleteMany({ checklist: null });
-    console.log(`Orphan assignments removed: ${result.deletedCount}`);
+    // Find all valid assignment IDs
+    const validAssignmentIds = await ChecklistAssignment.find().distinct('_id');
+
+    // Delete any reports where the assignment ref is null or not in the valid list
+    const result = await MaintenanceReport.deleteMany({ 
+      assignment: { $nin: validAssignmentIds } 
+    });
+    console.log(`Orphaned maintenance reports removed: ${result.deletedCount}`);
+
   } catch (err) {
     console.error('Error during cleanup:', err);
   } finally {

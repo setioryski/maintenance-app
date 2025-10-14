@@ -15,6 +15,7 @@ const sharp = require('sharp');
 require('dotenv').config();
 const app = express();
 const ChecklistAssignment = require('./models/ChecklistAssignment');
+const MaintenanceReport = require('./models/MaintenanceReport'); // <-- NEW: IMPORT THE NEW MODEL
 const router = express.Router();
 const qrcode = require('qrcode');
 
@@ -544,11 +545,12 @@ app.post('/admin/zones/:id/delete', ensureAuthenticated, ensureSuperuser, async 
 
 
 // ---------- MANAGER ROUTES ----------//
+// UPDATED to query MaintenanceReport instead of ChecklistAssignment
 app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all' } = req.query;
 
-        const matchCondition = { completedAt: { $ne: null } };
+        const matchCondition = {};
 
         if (filter !== 'all') {
             if (filter === 'rejected') {
@@ -574,18 +576,14 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
             matchCondition.submittedBy = submittedBy;
         }
 
-        let assignments = await ChecklistAssignment.find(matchCondition)
-            .populate({
-                path: 'asset',
-                populate: { path: 'floor' }
-            })
+        let reports = await MaintenanceReport.find(matchCondition)
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
         if (floor !== 'all') {
-            assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
+            reports = reports.filter(r => r.assetSnapshot && r.assetSnapshot.floor && r.assetSnapshot.floor.toLowerCase().includes(floor.toLowerCase()));
         }
 
         const divisions = await Division.find({});
@@ -594,7 +592,7 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
         const activities = await Activity.find({}).sort({ timestamp: -1 }).limit(20);
 
         res.render('managerDashboard', {
-            assignments,
+            assignments: reports, // Pass reports to the template
             currentFilter: filter,
             divisions,
             currentDivision: division,
@@ -609,26 +607,26 @@ app.get('/manager/dashboard', ensureAuthenticated, ensureManager, async (req, re
     }
 });
 
-app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureManager, async (req, res) => {
+app.post('/manager/report/:reportId/verify', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        const assignment = await ChecklistAssignment.findByIdAndUpdate(
-            req.params.assignmentId, {
+        const report = await MaintenanceReport.findByIdAndUpdate(
+            req.params.reportId, {
                 verifiedByManager: true,
                 verifiedByManagerUser: req.session.userId,
                 verifiedByManagerUserName: user.name,
                 verifiedStatus: 'pending'
             }
-        ).populate('asset');
+        );
 
-        await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`, assignment.division);
+        await logActivity(req.session.userId, `verified a report for asset: ${report.assetSnapshot.name}.`, report.division);
 
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report verified successfully.' };
-            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/manager/report/${req.params.reportId}/detail`);
         } else {
             return res.json({ success: true, status: 'verified' });
         }
@@ -636,33 +634,33 @@ app.post('/manager/report/:assignmentId/verify', ensureAuthenticated, ensureMana
         console.error('Error verifying by manager:', err);
         if (req.body.fromDetail) {
             req.session.message = { type: 'danger', text: 'Failed to verify report.' };
-            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/manager/report/${req.params.reportId}/detail`);
         } else {
             return res.status(500).json({ success: false, message: err.message });
         }
     }
 });
 
-app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureManager, async (req, res) => {
+app.post('/manager/report/:reportId/reject', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        const assignment = await ChecklistAssignment.findByIdAndUpdate(
-            req.params.assignmentId, {
+        const report = await MaintenanceReport.findByIdAndUpdate(
+            req.params.reportId, {
                 verifiedStatus: 'rejected',
                 rejectedBy: req.session.userId,
                 rejectedByName: user.name,
                 verifiedByManager: false
             }
-        ).populate('asset');
+        );
 
-        await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`, assignment.division);
+        await logActivity(req.session.userId, `rejected a report for asset: ${report.assetSnapshot.name}.`, report.division);
 
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report rejected successfully.' };
-            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/manager/report/${req.params.reportId}/detail`);
         } else {
             return res.json({ success: true, status: 'rejected' });
         }
@@ -670,31 +668,27 @@ app.post('/manager/report/:assignmentId/reject', ensureAuthenticated, ensureMana
         console.error('Error rejecting by manager:', err);
         if (req.body.fromDetail) {
             req.session.message = { type: 'danger', text: 'Failed to reject report.' };
-            return res.redirect(`/manager/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/manager/report/${req.params.reportId}/detail`);
         } else {
             return res.status(500).json({ success: false, message: err.message });
         }
     }
 });
 
-app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManager, async (req, res) => {
+app.get('/manager/report/:reportId/detail', ensureAuthenticated, ensureManager, async (req, res) => {
     try {
-        const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate({
-                path: 'asset',
-                populate: ['floor', 'category', 'zone', 'division']
-            })
+        const report = await MaintenanceReport.findById(req.params.reportId)
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
-        if (!assignment || !assignment.completedAt) {
-            return res.status(404).send('Checklist not found or not completed');
+        if (!report) {
+            return res.status(404).send('Report not found');
         }
 
         res.render('managerChecklistReportDetail', {
-            assignment
+            assignment: report // Pass report as 'assignment' to template for compatibility
         });
     } catch (err) {
         console.error(err);
@@ -702,14 +696,15 @@ app.get('/manager/report/:assignmentId/detail', ensureAuthenticated, ensureManag
     }
 });
 
+
 // ---------- SPV ROUTES ----------//
+// UPDATED to query MaintenanceReport
 app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const { filter = 'all', floor = 'all', submittedBy = 'all' } = req.query;
 
         const query = {
-            division: req.session.userDivision,
-            completedAt: { $ne: null }
+            division: req.session.userDivision
         };
 
         if (filter !== 'all') {
@@ -732,23 +727,19 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
             query.submittedBy = submittedBy;
         }
 
-        let assignments = await ChecklistAssignment.find(query)
-            .populate({
-                path: 'asset',
-                populate: { path: 'floor' }
-            })
+        let reports = await MaintenanceReport.find(query)
             .populate('submittedBy')
             .populate('rejectedBy');
 
         if (floor !== 'all') {
-            assignments = assignments.filter(a => a.asset && a.asset.floor && a.asset.floor._id.toString() === floor);
+            reports = reports.filter(r => r.assetSnapshot && r.assetSnapshot.floor && r.assetSnapshot.floor.toLowerCase().includes(floor.toLowerCase()));
         }
 
         const floors = await Floor.find({});
         const technicians = await User.find({ role: 'technician', division: req.session.userDivision });
 
         res.render('spvReport', {
-            assignments,
+            assignments: reports,
             currentFilter: filter,
             floors,
             currentFloor: floor,
@@ -761,88 +752,85 @@ app.get('/spv/report', ensureAuthenticated, ensureSpv, async (req, res) => {
     }
 });
 
-app.post('/spv/report/:assignmentId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
+
+app.post('/spv/report/:reportId/verify', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        const assignment = await ChecklistAssignment.findByIdAndUpdate(
-            req.params.assignmentId, {
+        const report = await MaintenanceReport.findByIdAndUpdate(
+            req.params.reportId, {
                 verifiedBySpv: true,
                 verifiedBySpvUser: req.session.userId,
                 verifiedBySpvUserName: user.name,
                 verifiedStatus: 'pending'
             }
-        ).populate('asset');
+        );
 
-        await logActivity(req.session.userId, `verified a report for asset: ${assignment.asset.name}.`);
+        await logActivity(req.session.userId, `verified a report for asset: ${report.assetSnapshot.name}.`);
 
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report verified successfully.' };
-            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/spv/report/${req.params.reportId}/detail`);
         } else {
             return res.json({ success: true, status: 'verified' });
         }
     } catch (err) {
         if (req.body.fromDetail) {
             req.session.message = { type: 'danger', text: 'Failed to verify report.' };
-            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/spv/report/${req.params.reportId}/detail`);
         } else {
             return res.status(500).json({ success: false, message: err.message });
         }
     }
 });
 
-app.post('/spv/report/:assignmentId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.post('/spv/report/:reportId/reject', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         if (!user) {
             return res.status(401).json({ success: false, message: 'User not found.' });
         }
-        const assignment = await ChecklistAssignment.findByIdAndUpdate(req.params.assignmentId, {
+        const report = await MaintenanceReport.findByIdAndUpdate(req.params.reportId, {
             verifiedStatus: 'rejected',
             rejectedBy: req.session.userId,
             rejectedByName: user.name,
             verifiedBySpv: false
-        }).populate('asset');
+        });
 
-        await logActivity(req.session.userId, `rejected a report for asset: ${assignment.asset.name}.`);
+        await logActivity(req.session.userId, `rejected a report for asset: ${report.assetSnapshot.name}.`);
 
         if (req.body.fromDetail) {
             req.session.message = { type: 'success', text: 'Report rejected successfully.' };
-            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/spv/report/${req.params.reportId}/detail`);
         } else {
             return res.json({ success: true, status: 'rejected' });
         }
     } catch (err) {
         if (req.body.fromDetail) {
             req.session.message = { type: 'danger', text: 'Failed to reject report.' };
-            return res.redirect(`/spv/report/${req.params.assignmentId}/detail`);
+            return res.redirect(`/spv/report/${req.params.reportId}/detail`);
         } else {
             return res.status(500).json({ success: false, message: err.message });
         }
     }
 });
 
-app.get('/spv/report/:assignmentId/detail', ensureAuthenticated, ensureSpv, async (req, res) => {
+app.get('/spv/report/:reportId/detail', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
-        const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate({
-                path: 'asset',
-                populate: ['floor', 'category', 'zone']
-            })
+        const report = await MaintenanceReport.findById(req.params.reportId)
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
-        if (!assignment || !assignment.completedAt) {
-            return res.status(404).send('Checklist not completed or not found.');
+        if (!report) {
+            return res.status(404).send('Report not found.');
         }
 
         res.render('spvChecklistReportDetail', {
-            assignment
+            assignment: report
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -854,7 +842,7 @@ app.get('/spv/dashboard', ensureAuthenticated, ensureSpv, async (req, res) => {
         // Ambil checklist berdasarkan divisi SPV
         const checklists = await Checklist.find({ division: req.session.userDivision }).sort({ order: 1 });
         const checklistData = await Promise.all(checklists.map(async checklist => {
-            const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id, isTemplate: true });
+            const count = await ChecklistAssignment.countDocuments({ checklist: checklist._id });
             return { ...checklist.toObject(), assignmentCount: count };
         }));
 
@@ -1171,8 +1159,7 @@ app.post('/checklists/:id/edit', ensureAuthenticated, ensureSpv, ensureChecklist
 app.get('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureChecklistBelongsToDivision, async (req, res) => {
     try {
         const assignments = await ChecklistAssignment.find({
-            checklist: req.params.id,
-            isTemplate: true
+            checklist: req.params.id
         });
         const assignedAssetIds = assignments.map(a => a.asset.toString());
 
@@ -1197,8 +1184,7 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureCheckli
         const checklist = req.checklist; // Ambil dari middleware
 
         await ChecklistAssignment.deleteMany({
-            checklist: checklistId,
-            isTemplate: true
+            checklist: checklistId
         });
 
         const assetsToAssign = Array.isArray(assetIds) ? assetIds : assetIds ? [assetIds] : [];
@@ -1211,9 +1197,6 @@ app.post('/checklists/:id/assign', ensureAuthenticated, ensureSpv, ensureCheckli
             return {
                 checklist: checklistId,
                 asset: assetId,
-                isTemplate: true,
-                checklistTitle: checklist.title,
-                assetSnapshot: { name: asset.name },
                 division: asset.division._id
             };
         });
@@ -1292,8 +1275,7 @@ app.get('/technician/dashboard', ensureAuthenticated, ensureTechnician, async (r
         const assignments = await ChecklistAssignment.find({
                 asset: {
                     $in: assetIds
-                },
-                isTemplate: true
+                }
             })
             .populate('checklist')
             .populate({
@@ -1347,18 +1329,20 @@ app.get('/technician/checklist/:assignmentId', ensureAuthenticated, ensureTechni
     }
 });
 
+
+// UPDATED to create a MaintenanceReport
 app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensureTechnician, upload.any(), async (req, res) => {
     try {
         const assignmentId = req.params.assignmentId;
 
-        const templateAssignment = await ChecklistAssignment.findById(assignmentId)
+        const assignment = await ChecklistAssignment.findById(assignmentId)
             .populate('checklist')
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone', 'division']
             });
 
-        if (!templateAssignment || !templateAssignment.asset) {
+        if (!assignment || !assignment.asset) {
             return res.status(404).send('Checklist assignment or associated asset not found.');
         }
 
@@ -1369,7 +1353,7 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
         let hasAlert = false;
 
-        const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
+        const tasksSnapshot = assignment.checklist.tasks.map(t => ({
             originalTaskId: t._id,
             description: t.description,
             inputType: t.inputType,
@@ -1397,13 +1381,13 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
         }
 
         const assetSnapshot = {
-            name: templateAssignment.asset.name,
-            description: templateAssignment.asset.description,
-            location: templateAssignment.asset.location,
-            category: templateAssignment.asset.category ? templateAssignment.asset.category.name : 'N/A',
-            floor: templateAssignment.asset.floor ? templateAssignment.asset.floor.name : 'N/A',
-            zone: templateAssignment.asset.zone ? templateAssignment.asset.zone.name : 'N/A',
-            division: templateAssignment.asset.division ? templateAssignment.asset.division.name : 'N/A'
+            name: assignment.asset.name,
+            description: assignment.asset.description,
+            location: assignment.asset.location,
+            category: assignment.asset.category ? assignment.asset.category.name : 'N/A',
+            floor: assignment.asset.floor ? assignment.asset.floor.name : 'N/A',
+            zone: assignment.asset.zone ? assignment.asset.zone.name : 'N/A',
+            division: assignment.asset.division ? assignment.asset.division.name : 'N/A'
         };
 
 
@@ -1441,30 +1425,26 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
 
         const maintenanceNote = req.body.note || '';
 
-        const completedAssignment = new ChecklistAssignment({
-            checklist: templateAssignment.checklist._id,
-            checklistTitle: templateAssignment.checklist.title,
-            asset: templateAssignment.asset._id,
+        const newReport = new MaintenanceReport({
+            assignment: assignment._id,
+            checklistTitle: assignment.checklist.title,
             assetSnapshot: assetSnapshot,
-            division: templateAssignment.asset.division._id,
-            assignedAt: templateAssignment.assignedAt,
+            division: assignment.asset.division._id,
             tasksSnapshot,
             responses,
-            completedAt: new Date(),
             submittedBy: req.session.userId,
             submittedByName: user.name,
-            isTemplate: false,
             note: maintenanceNote,
             hasAlert: hasAlert
         });
-        await completedAssignment.save();
+        await newReport.save();
 
-        await logActivity(req.session.userId, `submitted a report for asset: ${templateAssignment.asset.name}.`);
+        await logActivity(req.session.userId, `submitted a report for asset: ${assignment.asset.name}.`);
 
         if (hasAlert) {
             io.emit('alert', {
-                message: `Alert: Checklist for asset ${templateAssignment.asset.name} requires attention!`,
-                assignmentId: completedAssignment._id
+                message: `Alert: Checklist for asset ${assignment.asset.name} requires attention!`,
+                reportId: newReport._id
             })
         }
 
@@ -1475,33 +1455,27 @@ app.post('/technician/checklist/:assignmentId/submit', ensureAuthenticated, ensu
     }
 });
 
+
+// UPDATED to query MaintenanceReport
 app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
         const { submittedBy = 'all' } = req.query;
 
-        const query = {
-            completedAt: { $ne: null }
-        };
+        const query = {};
 
-        // If the filter is 'all', the technician sees all their reports.
-        // If they select their own name, it still shows all their reports.
-        // If they somehow select another user, this will filter for that user's reports.
         if (submittedBy !== 'all') {
             query.submittedBy = submittedBy;
         } else {
-            // By default, a technician should only see their own reports
             query.submittedBy = req.session.userId;
         }
 
-        const assignments = await ChecklistAssignment.find(query)
-            .populate('asset')
+        const reports = await MaintenanceReport.find(query)
             .populate('submittedBy');
 
-        // For the filter dropdown, we only need the current user
         const technicians = await User.find({ _id: req.session.userId });
 
         res.render('technicianReport', {
-            assignments,
+            assignments: reports, // Pass reports to template
             technicians,
             currentSubmittedBy: submittedBy
         });
@@ -1510,24 +1484,20 @@ app.get('/technician/report', ensureAuthenticated, ensureTechnician, async (req,
     }
 });
 
-app.get('/technician/report/:assignmentId', ensureAuthenticated, ensureTechnician, async (req, res) => {
+app.get('/technician/report/:reportId', ensureAuthenticated, ensureTechnician, async (req, res) => {
     try {
-        const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
-            .populate({
-                path: 'asset',
-                populate: ['floor', 'category', 'zone']
-            })
+        const report = await MaintenanceReport.findById(req.params.reportId)
             .populate('submittedBy')
             .populate('verifiedBySpvUser')
             .populate('verifiedByManagerUser')
             .populate('rejectedBy');
 
-        if (!assignment || !assignment.completedAt) {
-            return res.status(404).send('Completed checklist not found.');
+        if (!report) {
+            return res.status(404).send('Report not found.');
         }
 
         res.render('technicianChecklistReportDetail', {
-            assignment
+            assignment: report
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -1560,7 +1530,7 @@ app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (r
             return res.status(404).send('Asset not found');
         }
 
-        const assignments = await ChecklistAssignment.find({ asset: asset._id, isTemplate: true })
+        const assignments = await ChecklistAssignment.find({ asset: asset._id })
             .populate('checklist');
 
         res.render('assetDetail', { asset, assignments });
@@ -1573,36 +1543,28 @@ app.get('/technician/asset/:id', ensureAuthenticated, ensureTechnician, async (r
 // API ROUTE FOR BACKGROUND SYNC
 // ===============================================
 app.post('/api/sync/checklist', async (req, res) => {
-    // This route should be "unprotected" by ensureAuthenticated because
-    // the service worker sends it, and it doesn't have session cookies.
-    // We will find the user based on a placeholder if needed, or assume a generic sync user.
-
     try {
         const { assignmentId, results, note } = req.body;
 
-        const templateAssignment = await ChecklistAssignment.findById(assignmentId)
+        const assignment = await ChecklistAssignment.findById(assignmentId)
             .populate('checklist')
             .populate({
                 path: 'asset',
                 populate: ['floor', 'category', 'zone', 'division']
             });
 
-        if (!templateAssignment || !templateAssignment.asset) {
+        if (!assignment || !assignment.asset) {
             return res.status(404).json({ success: false, message: 'Original assignment not found.' });
         }
         
-        // IMPORTANT: We need to know WHO submitted this.
-        // Since the service worker has no session, you must decide how to attribute this.
-        // For now, we will mark it as submitted by the first technician in that division.
-        // A better long-term solution might be to save the userId in IndexedDB as well.
-        const user = await User.findOne({ division: templateAssignment.asset.division._id, role: 'technician' });
+        const user = await User.findOne({ division: assignment.asset.division._id, role: 'technician' });
         if (!user) {
              return res.status(401).json({ success: false, message: 'No technician found for this division to attribute sync to.' });
         }
 
 
         let hasAlert = false;
-        const tasksSnapshot = templateAssignment.checklist.tasks.map(t => ({
+        const tasksSnapshot = assignment.checklist.tasks.map(t => ({
             originalTaskId: t._id,
             description: t.description,
             inputType: t.inputType,
@@ -1628,41 +1590,36 @@ app.post('/api/sync/checklist', async (req, res) => {
         }
 
         const assetSnapshot = {
-            name: templateAssignment.asset.name,
-            description: templateAssignment.asset.description,
-            location: templateAssignment.asset.location,
-            category: templateAssignment.asset.category ? templateAssignment.asset.category.name : 'N/A',
-            floor: templateAssignment.asset.floor ? templateAssignment.asset.floor.name : 'N/A',
-            zone: templateAssignment.asset.zone ? templateAssignment.asset.zone.name : 'N/A',
-            division: templateAssignment.asset.division ? templateAssignment.asset.division.name : 'N/A'
+            name: assignment.asset.name,
+            description: assignment.asset.description,
+            location: assignment.asset.location,
+            category: assignment.asset.category ? assignment.asset.category.name : 'N/A',
+            floor: assignment.asset.floor ? assignment.asset.floor.name : 'N/A',
+            zone: assignment.asset.zone ? assignment.asset.zone.name : 'N/A',
+            division: assignment.asset.division ? assignment.asset.division.name : 'N/A'
         };
 
-        const completedAssignment = new ChecklistAssignment({
-            checklist: templateAssignment.checklist._id,
-            checklistTitle: templateAssignment.checklist.title,
-            asset: templateAssignment.asset._id,
+        const newReport = new MaintenanceReport({
+            assignment: assignment._id,
+            checklistTitle: assignment.checklist.title,
             assetSnapshot: assetSnapshot,
-            division: templateAssignment.asset.division._id,
-            assignedAt: templateAssignment.assignedAt,
+            division: assignment.asset.division._id,
             tasksSnapshot,
             responses: results,
-            completedAt: new Date(),
             submittedBy: user._id, // Attributed user
             submittedByName: user.name,
-            isTemplate: false,
             note: note || '',
             hasAlert: hasAlert
         });
 
-        await completedAssignment.save();
+        await newReport.save();
 
-        // Log activity for the attributed user
-        await logActivity(user._id, `submitted a report (synced from offline) for asset: ${templateAssignment.asset.name}.`);
+        await logActivity(user._id, `submitted a report (synced from offline) for asset: ${assignment.asset.name}.`);
 
         if (hasAlert) {
             io.emit('alert', {
-                message: `Alert (from offline sync): Checklist for asset ${templateAssignment.asset.name} requires attention!`,
-                assignmentId: completedAssignment._id
+                message: `Alert (from offline sync): Checklist for asset ${assignment.asset.name} requires attention!`,
+                reportId: newReport._id
             });
         }
 

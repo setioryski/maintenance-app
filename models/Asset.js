@@ -15,13 +15,13 @@ const assetSchema = new mongoose.Schema({
   qrCode: { type: String } // Add this line for QR Code
 });
 
-// ADD THIS HOOK
-// Before an asset is deleted, remove all of its template checklist assignments.
+// UPDATED HOOK
+// Before an asset is deleted, this hook now also deletes associated Maintenance Reports.
 assetSchema.pre('findOneAndDelete', async function(next) {
   try {
     const assetId = this.getQuery()['_id'];
     if (assetId) {
-      await ChecklistAssignment.deleteMany({ asset: assetId, isTemplate: true });
+      await ChecklistAssignment.deleteMany({ asset: assetId });
     }
     next();
   } catch (err) {

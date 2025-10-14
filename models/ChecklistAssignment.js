@@ -2,74 +2,19 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-// Sub-schema to snapshot tasks at completion time
-const TaskSnapshotSchema = new Schema({
-  originalTaskId: {
-    type: Schema.Types.ObjectId,
-    required: true,
-    description: 'The ID of the task in the original Checklist document'
-  },
-  description: {
-    type: String,
-    required: true,
-    description: 'The description of the task'
-  },
-  inputType: {
-    type: String,
-    enum: ['functional', 'measurement', 'visual'],
-    required: true,
-    description: 'The type of input expected for this task'
-  },
-  expectedUnit: {
-    type: String,
-    default: '',
-    description: 'The unit expected for measurement tasks'
-  },
-  minRange: {
-    type: Number,
-    default: null
-  },
-  maxRange: {
-    type: Number,
-    default: null
-  }
-}, { _id: false });
-
-// NEW: Sub-schema to snapshot asset details at completion time
-const AssetSnapshotSchema = new Schema({
-  name: { type: String, required: true },
-  description: String,
-  location: String,
-  category: String, // Storing category name as string
-  floor: String,    // Storing floor name as string
-  zone: String,     // Storing zone name as string
-  division: String // Storing division name as string
-}, { _id: false });
-
-
 // Main schema for checklist assignments
 const ChecklistAssignmentSchema = new Schema({
   checklist: {
     type: Schema.Types.ObjectId,
     ref: 'Checklist',
-    description: 'Reference to the checklist template'
-  },
-  checklistTitle: {
-    type: String,
     required: true,
-    description: 'The title of the checklist at the time of submission.'
+    description: 'Reference to the checklist template'
   },
   asset: {
     type: Schema.Types.ObjectId,
     ref: 'Asset',
-    // This is no longer required to exist after submission, so it can be null
-    // if the original asset is deleted.
-    description: 'Reference to the original asset this assignment belongs to'
-  },
-  // REPLACED assetName with assetSnapshot
-  assetSnapshot: {
-      type: AssetSnapshotSchema,
-      description: 'Snapshot of the asset details at the time of submission.'
+    required: true,
+    description: 'Reference to the asset this assignment belongs to'
   },
   division: {
       type: Schema.Types.ObjectId,
@@ -80,62 +25,10 @@ const ChecklistAssignmentSchema = new Schema({
     type: Date,
     default: Date.now,
     description: 'Timestamp when this assignment was created'
-  },
-  tasksSnapshot: {
-    type: [TaskSnapshotSchema],
-    default: [],
-    description: 'Copy of the Checklist.tasks when the assignment was completed'
-  },
-  responses: {
-    type: Schema.Types.Mixed,
-    default: {},
-    description: 'Map of task responses; keys are originalTaskId strings'
-  },
-  completedAt: {
-    type: Date,
-    description: 'Timestamp when the technician submitted the assignment'
-  },
-  submittedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    description: 'User who completed and submitted this assignment'
-  },
-  submittedByName: {
-    type: String,
-    description: 'Name of the user who submitted the assignment at the time of submission.'
-  },
-  isTemplate: {
-    type: Boolean,
-    default: true,
-    description: 'True if this is a template (unfilled) assignment'
-  },
-  note: {
-    type: String,
-    default: '',
-    description: 'Optional note entered by the technician'
-  },
-  verifiedBySpv: { type: Boolean, default: false },
-  verifiedByManager: { type: Boolean, default: false },
-  verifiedBySpvUser: { type: Schema.Types.ObjectId, ref: 'User' },
-  verifiedByManagerUser: { type: Schema.Types.ObjectId, ref: 'User' },
-  verifiedBySpvUserName: { type: String },
-  verifiedByManagerUserName: { type: String },
-  rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  rejectedByName: { type: String },
-  verifiedStatus: {
-    type: String,
-    enum: ['pending', 'rejected'],
-    default: 'pending',
-    description: 'Status set to "rejected" if an SPV or Manager rejects the assignment'
-  },
-  hasAlert: {
-    type: Boolean,
-    default: false,
-    description: 'True if a measurement is out of range OR a functional test has failed.'
   }
 });
 
-// Index for efficient template vs. completed lookups
-ChecklistAssignmentSchema.index({ checklist: 1, isTemplate: 1 });
+// Index for efficient lookups
+ChecklistAssignmentSchema.index({ checklist: 1, asset: 1 });
 
 module.exports = mongoose.model('ChecklistAssignment', ChecklistAssignmentSchema);

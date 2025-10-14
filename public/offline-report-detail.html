@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Detail (Offline)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-ok { color: green !important; }
+        .status-fail { color: red !important; }
+        .rejected-status { color: #dc3545 !important; }
+        .verified-status { color: green !important; }
+        .report-card { box-shadow: 0 4px 8px rgba(0,0,0,0.05); border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container my-4">
+    <div id="loading" class="text-center p-5">Loading report details...</div>
+    <div id="content" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Maintenance Report (Offline)</h2>
+            <a href="/offline-report.html" class="btn btn-secondary">Back to Reports</a>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card h-100 report-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Asset Details</h5>
+                        <p><strong>Name:</strong> <span id="asset-name"></span></p>
+                        <p><strong>Category:</strong> <span id="asset-category"></span></p>
+                        <p class="mb-0"><strong>Location:</strong> <span id="asset-location"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card h-100 report-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Report Information</h5>
+                        <p><strong>Submitted By:</strong> <span id="submitted-by"></span></p>
+                        <p><strong>Submission Date:</strong> <span id="submission-date"></span></p>
+                        <p class="mb-0"><strong>Overall Status:</strong> <span id="overall-status"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card report-card">
+            <div class="card-header bg-white">
+                <h4 id="checklist-title" class="mb-0"></h4>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4" style="width: 50%;">Task Description</th>
+                            <th class="ps-4">Response</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-list">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
+<script src="/js/db.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const assignmentId = window.location.hash.substring(1);
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.getElementById('content');
+
+        if (!assignmentId) {
+            loadingEl.textContent = 'Error: No Report ID provided.';
+            return;
+        }
+
+        const report = await getCompletedReportById(assignmentId);
+
+        if (!report) {
+            loadingEl.textContent = 'Error: Report not found in offline data.';
+            return;
+        }
+
+        // --- Populate Details ---
+        document.getElementById('asset-name').textContent = report.assetSnapshot?.name || 'N/A';
+        document.getElementById('asset-category').textContent = report.assetSnapshot?.category || 'N/A';
+        document.getElementById('asset-location').textContent = `${report.assetSnapshot?.floor || ''} / ${report.assetSnapshot?.zone || ''} - ${report.assetSnapshot?.location || ''}`;
+        
+        document.getElementById('submitted-by').textContent = report.submittedByName || 'N/A';
+        document.getElementById('submission-date').textContent = new Date(report.completedAt).toLocaleString();
+        document.getElementById('checklist-title').textContent = report.checklistTitle || 'N/A';
+
+        let statusHTML = '<span class="badge bg-secondary">Synced</span>';
+        if (report.verifiedStatus === 'rejected') {
+            statusHTML = `<span class="badge bg-danger">Rejected by ${report.rejectedByName || 'N/A'}</span>`;
+        } else if (report.verifiedByManager) {
+            statusHTML = `<span class="badge bg-success">Approved</span>`;
+        }
+        document.getElementById('overall-status').innerHTML = statusHTML;
+
+        const taskList = document.getElementById('task-list');
+        if (report.tasksSnapshot && report.tasksSnapshot.length > 0) {
+            report.tasksSnapshot.forEach(task => {
+                const response = report.responses[task.originalTaskId.toString()];
+                let displayResponse = response;
+                let responseClass = '';
+
+                if (task.inputType === 'measurement' && response !== null) {
+                    const value = parseFloat(response);
+                    if (!isNaN(value)) {
+                        if (task.minRange != null && task.maxRange != null && (value < task.minRange || value > task.maxRange)) {
+                            responseClass = 'status-fail';
+                        } else {
+                            responseClass = 'status-ok';
+                        }
+                        displayResponse = `${value} ${task.expectedUnit || ''}`;
+                    }
+                } else if (task.inputType === 'functional') {
+                    responseClass = response === 'fail' ? 'status-fail' : 'status-ok';
+                    displayResponse = response === 'fail' ? 'Fail' : 'Pass';
+                }
+
+                const row = `
+                    <tr>
+                        <td class="ps-4">${task.description}</td>
+                        <td class="ps-4"><span class="${responseClass}">${displayResponse}</span></td>
+                    </tr>`;
+                taskList.innerHTML += row;
+            });
+        }
+        
+        if (report.note) {
+            const noteRow = `
+                <tr>
+                    <td class="fw-bold ps-4">Technician's Note:</td>
+                    <td class="ps-4">${report.note}</td>
+                </tr>`;
+            taskList.innerHTML += noteRow;
+        }
+
+        loadingEl.classList.add('d-none');
+        contentEl.classList.remove('d-none');
+    });
+</script>
+</body>
+</html>
