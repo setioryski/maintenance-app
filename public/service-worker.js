@@ -2,14 +2,14 @@
 importScripts('https://unpkg.com/dexie@3.2.5/dist/dexie.js');
 importScripts('/js/db.js');
 
-const CACHE_NAME = 'maintenance-app-cache-v6'; // Incremented cache version
+// CRITICAL FIX: Incremented cache version to v8 to force re-caching of all assets, including the updated db.js
+const CACHE_NAME = 'maintenance-app-cache-v8';
 const urlsToCache = [
   '/login',
   '/technician/dashboard',
   '/offline-asset.html',
   '/offline-checklist.html',
   '/offline-report.html',
-  '/offline-report-detail.html',
   '/manifest.json',
   '/image/logo.png',
   'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
@@ -75,10 +75,15 @@ async function syncSubmissions() {
 
   for (const submission of pending) {
     try {
+        const payload = {
+            assignmentId: submission.assignmentId,
+            results: submission.results,
+            note: submission.note
+        };
       const response = await fetch('/api/sync/checklist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submission),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -92,16 +97,14 @@ async function syncSubmissions() {
     } catch (error) {
       failedSyncs++;
       console.error('Error during fetch for sync:', error);
-      // Stop trying if there's a network error
       break;
     }
   }
 
-  // After attempting all syncs, show a notification
   if (self.registration.showNotification) {
       if (failedSyncs > 0) {
           self.registration.showNotification('Sync Failed', {
-              body: `Could not sync ${failedSyncs} submission(s). Please check your connection and try again.`,
+              body: `Could not sync ${failedSyncs} submission(s). Please try syncing manually.`,
               icon: '/image/logo.png'
           });
       } else if (successfulSyncs > 0) {

@@ -1,64 +1,37 @@
 // public/js/db.js
 const db = new Dexie('maintenanceApp');
 
-// Incremented DB version to apply the new table schema cleanly
-db.version(5).stores({
-  pendingSubmissions: '++id, assignmentId',
+// CRITICAL FIX: Incremented DB version to 7 to force a schema update for all users.
+// This ensures the removal of the old 'completedReports' table is correctly applied.
+db.version(7).stores({
+  pendingSubmissions: '++id, assignmentId, timestamp', // Added timestamp index for sorting
   assets: '&_id, name, floor',
   assignments: '&_id, asset, checklist',
   checklists: '&_id, title',
-  completedReports: '&_id, completedAt'
 });
 
-async function cacheData(assets, assignments, checklists, completedReports = []) {
+async function cacheData(assets, assignments, checklists) {
   try {
-    console.log(`Caching ${assets.length} assets, ${assignments.length} assignments, ${checklists.length} checklists, and ${completedReports.length} reports.`);
+    console.log(`Caching ${assets.length} assets, ${assignments.length} assignments, and ${checklists.length} checklists.`);
 
-    await db.transaction('rw', db.assets, db.assignments, db.checklists, db.completedReports, async () => {
-        // Clear all tables to ensure a fresh sync
+    await db.transaction('rw', db.assets, db.assignments, db.checklists, async () => {
         await db.assets.clear();
         await db.assignments.clear();
         await db.checklists.clear();
-        await db.completedReports.clear(); // <-- THE CRITICAL FIX: Clear old reports
 
-        // Filter out any potentially invalid data before caching
         const validAssets = assets.filter(a => a && a._id);
         const validAssignments = assignments.filter(a => a && a._id);
         const validChecklists = checklists.filter(c => c && c._id);
-        const validReports = completedReports.filter(r => r && r._id);
 
-        // Bulk-add the new, fresh data
         await db.assets.bulkPut(validAssets);
         await db.assignments.bulkPut(validAssignments);
         await db.checklists.bulkPut(validChecklists);
-        await db.completedReports.bulkPut(validReports);
     });
-    console.log('Cache successful: All offline data has been synced.');
+    console.log('Cache successful: Core offline data has been synced.');
   } catch (error) {
     console.error('Failed to cache data:', error);
   }
 }
-
-// NEW function to get completed reports for the offline report list
-async function getCompletedReportsOffline() {
-    try {
-        return await db.completedReports.orderBy('completedAt').reverse().toArray();
-    } catch (error) {
-        console.error('Failed to get offline completed reports:', error);
-        return [];
-    }
-}
-
-// NEW function to get a single completed report by its ID
-async function getCompletedReportById(id) {
-    try {
-        return await db.completedReports.get(id);
-    } catch (error) {
-        console.error(`Failed to get offline completed report with id ${id}:`, error);
-        return null;
-    }
-}
-
 
 async function getAssetAndAssignmentsOffline(assetId) {
     try {
@@ -151,7 +124,8 @@ async function addPendingSubmission(submissionData) {
 
 async function getPendingSubmissions() {
   try {
-    return await db.pendingSubmissions.toArray();
+    // Sort by the timestamp to show newest pending reports first.
+    return await db.pendingSubmissions.orderBy('timestamp').reverse().toArray();
   } catch (error) {
     console.error('Failed to get pending submissions:', error);
     return [];
@@ -176,7 +150,6 @@ async function countPendingSubmissions() {
     }
 }
 
-// NEW FUNCTION TO MANUALLY TRIGGER SYNC
 async function forceSync() {
     const pending = await getPendingSubmissions();
     if (pending.length === 0) {
@@ -188,10 +161,16 @@ async function forceSync() {
 
     for (const submission of pending) {
         try {
+            const payload = {
+                assignmentId: submission.assignmentId,
+                results: submission.results,
+                note: submission.note
+            };
+
             const response = await fetch('/api/sync/checklist', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submission),
+                body: JSON.stringify(payload),
             });
 
             if (response.ok) {
@@ -202,7 +181,6 @@ async function forceSync() {
             }
         } catch (error) {
             failedSyncs++;
-            // If any fetch fails, stop and rely on background sync for the rest
             break;
         }
     }

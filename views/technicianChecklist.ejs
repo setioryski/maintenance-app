@@ -15,24 +15,17 @@
       </div>
 
       <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
-    
- 
-     <h2 class="font-bold text-lg text-blue-800"><%= assignment.checklist ?
- assignment.checklist.title : 'N/A' %></h2>
+        <h2 class="font-bold text-lg text-blue-800"><%= assignment.checklist ? assignment.checklist.title : 'N/A' %></h2>
         <p class="text-sm text-gray-700 mt-1">
-          Asset: <strong><%= assignment.asset ?
- assignment.asset.name : 'N/A' %></strong>
+          Asset: <strong><%= assignment.asset ? assignment.asset.name : 'N/A' %></strong>
         </p>
          <p class="text-xs text-gray-500">
-          Location: Fl.
- <%= (assignment.asset.floor && assignment.asset.floor.name) ? assignment.asset.floor.name : 'N/A' %>, Zone <%= (assignment.asset.zone && assignment.asset.zone.name) ?
- assignment.asset.zone.name : 'N/A' %> - <%= assignment.asset.location %>
+          Location: Fl. <%= (assignment.asset.floor && assignment.asset.floor.name) ? assignment.asset.floor.name : 'N/A' %>, Zone <%= (assignment.asset.zone && assignment.asset.zone.name) ? assignment.asset.zone.name : 'N/A' %> - <%= assignment.asset.location %>
         </p>
       </div>
 
       <form id="checklist-form" method="POST" enctype="multipart/form-data">
-        <% const tasks = (assignment.checklist && assignment.checklist.tasks) ?
- assignment.checklist.tasks : []; %>
+        <% const tasks = (assignment.checklist && assignment.checklist.tasks) ? assignment.checklist.tasks : []; %>
 
         <% if (tasks.length > 0) { %>
           <div class="space-y-6">
@@ -40,49 +33,36 @@
             <div class="border p-4 rounded-lg shadow-sm task-item bg-white" data-task-id="<%= task._id %>">
               <input type="hidden" name="taskIds[]" value="<%= task._id %>">
 
-              <label class="block text-gray-800 font-semibold 
- 
- mb-3">
+              <label class="block text-gray-800 font-semibold mb-3">
                 <span class="text-blue-600 mr-2"><%= index + 1 %>.</span><%= task.description %>
                 <% if (task.expectedUnit) { %> 
                   <span class="text-xs font-normal text-gray-500">(Unit: <%= task.expectedUnit %><% if (task.minRange != null && task.maxRange != null) { %>, Range: <%= task.minRange %>-<%= task.maxRange %><% } %>)</span> 
-           
-  
-     <% } %>
+                <% } %>
               </label>
 
               <% if (task.inputType === 'functional') { %>
                 <div class="flex space-x-4">
                   <div class="flex-1 p-3 text-center text-green-800 bg-green-100 rounded-lg border-2 border-green-200 cursor-pointer transition-colors duration-200 functional-button" data-value="pass">
-         
-   
-         <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only"/>
+                    <input type="radio" name="results[<%= task._id %>]" value="pass" required class="sr-only"/>
                     Pass
                   </div>
                   <div class="flex-1 p-3 text-center text-red-800 bg-red-100 rounded-lg border-2 border-red-200 cursor-pointer transition-colors duration-200 functional-button" data-value="fail">
-             
-   
-     <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only"/>
+                    <input type="radio" name="results[<%= task._id %>]" value="fail" required class="sr-only"/>
                     Fail
                   </div>
                 </div>
               <% } else if (task.inputType === 'measurement') { %>
-          
-   
-     <input
+                <input
                   type="number"
                   step="any"
                   name="results[<%= task._id %>]"
                   placeholder="Enter value..."
-                  
- class="shadow-sm border rounded 
- w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="shadow-sm border rounded w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               <% } %>
             </div>
-          <% });
- %>
+          <% }); %>
           </div>
         <% } else { %>
           <p class="text-center text-gray-600">No tasks available for this checklist.</p>
@@ -92,9 +72,7 @@
           <label class="block text-gray-700 font-bold mb-2" for="note">Notes / Remarks</label>
           <textarea
             id="note"
-   
- 
-         name="note"
+            name="note"
             rows="4"
             class="w-full border border-gray-300 rounded-lg p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Add any relevant notes here..."
@@ -105,11 +83,8 @@
   </div>
 
   <footer class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
-   
- 
-   <div class="max-w-3xl mx-auto flex justify-between items-center">
-        <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr;
- Back to Dashboard</a>
+    <div class="max-w-3xl mx-auto flex justify-between items-center">
+        <a href="/technician/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">&larr; Back to Dashboard</a>
         <button
           type="submit"
           id="submit-btn"
@@ -122,8 +97,7 @@
   </footer>
 
   <script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
-  <script 
- src="/js/db.js"></script>
+  <script src="/js/db.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checklist-form');
@@ -131,23 +105,18 @@
 
     if (form) {
       submitBtn.addEventListener('click', async (event) => {
-        event.preventDefault(); // Prevent normal form submission
+        event.preventDefault();
 
-        // --- Validate all tasks ---
         let allTasksCompleted = true;
         const taskElements = document.querySelectorAll('.task-item');
 
         taskElements.forEach((taskElement) => {
           const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
           const measurementInput = taskElement.querySelector('input[type="number"]');
-
-          // Reset previous borders
           taskElement.style.border = '1px solid #e5e7eb';
           if (measurementInput) {
             measurementInput.classList.remove('border-red-500', 'ring-red-500', 'border-2');
           }
-
-          // Check functional tasks
           if (functionalRadios.length > 0) {
             const checked = Array.from(functionalRadios).some(radio => radio.checked);
             if (!checked) {
@@ -155,8 +124,6 @@
               taskElement.style.border = '2px solid red';
             }
           }
-
-          // Check measurement tasks
           if (measurementInput && measurementInput.value.trim() === '') {
             allTasksCompleted = false;
             measurementInput.classList.add('border-red-500', 'ring-red-500', 'border-2');
@@ -168,26 +135,29 @@
           return;
         }
 
-        // --- Prepare form data ---
         const formData = new FormData(form);
-        const submissionData = {
-          assignmentId: '<%= assignment._id %>',
-          results: {},
-          note: formData.get('note')
-        };
-
-        formData.forEach((value, key) => {
-          if (key.startsWith('results[')) {
-            const match = key.match(/\[(.*?)\]/);
-            if (match) submissionData.results[match[1]] = value;
-          }
-        });
-
-        // --- Submit ---
+        
         if (navigator.onLine) {
           form.action = '/technician/checklist/<%= assignment._id %>/submit';
           form.submit();
         } else {
+          // ** NEW OFFLINE SUBMISSION LOGIC **
+          const submissionData = {
+            assignmentId: '<%= assignment._id %>',
+            results: {},
+            note: formData.get('note'),
+            // Add extra data for the offline report view
+            timestamp: new Date().toISOString(),
+            assetName: '<%= assignment.asset ? assignment.asset.name : "N/A" %>',
+            checklistTitle: '<%= assignment.checklist ? assignment.checklist.title : "N/A" %>'
+          };
+          formData.forEach((value, key) => {
+            if (key.startsWith('results[')) {
+              const match = key.match(/\[(.*?)\]/);
+              if (match) submissionData.results[match[1]] = value;
+            }
+          });
+          
           await addPendingSubmission(submissionData);
           alert('You are offline. Your submission has been saved and will sync automatically when online.');
           window.location.href = '/technician/dashboard';
@@ -195,7 +165,6 @@
       });
     }
 
-    // --- Functional Button UI Logic ---
     document.querySelectorAll('.functional-button').forEach((button) => {
       button.addEventListener('click', () => {
         const radio = button.querySelector('input[type="radio"]');

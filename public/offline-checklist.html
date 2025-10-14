@@ -75,13 +75,11 @@
 
       const { assignment, asset, checklist } = data;
 
-      // Populate header info
       document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       document.getElementById('checklist-title').textContent = checklist.title;
       document.getElementById('asset-name').textContent = asset.name;
       document.getElementById('asset-location').textContent = `Location: ${asset.location}`;
 
-      // Populate tasks
       const taskList = document.getElementById('task-list');
       if (checklist.tasks && checklist.tasks.length > 0) {
         checklist.tasks.forEach((task, index) => {
@@ -123,11 +121,10 @@
       loadingEl.classList.add('hidden');
       contentEl.classList.remove('hidden');
 
-      // Add event listeners after elements are created
-      setupEventListeners(assignmentId);
+      setupEventListeners(assignmentId, asset.name, checklist.title);
     });
 
-    function setupEventListeners(assignmentId) {
+    function setupEventListeners(assignmentId, assetName, checklistTitle) {
       const form = document.getElementById('checklist-form');
       const submitBtn = document.getElementById('submit-btn');
 
@@ -136,8 +133,22 @@
           event.preventDefault();
           
           let allTasksCompleted = true;
-          // (Your form validation logic here)
-
+          // Implement validation as in the online page
+          const taskElements = document.querySelectorAll('.task-item');
+          taskElements.forEach((taskElement) => {
+              const functionalRadios = taskElement.querySelectorAll('input[type="radio"]');
+              const measurementInput = taskElement.querySelector('input[type="number"]');
+              taskElement.style.border = '1px solid #e5e7eb';
+              if(measurementInput) measurementInput.classList.remove('border-red-500', 'ring-red-500');
+              if (functionalRadios.length > 0 && !Array.from(functionalRadios).some(r => r.checked)) {
+                  allTasksCompleted = false;
+                  taskElement.style.border = '2px solid red';
+              }
+              if (measurementInput && measurementInput.value.trim() === '') {
+                  allTasksCompleted = false;
+                  measurementInput.classList.add('border-red-500', 'ring-red-500');
+              }
+          });
           if (!allTasksCompleted) {
             alert('Please complete all checklist items before submitting.');
             return;
@@ -147,7 +158,11 @@
           const submissionData = {
             assignmentId: assignmentId,
             results: {},
-            note: formData.get('note')
+            note: formData.get('note'),
+            // Add extra data for the offline report view
+            timestamp: new Date().toISOString(),
+            assetName: assetName,
+            checklistTitle: checklistTitle
           };
 
           formData.forEach((value, key) => {
