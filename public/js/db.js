@@ -72,41 +72,38 @@ async function getChecklistDataOffline(assignmentId) {
         }
         console.log('[Offline DB] SUCCESS: Found assignment document:', assignment);
 
-        const assetId = assignment.asset && typeof assignment.asset === 'object' ? assignment.asset._id : assignment.asset;
-        if (!assetId) {
-            console.error(`[Offline DB] FAILED: The found assignment document has no 'asset' reference.`, assignment);
-            return null;
-        }
-        console.log(`[Offline DB] INFO: Looking for asset with ID: "${assetId}"`);
+        // The asset and checklist objects are nested within the assignment record.
+        // We don't need to do separate lookups.
+        const asset = assignment.asset;
+        const checklist = assignment.checklist;
 
-        const asset = await db.assets.get(assetId);
-        if (!asset) {
-            console.error(`[Offline DB] FAILED: Asset with ID "${assetId}" not found in 'assets' table.`);
-            return null;
-        }
-        console.log('[Offline DB] SUCCESS: Found asset document:', asset);
-        
-        const checklistId = assignment.checklist && typeof assignment.checklist === 'object' ? assignment.checklist._id : assignment.checklist;
-        if (!checklistId) {
-            console.error(`[Offline DB] FAILED: The found assignment document has no 'checklist' reference.`, assignment);
-            return null;
-        }
-        console.log(`[Offline DB] INFO: Looking for checklist with ID: "${checklistId}"`);
+        if (!asset || !checklist) {
+            console.error('[Offline DB] FAILED: Assignment is missing nested asset or checklist object.');
+            // As a fallback, try to look them up by ID if they exist as strings
+            const assetId = typeof asset === 'object' ? asset._id : asset;
+            const checklistId = typeof checklist === 'object' ? checklist._id : checklist;
 
-        const checklist = await db.checklists.get(checklistId);
-        if (!checklist) {
-            console.error(`[Offline DB] FAILED: Checklist with ID "${checklistId}" not found in 'checklists' table.`);
-            return null;
-        }
-        console.log('[Offline DB] SUCCESS: Found checklist document:', checklist);
+            if (!assetId || !checklistId) return null;
 
-        console.log('[Offline DB] All data loaded successfully.');
+            const fetchedAsset = await db.assets.get(assetId);
+            const fetchedChecklist = await db.checklists.get(checklistId);
+
+            if (!fetchedAsset || !fetchedChecklist) {
+                 console.error('[Offline DB] FAILED: Fallback lookup for asset/checklist also failed.');
+                 return null;
+            }
+             console.log('[Offline DB] SUCCESS: Fallback lookup successful.');
+            return { assignment, asset: fetchedAsset, checklist: fetchedChecklist };
+        }
+
+        console.log('[Offline DB] All data loaded successfully from nested objects.');
         return { assignment, asset, checklist };
     } catch (error) {
         console.error('A critical error occurred in getChecklistDataOffline:', error);
         return null;
     }
 }
+
 
 async function addPendingSubmission(submissionData) {
   try {
