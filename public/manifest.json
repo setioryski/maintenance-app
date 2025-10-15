@@ -2,7 +2,7 @@
   "name": "Maintenance App",
   "short_name": "MaintApp",
   "scope": "/",
-  "start_url": "/login",
+  "start_url": "/technician/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4a90e2",

@@ -2,11 +2,13 @@
 importScripts('https://unpkg.com/dexie@3.2.5/dist/dexie.js');
 importScripts('/js/db.js');
 
-// CRITICAL FIX: Incremented cache version to v8 to force re-caching of all assets, including the updated db.js
-const CACHE_NAME = 'maintenance-app-cache-v8';
+// Incremented cache version to v12 to force install of the new, corrected service worker
+const CACHE_NAME = 'maintenance-app-cache-v12';
 const urlsToCache = [
-  '/login',
+  // Add the root URL to handle the initial launch properly
+  '/',
   '/technician/dashboard',
+  '/login',
   '/offline-asset.html',
   '/offline-checklist.html',
   '/offline-report.html',
@@ -43,18 +45,42 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // --- ROBUST OFFLINE STRATEGY FOR PAGES ---
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request.url) || caches.match('/technician/dashboard'))
+      (async () => {
+        try {
+          // 1. Try to fetch the page from the network first.
+          const networkResponse = await fetch(event.request);
+          return networkResponse;
+        } catch (error) {
+          // 2. If the network fails (offline), open the cache.
+          console.log('Fetch failed, user is offline. Serving from cache.');
+          const cache = await caches.open(CACHE_NAME);
+          
+          // 3. Try to match the exact requested page (e.g., offline-checklist.html).
+          const cachedResponse = await cache.match(event.request.url);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // 4. If the exact page is not in cache, serve the main dashboard as the ultimate fallback.
+          // This is the key fix for the "site can't be reached" error on launch.
+          return await cache.match('/technician/dashboard');
+        }
+      })()
     );
     return;
   }
+
+  // --- CACHE-FIRST STRATEGY FOR ASSETS (JS, CSS, IMAGES) ---
   event.respondWith(
     caches.match(event.request).then(response => {
       return response || fetch(event.request);
     })
   );
 });
+
 
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-checklist-submissions') {
