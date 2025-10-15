@@ -23,7 +23,7 @@ const User = mongoose.model('User');
 
 /**
  * GET /technician/dashboard
- * Displays the main dashboard for the technician, showing assigned tasks.
+ * Displays the main dashboard for the technician, showing all available assignments.
  */
 router.get('/dashboard', async (req, res) => {
     try {
@@ -33,7 +33,7 @@ router.get('/dashboard', async (req, res) => {
         const assetsInDivision = await Asset.find({ division: divisionId }, '_id').lean();
         const assetIds = assetsInDivision.map(a => a._id);
 
-        // Find all checklist assignments for those assets
+        // Find all checklist assignments for those assets (no longer filtering by status)
         const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
             .populate('checklist')
             .populate({
@@ -100,7 +100,7 @@ router.get('/checklist/:assignmentId', async (req, res) => {
 
 /**
  * POST /technician/checklist/:assignmentId/submit
- * Handles the submission of a completed checklist.
+ * Handles the submission of a completed checklist and creates a report.
  */
 router.post('/checklist/:assignmentId/submit', upload.any(), async (req, res) => {
     try {
@@ -180,7 +180,8 @@ router.post('/checklist/:assignmentId/submit', upload.any(), async (req, res) =>
             note: req.body.note || '',
             hasAlert: hasAlert
         });
-
+        
+        // Save the new report. The assignment itself is not modified.
         await newReport.save();
         await logActivity(user._id, `submitted a report for asset: ${assetSnapshot.name}.`);
 
@@ -216,8 +217,8 @@ router.get('/report', async (req, res) => {
 
         res.render('technicianReport', {
             assignments: reports,
-            technicians: [currentUser],
-            currentSubmittedBy: 'all' // Default to show current user's reports
+            technicians: [currentUser], 
+            currentSubmittedBy: 'all' 
         });
     } catch (err) {
         console.error("Technician Report List Error:", err);
