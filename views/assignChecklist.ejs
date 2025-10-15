@@ -12,35 +12,38 @@
     <p class="mb-4">
       Checklist: <strong><%= checklist.title %></strong>
     </p>
-    <form action="/checklists/<%= checklist._id %>/assign" method="POST">
+    
+    <% /* --- CORRECTED FORM ACTION --- */ %>
+    <form action="/spv/checklists/<%= checklist._id %>/assign" method="POST">
       <h2 class="text-md font-semibold mb-2">Pilih Asset (hanya asset divisi Anda):</h2>
-      <div class="mb-4">
+      <div class="mb-4 h-64 overflow-y-auto border rounded-md p-2">
         <% assets.forEach(asset => { %>
-          <div class="flex items-center mb-1">
-            <!-- Checkbox asset; asset yang sudah diassign, tampilkan checked -->
+          <div class="flex items-center mb-1 hover:bg-gray-50 p-1 rounded">
             <input
               type="checkbox"
               name="assetIds"
               value="<%= asset._id %>"
               id="asset-<%= asset._id %>"
-              class="mr-2"
+              class="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %>
             />
-            <label for="asset-<%= asset._id %>">
-              <%= asset.name %> - <span class="text-gray-600"><%= asset.type %></span>
+            <label for="asset-<%= asset._id %>" class="w-full">
+              <%= asset.name %>
             </label>
           </div>
         <% }); %>
       </div>
-      <button
-        type="submit"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        Simpan
-      </button>
-      <a href="/spv/dashboard" class="ml-4 text-blue-500 hover:text-blue-700">
-        Batal
-      </a>
+      <div class="flex items-center justify-end space-x-4">
+        <a href="/spv/dashboard" class="text-gray-600 hover:text-gray-800">
+          Batal
+        </a>
+        <button
+          type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow-sm transition duration-200"
+        >
+          Simpan Assignment
+        </button>
+      </div>
     </form>
   </div>
 </body>

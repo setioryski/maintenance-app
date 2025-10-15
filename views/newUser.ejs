@@ -11,6 +11,8 @@
         <div class="w-full max-w-lg">
             <div class="bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4">
                 <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Register New User</h1>
+                
+                <% /* --- CORRECTED FORM ACTION --- */ %>
                 <form action="/admin/users" method="POST">
                     <div class="mb-4">
                         <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Name:</label>
@@ -55,6 +57,7 @@
                 </form>
             </div>
             <div class="text-center">
+                <% /* --- CORRECTED LINK --- */ %>
                 <a href="/admin/users" class="text-indigo-600 hover:text-indigo-800 transition duration-300">&larr; Back to Manage Users</a>
             </div>
         </div>
@@ -72,7 +75,6 @@
                 document.getElementById('division').required = false;
             }
         }
-        // Run on page load to set the initial state
         document.addEventListener('DOMContentLoaded', toggleDivision);
     </script>
 </body>

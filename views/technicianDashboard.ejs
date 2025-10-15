@@ -7,13 +7,11 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   
   <link rel="manifest" href="/manifest.json">
-
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MaintApp">
   <meta name="theme-color" content="#4a90e2"/>
-
   <link rel="apple-touch-icon" href="/image/logo.png">
 
 </head>
@@ -22,18 +20,27 @@
   <header class="bg-white shadow-sm sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
-        <div class="flex-shrink-0">
-          <img src="/image/logo.png" alt="Company Logo" class="h-8">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <img src="/image/logo.png" alt="Company Logo" class="h-8">
+            </div>
+         
+            <div id="status-indicator-mobile" class="md:hidden flex items-center space-x-2 ml-4 px-2 py-1 rounded-full text-xs">
+                <span id="status-dot-mobile" class="w-2 h-2 rounded-full"></span>
+                <span id="status-text-mobile" class="font-semibold"></span>
+            </div>
         </div>
+
         <div class="hidden md:flex items-center space-x-4">
-           <div id="status-indicator" class="flex items-center space-x-2 px-3 py-1 rounded-full">
-             <span id="status-dot" class="w-3 h-3 rounded-full"></span>
-             <span id="status-text" class="text-sm font-semibold"></span>
+
+           <div id="status-indicator-desktop" class="flex items-center space-x-2 px-3 py-1 rounded-full">
+             <span id="status-dot-desktop" class="w-3 h-3 rounded-full"></span>
+             <span id="status-text-desktop" class="text-sm font-semibold"></span>
            </div>
            <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
            <a id="my-reports-link-desktop" href="/technician/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">My Reports</a>
-            <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
-          </div>
+           <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
+        </div>
         <div class="md:hidden">
           <a href="/logout" class="text-gray-500 text-sm">Logout</a>
         </div>
@@ -53,148 +60,148 @@
             </button>
         </div>
 
-      <div class="flex flex-col md:flex-row items-start justify-between mb-6">
-        <div>
-          <h1 class="text-3xl font-bold  text-gray-900">Technician Dashboard</h1>
-          <p class="text-sm text-gray-500">Here are your assigned maintenance tasks and recent activities.</p>
+        <div class="flex flex-col md:flex-row items-start justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
+                <p class="text-sm text-gray-500">Here are your assigned maintenance tasks and recent activities.</p>
+            </div>
+            <div class="flex space-x-2 mt-4 md:mt-0">
+                <button id="scan-qr-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Scan QR Code
+                </button>
+            </div>
         </div>
 
-       <div class="flex space-x-2 mt-4 md:mt-0">
-          <button id="scan-qr-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            Scan QR Code
-          </button>
-      </div>
-      </div>
+        <div id="qr-reader" class="hidden mx-auto md:w-96 mb-6"></div>
 
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
 
-      <div id="qr-reader" class="hidden mx-auto md:w-96 mb-6"></div>
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="Search by asset name..."
+                            class="col-span-1 sm:col-span-3 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                            <select id="floorFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Floors</option>
+                            <% floors.forEach(function(floor) { %>
+                                <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
+                            <% }); %>
+                            </select>
+                            <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Categories</option>
+                            <% assetCategories.forEach(function(cat) { %>
+                                <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
+                            <% }); %>
+                            </select>
+                        </div>
+                    </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2">
-          <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
+                    <%
+                    const getAssetIcon = (name) => {
+                        name = (name || '').toLowerCase();
+                        if (name.includes('cctv')) return '📷';
+                        if (name.includes('panoramic')) return '🌅';
+                        if (name.includes('smoke') || name.includes('fire')) return '🔥';
+                        if (name.includes('ahu')) return '💨';
+                        if (name.includes('elevator')) return '↕️';
+                        if (name.includes('generator')) return '⚡️';
+                        return '📦';
+                    };
+                    const validAssignments = assignments.filter(a => a.checklist && a.asset);
+                    if (validAssignments.length === 0) {
+                    %>
+                    <div class="text-center py-12">
+                        <h3 class="text-lg font-medium text-gray-700">No maintenance tasks assigned.</h3>
+                        <p class="text-gray-500 mt-1">Please check back later.</p>
+                    </div>
+                    <% } else {
+                    const groupedAssignments = {};
+                    validAssignments.forEach(function(assignment) {
+                        const assetId = assignment.asset._id.toString();
+                        if (!groupedAssignments[assetId]) {
+                        groupedAssignments[assetId] = {
+                            asset: assignment.asset,
+                            checklists: []
+                        };
+                        }
+                        groupedAssignments[assetId].checklists.push(assignment);
+                    });
+                    %>
+                    <div class="space-y-4">
+                        <% Object.keys(groupedAssignments).forEach(function(assetId) {
+                        const group = groupedAssignments[assetId];
+                        const asset = group.asset;
+                        const assetName = asset.name;
+            
+                        const uniqueGroupId = `asset-group-${assetId}`;
+                        %>
+                        <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
+                            data-name="<%= assetName.toLowerCase() %>"
+                            data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
+                            data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
 
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <input
-                  type="text"
-                  id="searchInput"
-                   placeholder="Search by asset name..."
-                  class="col-span-1 sm:col-span-3 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                <select id="floorFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Floors</option>
-                  <% floors.forEach(function(floor) { %>
-                    <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
-                  <% }); %>
-                </select>
-                <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Categories</option>
-                  <% assetCategories.forEach(function(cat) { %>
-                    <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
-                  <% }); %>
-                </select>
-              </div>
+                            <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
+                            onclick="toggleDropdown('<%= uniqueGroupId %>')">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
+                                <div>
+                                <p class="text-md text-gray-800"><%= assetName %></p>
+            
+                                <p class="text-xs text-gray-500">
+                                    Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location %>
+                                </p>
+                                </div>
+                            </div>
+                            <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
+                            </div>
+
+                            <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
+                            <% group.checklists.forEach(function(assignment) { %>
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
+                                <div>
+                                    <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
+                                    <p class="text-xs text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
+                                </div>
+                                <button
+                                    onclick="startChecklist('<%= assignment._id %>')"
+                                    class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
+                                    Start Checklist
+                                </button>
+                                </div>
+                            <% }); %>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                    <% } %>
+                </div>
             </div>
 
-            <%
-              const getAssetIcon = (name) => {
-                name = (name || '').toLowerCase();
-                if (name.includes('cctv')) return '📷';
-                if (name.includes('panoramic')) return '🌅';
-                if (name.includes('smoke') || name.includes('fire')) return '🔥';
-                if (name.includes('ahu')) return '💨';
-                if (name.includes('elevator')) return '↕️';
-                if (name.includes('generator')) return '⚡️';
-                return '📦';
-              };
-              const validAssignments = assignments.filter(a => a.checklist && a.asset);
-              if (validAssignments.length === 0) {
-            %>
-              <div class="text-center py-12">
-                <h3 class="text-lg font-medium text-gray-700">No maintenance tasks assigned.</h3>
-                <p class="text-gray-500 mt-1">Please check back later.</p>
-              </div>
-            <% } else {
-              const groupedAssignments = {};
-              validAssignments.forEach(function(assignment) {
-                const assetId = assignment.asset._id.toString();
-                if (!groupedAssignments[assetId]) {
-                  groupedAssignments[assetId] = {
-                    asset: assignment.asset,
-                    checklists: []
-                  };
-                }
-                groupedAssignments[assetId].checklists.push(assignment);
-              });
-            %>
-              <div class="space-y-4">
-                <% Object.keys(groupedAssignments).forEach(function(assetId) {
-                  const group = groupedAssignments[assetId];
-                  const asset = group.asset;
-                  const assetName = asset.name;
-                  const uniqueGroupId = `asset-group-${assetId}`;
-                %>
-                  <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
-                       data-name="<%= assetName.toLowerCase() %>"
-                       data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
-                       data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
-
-                    <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
-                      onclick="toggleDropdown('<%= uniqueGroupId %>')">
-                      <div class="flex items-center">
-                        <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
-                        <div>
-                          <p class="text-md text-gray-800"><%= assetName %></p>
-                          <p class="text-xs text-gray-500">
-                            Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location %>
-                          </p>
-                        </div>
-                      </div>
-                      <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
-                    </div>
-
-                    <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
-                      <% group.checklists.forEach(function(assignment) { %>
-                        <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
-                          <div>
-                            <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
-                            <p class="text-xs  text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
-                          </div>
-                          <button
-                             onclick="startChecklist('<%= assignment._id %>')"
-                             class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
-                             Start Checklist
-                          </button>
-                        </div>
-                      <% }); %>
-                    </div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } %>
-          </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
+                <div class="h-96 overflow-y-auto">
+                    <ul>
+                        <% if (locals.activities && activities.length > 0) { %>
+                            <% activities.forEach(function(activity) { %>
+                            <li class="border-b last:border-b-0 py-3">
+                                <p class="text-sm text-gray-800"><strong><%= (activity.user && activity.user.name) || (activity.user.id && activity.user.id.name) || 'System' %></strong> (<%= activity.role %>) <%= activity.action %></p>
+                                <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
+                            </li>
+                            <% }); %>
+                        <% } else { %>
+                            <p class="text-gray-500">No recent activities.</p>
+                        <% } %>
+                    </ul>
+                </div>
+            </div>
         </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
-          <div class="h-96 overflow-y-auto">
-            <ul>
-              <% if (locals.activities && activities.length > 0) { %>
-                <% activities.forEach(function(activity) { %>
-                  <li class="border-b last:border-b-0 py-3">
-                    <p class="text-sm text-gray-800"><strong><%= activity.user.name %></strong> (<%= activity.role %>) <%= activity.action %></p>
-                    <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
-                  </li>
-                <% }); %>
-              <% } else { %>
-                <p class="text-gray-500">No recent activities.</p>
-              <% } %>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
   </main>
 
@@ -218,179 +225,131 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }, err => {
-          console.log('ServiceWorker registration failed: ', err);
-        });
+        navigator.serviceWorker.register('/service-worker.js');
       });
     }
 
-    const assignmentsData = <%- JSON.stringify(assignments || []) %>;
-    const checklistsData = <%- JSON.stringify(checklists || []) %>;
-    const assetsData = assignmentsData.reduce((acc, current) => {
-        if (current.asset && !acc.find(item => item._id === current.asset._id)) {
-            acc.push(current.asset);
+    async function syncWithServer() {
+        if (!navigator.onLine) return;
+        try {
+            const response = await fetch('/api/technician/sync-data');
+            if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+            const data = await response.json();
+            await cacheData(data.assets, data.assignments, data.checklists);
+            console.log("Successfully synced with server.");
+        } catch (error) {
+            console.error("Failed to sync with server:", error);
         }
-        return acc;
-    }, []);
+    }
 
     document.addEventListener('DOMContentLoaded', (event) => {
-      if (navigator.onLine) {
-          cacheData(assetsData, assignmentsData, checklistsData);
-      }
+      syncWithServer();
+
+      const updateOnlineStatus = async () => {
+        const online = navigator.onLine;
+
+        const indicators = [
+            {
+                indicator: document.getElementById('status-indicator-desktop'),
+                dot: document.getElementById('status-dot-desktop'),
+                text: document.getElementById('status-text-desktop'),
+                dotClass: 'w-3 h-3'
+            },
+            {
+                indicator: document.getElementById('status-indicator-mobile'),
+                dot: document.getElementById('status-dot-mobile'),
+                text: document.getElementById('status-text-mobile'),
+                dotClass: 'w-2 h-2'
+            }
+        ];
+
+        const syncNowBtn = document.getElementById('sync-now-btn');
+        const pendingSyncAlert = document.getElementById('pending-sync-alert');
+        const pendingSyncCount = document.getElementById('pending-sync-count');
+        const desktopReportLink = document.getElementById('my-reports-link-desktop');
+        const mobileReportLink = document.getElementById('my-reports-link-mobile');
+
+        indicators.forEach(({ indicator, dot, text, dotClass }) => {
+            if (online) {
+                dot.className = `${dotClass} rounded-full bg-green-500`;
+                text.textContent = 'Online';
+                indicator.className = indicator.className.replace(/bg-red-100 text-red-800/g, 'bg-green-100 text-green-800');
+            } else {
+                dot.className = `${dotClass} rounded-full bg-red-500`;
+                text.textContent = 'Offline';
+                indicator.className = indicator.className.replace(/bg-green-100 text-green-800/g, 'bg-red-100 text-red-800');
+            }
+        });
+
+        if (online) {
+            syncNowBtn.classList.remove('hidden');
+            if (desktopReportLink) desktopReportLink.href = '/technician/report';
+            if (mobileReportLink) mobileReportLink.href = '/technician/report';
+            await syncWithServer(); 
+            forceSync();
+        } else {
+            syncNowBtn.classList.add('hidden');
+            if (desktopReportLink) desktopReportLink.href = '/offline-report.html';
+            if (mobileReportLink) mobileReportLink.href = '/offline-report.html';
+        }
+
+        const pendingCount = await countPendingSubmissions();
+        pendingSyncAlert.classList.toggle('hidden', pendingCount === 0);
+        pendingSyncCount.textContent = pendingCount;
+      };
+
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus();
 
       const scanBtn = document.getElementById('scan-qr-btn');
       const qrReaderElement = document.getElementById('qr-reader');
       const html5QrCode = new Html5Qrcode("qr-reader");
 
       const onScanSuccess = (decodedText, decodedResult) => {
-        console.log(`Scan result: ${decodedText}`);
         html5QrCode.stop().then(() => {
-          if (navigator.onLine) {
-            window.location.href = `/technician/asset/${decodedText}`;
-          } else {
-            window.location.href = `/offline-asset.html#${decodedText}`;
-          }
-        }).catch(err => {
-          console.error("Error stopping the scanner:", err);
-        });
+          window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`;
+        }).catch(err => console.error("Error stopping scanner:", err));
       };
-
-      const onScanFailure = (error) => {};
-
+      
       scanBtn.addEventListener('click', () => {
-        const isScannerHidden = qrReaderElement.classList.contains('hidden');
-        if (isScannerHidden) {
+        const isHidden = qrReaderElement.classList.contains('hidden');
+        if (isHidden) {
           qrReaderElement.classList.remove('hidden');
-          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-          html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-            .catch(err => {
-              console.error(`Unable to start scanning: ${err}`);
-              alert(`Could not start camera.`);
-              qrReaderElement.classList.add('hidden');
-            });
+          html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, () => {})
+            .catch(err => alert(`Could not start camera. Error: ${err}`));
         } else {
-          html5QrCode.stop()
-            .then(() => qrReaderElement.classList.add('hidden'))
-            .catch(err => {
-              console.error("Failed to stop scanner cleanly:", err);
-              qrReaderElement.classList.add('hidden');
-            });
+          html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden'));
         }
       });
 
       document.getElementById('searchInput').addEventListener('input', filterAssets);
       document.getElementById('floorFilter').addEventListener('change', filterAssets);
       document.getElementById('categoryFilter').addEventListener('change', filterAssets);
-
-      const statusIndicator = document.getElementById('status-indicator');
-      const statusDot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
-      const pendingSyncAlert = document.getElementById('pending-sync-alert');
-      const pendingSyncCount = document.getElementById('pending-sync-count');
-      const syncNowBtn = document.getElementById('sync-now-btn');
-      
-      // ** NEW: Get report links **
-      const desktopReportLink = document.getElementById('my-reports-link-desktop');
-      const mobileReportLink = document.getElementById('my-reports-link-mobile');
-
-      const updateOnlineStatus = async () => {
-        const online = navigator.onLine;
-        if (online) {
-          statusDot.className = 'w-3 h-3 rounded-full bg-green-500';
-          statusText.textContent = 'Online';
-          statusIndicator.className = 'flex items-center space-x-2 px-3 py-1 rounded-full bg-green-100 text-green-800';
-          syncNowBtn.classList.remove('hidden');
-          // ** NEW: Update links for online status **
-          if (desktopReportLink) desktopReportLink.href = '/technician/report';
-          if (mobileReportLink) mobileReportLink.href = '/technician/report';
-        } else {
-          statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
-          statusText.textContent = 'Offline';
-          statusIndicator.className = 'flex items-center space-x-2 px-3 py-1 rounded-full bg-red-100 text-red-800';
-          syncNowBtn.classList.add('hidden');
-          // ** NEW: Update links for offline status **
-          if (desktopReportLink) desktopReportLink.href = '/offline-report.html';
-          if (mobileReportLink) mobileReportLink.href = '/offline-report.html';
-        }
-
-        const pendingCount = await countPendingSubmissions();
-        if (pendingCount > 0) {
-            pendingSyncCount.textContent = pendingCount;
-            pendingSyncAlert.classList.remove('hidden');
-        } else {
-            pendingSyncAlert.classList.add('hidden');
-        }
-      };
-
-      syncNowBtn.addEventListener('click', async () => {
-          if (!navigator.onLine) {
-              alert('You must be online to sync. Please check your connection.');
-              return;
-          }
-
-          syncNowBtn.disabled = true;
-          syncNowBtn.textContent = 'Syncing...';
-
-          const result = await forceSync();
-
-          if (result.failed > 0) {
-              alert(`Could not sync ${result.failed} submission(s). The automatic sync will try again later.`);
-          }
-          if (result.successful > 0) {
-              alert(`${result.successful} submission(s) have been successfully synced.`);
-          }
-          if (result.successful === 0 && result.failed === 0) {
-              alert('No submissions were waiting to be synced.');
-          }
-
-          syncNowBtn.disabled = false;
-          syncNowBtn.textContent = 'Sync Now';
-
-          updateOnlineStatus();
-      });
-
-      window.addEventListener('online', updateOnlineStatus);
-      window.addEventListener('offline', updateOnlineStatus);
-      updateOnlineStatus();
     });
 
     function filterAssets() {
       const searchValue = document.getElementById('searchInput').value.toLowerCase();
-      const floorValue = document.getElementById('floorFilter').value.toLowerCase();
-      const categoryValue = document.getElementById('categoryFilter').value.toLowerCase();
+      const floorValue = document.getElementById('floorFilter').value;
+      const categoryValue = document.getElementById('categoryFilter').value;
       document.querySelectorAll('.asset-card').forEach(card => {
-        const assetName = card.getAttribute('data-name') || "";
-        const assetFloor = card.getAttribute('data-floor') || "";
-        const assetCategory = card.getAttribute('data-category') || "";
-
-        const isVisible = assetName.includes(searchValue) &&
-                          (floorValue === "" || assetFloor === floorValue) &&
-                          (categoryValue === "" || assetCategory.includes(categoryValue));
-
+        const name = card.dataset.name || "";
+        const floor = card.dataset.floor || "";
+        const category = card.dataset.category || "";
+        const isVisible = name.includes(searchValue) &&
+                          (floorValue === "" || floor === floorValue) &&
+                          (categoryValue === "" || category === categoryValue);
         card.style.display = isVisible ? '' : 'none';
       });
     }
 
     function toggleDropdown(id) {
-      const dropdown = document.getElementById(id);
-      const arrow = document.getElementById('arrow-' + id);
-      if (dropdown.classList.contains('hidden')) {
-        dropdown.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
-      } else {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
-      }
+      document.getElementById(id)?.classList.toggle('hidden');
+      document.getElementById('arrow-' + id)?.classList.toggle('rotate-180');
     }
 
     function startChecklist(assignmentId) {
-      if (navigator.onLine) {
-        window.location.href = `/technician/checklist/${assignmentId}`;
-      } else {
-        window.location.href = `/offline-checklist.html#${assignmentId}`;
-      }
+      window.location.href = navigator.onLine ? `/technician/checklist/${assignmentId}` : `/offline-checklist.html#${assignmentId}`;
     }
   </script>
 </body>

@@ -9,105 +9,57 @@
     rel="stylesheet"
   />
   <script>
-    // A simple counter so each row has a unique data-index
     let taskIndex = 0;
-function removeTask(btn) {
+    function removeTask(btn) {
       btn.closest('.task-row').remove();
     }
 
     function createTaskRow(task = {}) {
       const idx = taskIndex++;
-const desc = task.description || '';
+      const desc = task.description || '';
       const type = task.inputType || 'functional';
       const expUnit = task.expectedUnit || '';
-const minRange = task.minRange || '';
-      const maxRange = task.maxRange || '';
+      const minRange = task.minRange != null ? task.minRange : '';
+      const maxRange = task.maxRange != null ? task.maxRange : '';
       const isMeasurement = type === 'measurement';
-const isCustom = !['°C','N','cd'].includes(expUnit) && expUnit;
+      const standardUnits = ['°C','N','cd'];
+      const isCustom = expUnit && !standardUnits.includes(expUnit);
 
       const row = document.createElement('div');
       row.className = 'task-row flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2';
-row.dataset.index = idx;
+      row.dataset.index = idx;
       row.innerHTML = `
-        <input
-          type="text"
-          name="taskDescriptions"
-          placeholder="Masukkan item inspeksi"
-          class="w-full sm:flex-1 border border-gray-300 rounded p-2"
-          value="${desc}"
-          required
-        />
-        <select
-    
-      name="taskInputTypes"
-          class="w-full sm:w-auto border border-gray-300 rounded p-2"
-          data-index="${idx}"
-        >
+        <input type="text" name="taskDescriptions" placeholder="Masukkan item inspeksi" class="w-full sm:flex-1 border border-gray-300 rounded p-2" value="${desc}" required />
+        <select name="taskInputTypes" class="w-full sm:w-auto border border-gray-300 rounded p-2" data-index="${idx}">
           <option value="functional" ${type==='functional'?'selected':''}>Functional Test</option>
           <option value="measurement" ${type==='measurement'?'selected':''}>Measurement</option>
-          <% /* <option value="visual" ${type==='visual'?'selected':''}>Visual Check</option> */ %>
         </select>
-        <div class="unit-container flex items-center gap-2 ${isMeasurement ? 
-'' : 'hidden'}">
+        <div class="unit-container flex items-center gap-2 ${isMeasurement ? '' : 'hidden'}">
           <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}">
           <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}">
-          <select
-            name="taskExpectedUnits"
-            class="unit-select border border-gray-300 rounded p-2"
-          >
-            
-<option value="">-- pilih satuan --</option>
+          <select name="taskExpectedUnits" class="unit-select border border-gray-300 rounded p-2">
+            <option value="">-- pilih satuan --</option>
             <option value="°C" ${expUnit==='°C'?'selected':''}>Celsius (°C)</option>
             <option value="N" ${expUnit==='N'?'selected':''}>Newton (N)</option>
             <option value="cd" ${expUnit==='cd'?'selected':''}>Candela (cd)</option>
             <option value="other" ${isCustom?'selected':''}>Other…</option>
           </select>
-          <input
-            type="text"
-     
-       name="taskExpectedUnitsCustom"
-            class="unit-custom border border-gray-300 rounded p-2 ${isCustom ?
-'' : 'hidden'}"
-            placeholder="Custom unit"
-            value="${isCustom ?
-expUnit : ''}"
-          />
+          <input type="text" name="taskExpectedUnitsCustom" class="unit-custom border border-gray-300 rounded p-2 ${isCustom ? '' : 'hidden'}" placeholder="Custom unit" value="${isCustom ? expUnit : ''}" />
         </div>
-        <button
-          type="button"
-          class="bg-red-500 text-white px-3 py-2 rounded"
-          onclick="removeTask(this)"
-        >
-          Hapus
-        </button>
+        <button type="button" class="bg-red-500 text-white px-3 py-2 rounded" onclick="removeTask(this)">Hapus</button>
       `;
 
-      
-// wire up interactions
       const typeSelect = row.querySelector('select[name="taskInputTypes"]');
       const unitContainer = row.querySelector('.unit-container');
       const unitSelect = row.querySelector('.unit-select');
       const customInput = row.querySelector('.unit-custom');
 
       typeSelect.addEventListener('change', () => {
-        if (typeSelect.value === 'measurement') {
-          unitContainer.classList.remove('hidden');
-        } else {
-          unitContainer.classList.add('hidden');
-          
-unitSelect.value = '';
-          customInput.value = '';
-          customInput.classList.add('hidden');
-        }
+        unitContainer.classList.toggle('hidden', typeSelect.value !== 'measurement');
       });
 
       unitSelect.addEventListener('change', () => {
-        if (unitSelect.value === 'other') {
-          customInput.classList.remove('hidden');
-} else {
-          customInput.classList.add('hidden');
-          customInput.value = '';
-}
+        customInput.classList.toggle('hidden', unitSelect.value !== 'other');
       });
 
       return row;
@@ -115,90 +67,60 @@ unitSelect.value = '';
 
     function addTask(prefill) {
       document.getElementById('taskList').appendChild(createTaskRow(prefill));
-}
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Load from template if selected
       const tplSel = document.querySelector('select[name="templateChecklist"]');
       tplSel.addEventListener('change', async () => {
         if (!tplSel.value) return;
         try {
           const res = await fetch(`/api/checklists/${tplSel.value}/tasks`);
+          if(!res.ok) throw new Error('Failed to fetch template tasks');
           const tasks = await res.json();
           const list = document.getElementById('taskList');
-   
-       list.innerHTML = '';
+          list.innerHTML = '';
           tasks.forEach(t => addTask(t));
         } catch (e) {
           console.error(e);
+          alert('Could not load checklist template.');
         }
       });
-
-      // start with one blank row
       addTask();
     });
-</script>
+  </script>
 </head>
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Buat Checklist Baru</h1>
-    <form action="/checklists" method="POST">
+    
+    <% /* --- CORRECTED FORM ACTION AND BACK LINK --- */ %>
+    <form action="/spv/checklists" method="POST">
       <div class="mb-4">
         <label class="block font-semibold mb-1">Nama Checklist</label>
-        <input
-          type="text"
-          name="title"
-          class="w-full border border-gray-300 rounded p-2"
-          required
-    
-    />
+        <input type="text" name="title" class="w-full border border-gray-300 rounded p-2" required />
       </div>
       <div class="mb-4">
-        <label class="block font-semibold mb-1">Pilih Checklist (Template)</label>
-        <select
-          name="templateChecklist"
-          class="w-full border border-gray-300 rounded p-2"
-        >
-          <option value="">-- Pilih Checklist --</option>
+        <label class="block font-semibold mb-1">Gunakan Template</label>
+        <select name="templateChecklist" class="w-full border border-gray-300 rounded p-2">
+          <option value="">-- Pilih Template --</option>
           <% existingChecklists.forEach(ch => { %>
-  
-          <option value="<%= ch._id %>"><%= ch.title %></option>
-          <% });
-%>
+            <option value="<%= ch._id %>"><%= ch.title %></option>
+          <% }); %>
         </select>
       </div>
 
       <div class="flex justify-between items-center mb-2">
         <label class="font-semibold">Item Inspeksi</label>
-        <button
-          type="button"
-          class="bg-green-500 text-white px-4 py-2 rounded"
-          onclick="addTask()"
-        >
-          + Tambah Item
-    
-    </button>
+        <button type="button" class="bg-green-500 text-white px-4 py-2 rounded" onclick="addTask()">+ Tambah Item</button>
       </div>
 
       <div id="taskList" class="mb-4"></div>
-
-      <button
-        type="submit"
-        class="bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        Simpan Checklist
-      </button>
+      
+      <div class="flex justify-between items-center mt-6">
+          <a href="/spv/dashboard" class="text-gray-600 hover:text-gray-800">Back to Dashboard</a>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan Checklist</button>
+      </div>
     </form>
-  </div>
-
-  <div class="mt-4 text-center">
-    <a
-      href="/spv/dashboard"
-      class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded inline-block"
-   
- >
-      Back to Dashboard
-    </a>
   </div>
 </body>
 </html>
