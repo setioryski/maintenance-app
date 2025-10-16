@@ -35,13 +35,39 @@ router.get('/dashboard', async (req, res) => {
         const limit = 10; // Assets per page
         const skip = (page - 1) * limit;
 
+        // Get filter parameters from query
+        const { search, floor, category, zone } = req.query;
+
+        // Build the match condition for assets
+        const matchCondition = { division: divisionId };
+        if (search) {
+            matchCondition.name = { $regex: escapeRegex(search), $options: 'i' };
+        }
+        
+        let selectedFloorId = null;
+        if (floor && floor !== 'all') {
+            const floorDoc = await Floor.findOne({ name: { $regex: new RegExp(`^${floor}$`, 'i') } });
+            if(floorDoc) {
+                matchCondition.floor = floorDoc._id;
+                selectedFloorId = floorDoc._id;
+            }
+        }
+        if (category && category !== 'all') {
+            matchCondition.category = new mongoose.Types.ObjectId(category);
+        }
+        if (zone && zone !== 'all') {
+            matchCondition.zone = new mongoose.Types.ObjectId(zone);
+        }
+
+
         // Fetch all necessary data in parallel for better performance
-        const [checklists, totalAssets, assets, assetCategories, floors, activities] = await Promise.all([
+        const [checklists, totalAssets, assets, assetCategories, floors, allZones, activities] = await Promise.all([
             Checklist.find({ division: divisionId }).sort({ order: 1 }).lean(),
-            Asset.countDocuments({ division: divisionId }),
-            Asset.find({ division: divisionId }).sort({ order: 1 }).skip(skip).limit(limit).populate('category floor zone').lean(),
+            Asset.countDocuments(matchCondition),
+            Asset.find(matchCondition).sort({ order: 1 }).skip(skip).limit(limit).populate('category floor zone').lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
             Floor.find({}).sort({ name: 1 }).lean(),
+            Zone.find({}).sort({ name: 1 }).lean(),
             Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] })
                 .sort({ timestamp: -1 })
                 .limit(20)
@@ -62,80 +88,21 @@ router.get('/dashboard', async (req, res) => {
             assets,
             assetCategories,
             floors,
+            allZones, // Pass all zones for dynamic filtering
             activities,
             user: req.session, // Pass session info to the view
             currentPage: page,
             totalPages,
             totalAssets,
-            limit
+            limit,
+            currentSearch: search || '',
+            currentFloor: floor || 'all',
+            currentCategory: category || 'all',
+            currentZone: zone || 'all'
         });
     } catch (err) {
         console.error("SPV Dashboard Error:", err);
         res.status(500).send("An error occurred while loading the dashboard.");
-    }
-});
-
-/**
- * GET /spv/report
- * Displays a list of maintenance reports for the SPV's division with filtering.
- */
-router.get('/report', async (req, res) => {
-    try {
-        const { filter = 'all', floor = 'all', submittedBy = 'all' } = req.query;
-        const page = parseInt(req.query.page) || 1;
-        const limit = 15;
-        const skip = (page - 1) * limit;
-
-        const query = { division: req.session.userDivision };
-
-        // Build filter conditions based on query parameters
-        if (filter === 'rejected') query.verifiedStatus = 'rejected';
-        else if (filter === 'verified_spv') { query.verifiedBySpv = true; query.verifiedByManager = false; }
-        else if (filter === 'verified_manager') query.verifiedByManager = true;
-        else if (filter === 'has_alert') query.hasAlert = true;
-        
-        if (filter !== 'all' && filter !== 'rejected') {
-            query.verifiedStatus = { $ne: 'rejected' };
-        }
-        if (submittedBy !== 'all') query.submittedBy = new mongoose.Types.ObjectId(submittedBy);
-        
-        if (floor !== 'all') {
-             const floorDoc = await Floor.findById(floor);
-             if(floorDoc){
-                  query['assetSnapshot.floor'] = floorDoc.name;
-             }
-        }
-
-        const totalReports = await MaintenanceReport.countDocuments(query);
-        const totalPages = Math.ceil(totalReports / limit);
-
-        const reports = await MaintenanceReport.find(query)
-            .populate('submittedBy', 'name')
-            .populate('rejectedBy', 'name')
-            .sort({ completedAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const [floors, technicians] = await Promise.all([
-            Floor.find({}).sort({ name: 1 }),
-            User.find({ role: 'technician', division: req.session.userDivision }).sort({ name: 1 })
-        ]);
-
-        res.render('spvReport', {
-            assignments: reports,
-            currentFilter: filter,
-            floors,
-            currentFloor: floor,
-            technicians,
-            currentSubmittedBy: submittedBy,
-            currentPage: page,
-            totalPages,
-            totalReports,
-            limit
-        });
-    } catch (err) {
-        console.error("SPV Report Error:", err);
-        res.status(500).send(err.message);
     }
 });
 

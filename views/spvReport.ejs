@@ -27,23 +27,17 @@
             <label for="status_filter" class="block text-sm font-medium text-gray-700">Status</label>
      
        <select name="filter" id="status_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="all" <%= currentFilter === 'all' ?
- 'selected' : '' %>>All Reports</option>
-                <option value="verified_spv" <%= currentFilter === 'verified_spv' ?
- 'selected' : '' %>>Verified by You</option>
-                <option value="verified_manager" <%= currentFilter === 'verified_manager' ?
- 'selected' : '' %>>Approved by Manager</option>
-                <option value="has_alert" <%= currentFilter === 'has_alert' ?
- 'selected' : '' %>>With Alerts</option>
-                <option value="rejected" <%= currentFilter === 'rejected' ?
- 'selected' : '' %>>Rejected</option>
+                <option value="all" <%= currentFilter === 'all' ? 'selected' : '' %>>All Reports</option>
+                <option value="verified_spv" <%= currentFilter === 'verified_spv' ? 'selected' : '' %>>Verified by You</option>
+                <option value="verified_manager" <%= currentFilter === 'verified_manager' ? 'selected' : '' %>>Approved by Manager</option>
+                <option value="has_alert" <%= currentFilter === 'has_alert' ? 'selected' : '' %>>With Alerts</option>
+                <option value="rejected" <%= currentFilter === 'rejected' ? 'selected' : '' %>>Rejected</option>
             </select>
         </div>
         <div>
             <label for="floor_filter" class="block text-sm font-medium text-gray-700">Floor</label>
             <select name="floor" id="floor_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="all" <%= currentFloor === 'all' ?
- 'selected' : '' %>>All Floors</option>
+                <option value="all" <%= currentFloor === 'all' ? 'selected' : '' %>>All Floors</option>
                 <% floors.forEach(floor => { %>
                 <option value="<%= floor._id %>" <%= currentFloor === floor._id.toString() ? 'selected' : '' %>><%= floor.name %></option>
                 <% }) %>
@@ -53,8 +47,7 @@
  <div>
             <label for="submitted_by_filter" class="block text-sm font-medium text-gray-700">Technician</label>
             <select name="submittedBy" id="submitted_by_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="all" <%= currentSubmittedBy === 'all' ?
- 'selected' : '' %>>All Technicians</option>
+                <option value="all" <%= currentSubmittedBy === 'all' ? 'selected' : '' %>>All Technicians</option>
                 <% technicians.forEach(tech => { %>
                 <option value="<%= tech._id %>" <%= currentSubmittedBy === tech._id.toString() ? 'selected' : '' %>><%= tech.name %></option>
                 <% }) %>
@@ -68,18 +61,15 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset & Checklist</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium 
- text-gray-500 uppercase tracking-wider">Submission</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white 
- divide-y divide-gray-200">
+            <tbody class="bg-white divide-y divide-gray-200">
             <% if (assignments.length > 0) { %>
                 <% assignments.forEach(report => { %>
-                <tr id="report-row-<%= report._id %>" data-id="<%= report._id %>" class="hover:bg-gray-50 <%= report.verifiedStatus === 'rejected' ?
- 'bg-red-50' : '' %>">
+                <tr id="report-row-<%= report._id %>" data-id="<%= report._id %>" class="hover:bg-gray-50 <%= report.verifiedStatus === 'rejected' ? 'bg-red-50' : '' %>">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900"><%= report.assetSnapshot?.name || 'N/A' %></div>
                         <div class="text-sm text-gray-500"><%= report.checklistTitle || 'N/A' %></div>
@@ -92,16 +82,13 @@
          </td>
                     <td class="px-6 py-4 whitespace-nowrap status-cell">
                         <% if (report.verifiedStatus === 'rejected') { %>
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected 
- by <%= report.rejectedByName || 'N/A' %></span>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected by <%= report.rejectedByName || 'N/A' %></span>
                         <% } else if (report.verifiedByManager) { %>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved by Manager</span>
-                        <% } else 
- if (report.verifiedBySpv) { %>
+                        <% } else if (report.verifiedBySpv) { %>
                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Verified by You</span>
                         <% } else { %>
-                            <span class="px-2 inline-flex text-xs 
- leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending Your Verification</span>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending Your Verification</span>
                         <% } %>
                         <% if (report.hasAlert) { %>
                             <span class="px-2 ml-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Alert</span>
@@ -232,8 +219,7 @@
  // Remove verify button, keep reject button if applicable
                         actionCell.innerHTML = `
                             <a href="/spv/report/${reportId}/detail" class="text-indigo-600 hover:text-indigo-900 mr-4">Detail</a>
-                            <button type="button" class="text-red-600 hover:text-red-900 reject-btn ml-2" 
- data-id="${reportId}">Reject</button>
+                            <button type="button" class="text-red-600 hover:text-red-900 reject-btn ml-2" data-id="${reportId}">Reject</button>
                         `;
  } else if (action === 'reject') {
                         statusCell.innerHTML = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rejected by You</span>`;
@@ -259,8 +245,7 @@
             if (!reportId) return;
 
             const row = document.getElementById(`report-row-${reportId}`);
-            if (!row) 
- return;
+            if (!row) return;
 
             if (target.classList.contains('verify-btn')) {
                 handleAction(`/spv/report/${reportId}/verify`, row, 'verify');

@@ -12,12 +12,13 @@ const Division = mongoose.model('Division');
 const Floor = mongoose.model('Floor');
 const User = mongoose.model('User');
 const Activity = mongoose.model('Activity');
+const Zone = mongoose.model('Zone');
 
 
 // Manager Dashboard & Report List
 router.get('/dashboard', async (req, res) => {
     try {
-        const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+        const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all', zone = 'all' } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = 15; // Number of items per page
         const skip = (page - 1) * limit;
@@ -49,6 +50,12 @@ router.get('/dashboard', async (req, res) => {
                 matchCondition['assetSnapshot.floor'] = floorDoc.name;
             }
         }
+        if (zone && zone !== 'all') {
+            const zoneDoc = await Zone.findById(zone);
+            if(zoneDoc) {
+                matchCondition['assetSnapshot.zone'] = zoneDoc.name;
+            }
+        }
         
         const totalReports = await MaintenanceReport.countDocuments(matchCondition);
         const totalPages = Math.ceil(totalReports / limit);
@@ -61,9 +68,10 @@ router.get('/dashboard', async (req, res) => {
             .limit(limit);
         
         // Fetch all necessary data in parallel
-        const [divisions, floors, technicians, activities] = await Promise.all([
+        const [divisions, floors, allZones, technicians, activities] = await Promise.all([
             Division.find({}).sort({ name: 1 }),
             Floor.find({}).sort({ name: 1 }),
+            Zone.find({}).sort({name: 1}),
             User.find({ role: 'technician' }).sort({ name: 1 }),
             // Fetches all activities for the manager view
             Activity.find({}).sort({ timestamp: -1 }).limit(30).populate('division user.id')
@@ -76,6 +84,8 @@ router.get('/dashboard', async (req, res) => {
             currentDivision: division,
             floors,
             currentFloor: floor,
+            allZones,
+            currentZone: zone,
             technicians,
             currentSubmittedBy: submittedBy,
             activities, // Pass activities to the view

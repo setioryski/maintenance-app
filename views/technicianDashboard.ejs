@@ -37,16 +37,12 @@
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center">
             <div class="flex-shrink-0">
-   
- 
              <img src="/image/logo.png" alt="Company Logo" class="h-8">
             </div>
          
             <div id="status-indicator-mobile" class="md:hidden flex items-center space-x-2 ml-4 px-2 py-1 rounded-full text-xs">
                 <span id="status-dot-mobile" class="w-2 h-2 rounded-full"></span>
                 <span id="status-text-mobile" class="font-semibold"></span>
-  
- 
           </div>
         </div>
 
@@ -57,7 +53,6 @@
              <span id="status-text-desktop" class="text-sm font-semibold"></span>
            </div>
         
- 
    <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
            <a id="my-reports-link-desktop" href="/technician/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">My Reports</a>
            <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
@@ -66,8 +61,6 @@
           <a href="/logout" class="text-gray-500 text-sm">Logout</a>
         </div>
       </div>
-   
- 
  </div>
   </header>
 
@@ -77,8 +70,6 @@
             <div>
                 <p class="font-bold">Work Saved Offline</p>
                 <p>You have <strong id="pending-sync-count">0</strong> submission(s) waiting to be synced.</p>
-        
- 
     </div>
             <button id="sync-now-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
                 Sync Now
@@ -87,15 +78,11 @@
 
         <div class="flex flex-col md:flex-row items-start justify-between mb-6">
             <div>
-             
- 
    <h1 class="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
                 <p class="text-sm text-gray-500">Here are your assigned maintenance tasks and recent activities.</p>
             </div>
             <div class="flex space-x-2 mt-4 md:mt-0">
                 <button id="scan-qr-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 flex items-center">
-          
- 
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     Scan QR Code
                 </button>
@@ -104,51 +91,43 @@
 
         <div id="qr-reader" class="hidden mx-auto md:w-96 mb-6"></div>
 
-    
- 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
 
                     <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-         
- 
-               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <form id="filter-form" method="GET" action="/technician/dashboard" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <input
-                            type="text"
-                         
- 
-   id="searchInput"
-                            placeholder="Search by asset name..."
-                            class="col-span-1 sm:col-span-3 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                type="text"
+                                name="search"
+                                id="searchInput"
+                                placeholder="Search by asset name..."
+                                class="col-span-1 sm:col-span-2 md:col-span-4 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="<%= currentSearch %>"
                             >
- 
- 
-                           <select id="floorFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Floors</option>
-                            <% floors.forEach(function(floor) { %>
-  
- 
-                              <option value="<%= floor.name.toLowerCase() %>"><%= floor.name %></option>
-                            <% });
- %>
+                            <select name="floor" id="floorFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="all">All Floors</option>
+                                <% floors.forEach(function(floor) { %>
+                                <option value="<%= floor.name.toLowerCase() %>" <%= currentFloor === floor.name.toLowerCase() ? 'selected' : '' %> data-floor-id="<%= floor._id %>"><%= floor.name %></option>
+                                <% }); %>
                             </select>
-                            <select id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Categories</option>
-    
- 
-                        <% assetCategories.forEach(function(cat) { %>
-                                <option value="<%= cat.name.toLowerCase() %>"><%= cat.name %></option>
-                            <% });
- %>
+                            <select name="category" id="categoryFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="all">All Categories</option>
+                                <% assetCategories.forEach(function(cat) { %>
+                                <option value="<%= cat.name.toLowerCase() %>" <%= currentCategory === cat.name.toLowerCase() ? 'selected' : '' %>><%= cat.name %></option>
+                                <% }); %>
                             </select>
-                        </div>
+                            <select name="zone" id="zoneFilter" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="all">All Zones</option>
+                                <% allZones.forEach(function(zone) { %>
+                                <option value="<%= zone._id %>" class="zone-option hidden" data-floor-of-zone="<%= zone.floor %>" <%= currentZone === zone._id.toString() ? 'selected' : '' %>><%= zone.name %></option>
+                                <% }); %>
+                            </select>
+                        </form>
                     </div>
 
                     <%
-        
- 
             const getAssetIcon = (name) => {
                         name = (name || '').toLowerCase();
  if (name.includes('cctv')) return '📷';
@@ -160,13 +139,15 @@
                         return '📦';
                     };
                     const validAssignments = assignments.filter(a => a.checklist && a.asset);
- if (validAssignments.length === 0) {
+ if (validAssignments.length === 0 && totalAssets === 0) {
                     %>
                     <div class="text-center py-12">
                         <h3 class="text-lg font-medium text-gray-700">No maintenance tasks assigned.</h3>
-                        
- 
 <p class="text-gray-500 mt-1">Please check back later.</p>
+                    </div>
+                    <% } else if (validAssignments.length === 0 && totalAssets > 0) { %>
+                    <div class="text-center py-12">
+                        <h3 class="text-lg font-medium text-gray-700">No tasks found for the selected filters.</h3>
                     </div>
                     <% } else {
                     const groupedAssignments = {};
@@ -174,45 +155,33 @@
                         const assetId = assignment.asset._id.toString();
                         if (!groupedAssignments[assetId]) {
                         groupedAssignments[assetId] = {
-                    
- 
         asset: assignment.asset,
                             checklists: []
                         };
                         }
-              
- 
           groupedAssignments[assetId].checklists.push(assignment);
                     });
  %>
                     <div class="space-y-4">
                         <% Object.keys(groupedAssignments).forEach(function(assetId) {
                         const group = groupedAssignments[assetId];
-                        const asset 
- 
-= group.asset;
+                        const asset = group.asset;
                         const assetName = asset.name;
             
                         const uniqueGroupId = `asset-group-${assetId}`;
                         %>
          
- 
                <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
                             data-name="<%= assetName.toLowerCase() %>"
                             data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
-                 
- 
-           data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
+                            data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
 
                             <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
                             onclick="toggleDropdown('<%= uniqueGroupId %>')">
                  
- 
            <div class="flex items-center">
                                 <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
                                 <div>
-                   
- 
              <p class="text-md text-gray-800"><%= assetName %></p>
             
                                 <p class="text-xs text-gray-500">
@@ -223,31 +192,25 @@
                                 </div>
                             </div>
    
- 
                          <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
                             </div>
 
                             <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
      
- 
                        <% group.checklists.forEach(function(assignment) { %>
                                 <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
                                 <div>
  
- 
                                    <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
                                     <p class="text-xs text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
                    
- 
              </div>
                                 <button
                                     onclick="startChecklist('<%= assignment._id %>')"
                  
- 
                    class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
                                     Start Checklist
                                 </button>
- 
  
                                </div>
                             <% });
@@ -264,13 +227,23 @@
                                 Showing page <%= currentPage %> of <%= totalPages %>
                             </span>
                             <div class="inline-flex mt-2 xs:mt-0">
+                                <%
+                                    const queryParams = new URLSearchParams({
+                                        search: currentSearch,
+                                        floor: currentFloor,
+                                        category: currentCategory,
+                                        zone: currentZone
+                                    });
+                                %>
                                 <% if (currentPage > 1) { %>
-                                    <a href="/technician/dashboard?page=<%= currentPage - 1 %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
+                                    <% queryParams.set('page', currentPage - 1); %>
+                                    <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
                                         Prev
                                     </a>
                                 <% } %>
                                 <% if (currentPage < totalPages) { %>
-                                    <a href="/technician/dashboard?page=<%= currentPage + 1 %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
+                                    <% queryParams.set('page', currentPage + 1); %>
+                                    <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
                                         Next
                                     </a>
                                 <% } %>
@@ -284,18 +257,15 @@
 
             <div class="bg-white p-6 rounded-lg shadow-lg">
               
- 
   <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
                 <div class="h-96 overflow-y-auto">
                     <ul>
                         <% if (locals.activities && activities.length > 0) { %>
                         
- 
     <% activities.forEach(function(activity) { %>
                             <li class="border-b last:border-b-0 py-3">
                                 <p class="text-sm text-gray-800"><strong><%= (activity.user && activity.user.name) || (activity.user.id && activity.user.id.name) || 'System' %></strong> (<%= activity.role %>) <%= activity.action %></p>
             
- 
                     <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
                             </li>
                             <% });
@@ -304,7 +274,6 @@
                             <p class="text-gray-500">No recent activities.</p>
                         <% } %>
                
- 
      </ul>
                 </div>
             </div>
@@ -315,16 +284,13 @@
   <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden">
     <div class="flex justify-around py-2">
       <a href="/technician/dashboard" class="flex flex-col items-center text-blue-600">
-        <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 
- 
-001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+        <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
         <span class="text-xs">Dashboard</span>
       </a>
       <a id="my-reports-link-mobile" href="/technician/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
         <span class="text-xs">My Reports</span>
       
- 
 </a>
     </div>
   </div>
@@ -404,7 +370,6 @@
                 indicator: document.getElementById('status-indicator-desktop'),
                 dot: document.getElementById('status-dot-desktop'),
    
- 
              text: document.getElementById('status-text-desktop'),
                 dotClass: 'w-3 h-3'
             },
@@ -412,7 +377,6 @@
                 indicator: document.getElementById('status-indicator-mobile'),
                 dot: document.getElementById('status-dot-mobile'),
           
- 
       text: document.getElementById('status-text-mobile'),
                 dotClass: 'w-2 h-2'
             }
@@ -430,7 +394,6 @@
                 text.textContent = 'Online';
                 indicator.className = indicator.className.replace(/bg-red-100 text-red-800/g, 'bg-green-100 text-green-800');
             
- 
 } else {
                 dot.className = `${dotClass} rounded-full bg-red-500`;
                 text.textContent = 'Offline';
@@ -475,13 +438,44 @@
             .catch(err => alert(`Could not start camera. Error: ${err}`));
         } else {
         
- 
   html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden'));
         }
       });
- document.getElementById('searchInput').addEventListener('input', filterAssets);
-      document.getElementById('floorFilter').addEventListener('change', filterAssets);
-      document.getElementById('categoryFilter').addEventListener('change', filterAssets);
+      
+      // Dynamic Zone Filtering
+      const floorFilter = document.getElementById('floorFilter');
+      const zoneFilter = document.getElementById('zoneFilter');
+      const allZoneOptions = Array.from(document.querySelectorAll('.zone-option'));
+
+      function updateZoneFilter() {
+          const selectedFloorOption = floorFilter.options[floorFilter.selectedIndex];
+          const selectedFloorId = selectedFloorOption.dataset.floorId;
+          
+          const currentZoneValue = zoneFilter.value;
+          
+          allZoneOptions.forEach(option => {
+              option.classList.add('hidden');
+              if (selectedFloorId && option.dataset.floorOfZone === selectedFloorId) {
+                  option.classList.remove('hidden');
+              }
+          });
+          
+          if (selectedFloorId) {
+              const firstVisibleZone = allZoneOptions.find(opt => !opt.classList.contains('hidden'));
+              if (firstVisibleZone) {
+                  if (zoneFilter.querySelector(`option[value="${currentZoneValue}"]:not(.hidden)`)) {
+                      zoneFilter.value = currentZoneValue;
+                  }
+              }
+          }
+      }
+      
+      floorFilter.addEventListener('change', () => {
+        zoneFilter.value = 'all'; // Reset zone when floor changes
+        document.getElementById('filter-form').submit();
+      });
+      // Initial call to set zones based on pre-selected floor (if any)
+      updateZoneFilter();
       
       
     const syncModal = document.getElementById('sync-modal');
@@ -527,22 +521,6 @@
         updateOnlineStatus(); // To update the pending count
     });
     });
- function filterAssets() {
-      const searchValue = document.getElementById('searchInput').value.toLowerCase();
-const floorValue = document.getElementById('floorFilter').value;
-      const categoryValue = document.getElementById('categoryFilter').value;
- document.querySelectorAll('.asset-card').forEach(card => {
-        const name = card.dataset.name || "";
-        const floor = card.dataset.floor || "";
-        const category = card.dataset.category || "";
-        const isVisible = name.includes(searchValue) &&
-                          (floorValue === "" || floor === floorValue) &&
-      
-        
-             (categoryValue === "" || category === categoryValue);
-        card.style.display = isVisible ? '' : 'none';
-      });
- }
 
     function toggleDropdown(id) {
       document.getElementById(id)?.classList.toggle('hidden');
