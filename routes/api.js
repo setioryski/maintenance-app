@@ -105,7 +105,7 @@ router.post('/sync/checklist', async (req, res) => {
             tasksSnapshot,
             responses: results,
             submittedBy: user._id,
-            submittedByName: `${user.name} (Synced Offline)`,
+            submittedByName: user.name, // MODIFIED: Removed "(Synced Offline)"
             note: note || '',
             hasAlert
         });
