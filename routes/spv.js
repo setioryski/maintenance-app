@@ -31,11 +31,15 @@ const User = mongoose.model('User');
 router.get('/dashboard', async (req, res) => {
     try {
         const divisionId = req.session.userDivision;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10; // Assets per page
+        const skip = (page - 1) * limit;
 
         // Fetch all necessary data in parallel for better performance
-        const [checklists, assets, assetCategories, floors, activities] = await Promise.all([
+        const [checklists, totalAssets, assets, assetCategories, floors, activities] = await Promise.all([
             Checklist.find({ division: divisionId }).sort({ order: 1 }).lean(),
-            Asset.find({ division: divisionId }).sort({ order: 1 }).populate('category floor zone').lean(),
+            Asset.countDocuments({ division: divisionId }),
+            Asset.find({ division: divisionId }).sort({ order: 1 }).skip(skip).limit(limit).populate('category floor zone').lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
             Floor.find({}).sort({ name: 1 }).lean(),
             Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] })
@@ -44,6 +48,8 @@ router.get('/dashboard', async (req, res) => {
                 .populate('user', 'name') // Populate user name from Activity model
                 .lean()
         ]);
+        
+        const totalPages = Math.ceil(totalAssets / limit);
 
         // Augment checklists with the count of assets they are assigned to
         const checklistData = await Promise.all(checklists.map(async c => ({
@@ -57,7 +63,11 @@ router.get('/dashboard', async (req, res) => {
             assetCategories,
             floors,
             activities,
-            user: req.session // Pass session info to the view
+            user: req.session, // Pass session info to the view
+            currentPage: page,
+            totalPages,
+            totalAssets,
+            limit
         });
     } catch (err) {
         console.error("SPV Dashboard Error:", err);
@@ -72,6 +82,10 @@ router.get('/dashboard', async (req, res) => {
 router.get('/report', async (req, res) => {
     try {
         const { filter = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 15;
+        const skip = (page - 1) * limit;
+
         const query = { division: req.session.userDivision };
 
         // Build filter conditions based on query parameters
@@ -83,20 +97,24 @@ router.get('/report', async (req, res) => {
         if (filter !== 'all' && filter !== 'rejected') {
             query.verifiedStatus = { $ne: 'rejected' };
         }
-        if (submittedBy !== 'all') query.submittedBy = submittedBy;
-
-        let reports = await MaintenanceReport.find(query)
-            .populate('submittedBy', 'name')
-            .populate('rejectedBy', 'name')
-            .sort({ completedAt: -1 });
-            
-        // Server-side filtering for floor
+        if (submittedBy !== 'all') query.submittedBy = new mongoose.Types.ObjectId(submittedBy);
+        
         if (floor !== 'all') {
              const floorDoc = await Floor.findById(floor);
              if(floorDoc){
-                  reports = reports.filter(r => r.assetSnapshot && r.assetSnapshot.floor === floorDoc.name);
+                  query['assetSnapshot.floor'] = floorDoc.name;
              }
         }
+
+        const totalReports = await MaintenanceReport.countDocuments(query);
+        const totalPages = Math.ceil(totalReports / limit);
+
+        const reports = await MaintenanceReport.find(query)
+            .populate('submittedBy', 'name')
+            .populate('rejectedBy', 'name')
+            .sort({ completedAt: -1 })
+            .skip(skip)
+            .limit(limit);
 
         const [floors, technicians] = await Promise.all([
             Floor.find({}).sort({ name: 1 }),
@@ -109,7 +127,11 @@ router.get('/report', async (req, res) => {
             floors,
             currentFloor: floor,
             technicians,
-            currentSubmittedBy: submittedBy
+            currentSubmittedBy: submittedBy,
+            currentPage: page,
+            totalPages,
+            totalReports,
+            limit
         });
     } catch (err) {
         console.error("SPV Report Error:", err);
@@ -399,11 +421,21 @@ router.post('/checklists/:id/edit', ensureChecklistBelongsToDivision, async (req
 router.get('/checklists/:id/assign', ensureChecklistBelongsToDivision, async (req, res) => {
     try {
         const [assets, assignments] = await Promise.all([
-            Asset.find({ division: req.session.userDivision }).sort({ name: 1 }),
+            Asset.find({ division: req.session.userDivision }).populate('category').sort({ name: 1 }),
             ChecklistAssignment.find({ checklist: req.params.id }, 'asset')
         ]);
+
+        const assetsByCategory = assets.reduce((acc, asset) => {
+            const categoryName = asset.category ? asset.category.name : 'Uncategorized';
+            if (!acc[categoryName]) {
+                acc[categoryName] = [];
+            }
+            acc[categoryName].push(asset);
+            return acc;
+        }, {});
+
         const assignedAssetIds = assignments.map(a => a.asset.toString());
-        res.render('assignChecklist', { checklist: req.checklist, assets, assignedAssetIds });
+        res.render('assignChecklist', { checklist: req.checklist, assetsByCategory, assignedAssetIds });
     } catch (err) {
         res.status(500).send(err.message);
     }

@@ -18,6 +18,10 @@ const Activity = mongoose.model('Activity');
 router.get('/dashboard', async (req, res) => {
     try {
         const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 15; // Number of items per page
+        const skip = (page - 1) * limit;
+
         const matchCondition = {};
 
         // Build filter conditions
@@ -36,21 +40,25 @@ router.get('/dashboard', async (req, res) => {
             matchCondition.verifiedStatus = { $ne: 'rejected' };
         }
 
-        if (division !== 'all') matchCondition.division = division;
-        if (submittedBy !== 'all') matchCondition.submittedBy = submittedBy;
+        if (division !== 'all') matchCondition.division = new mongoose.Types.ObjectId(division);
+        if (submittedBy !== 'all') matchCondition.submittedBy = new mongoose.Types.ObjectId(submittedBy);
+        
+        if (floor !== 'all') {
+            const floorDoc = await Floor.findById(floor);
+            if(floorDoc) {
+                matchCondition['assetSnapshot.floor'] = floorDoc.name;
+            }
+        }
+        
+        const totalReports = await MaintenanceReport.countDocuments(matchCondition);
+        const totalPages = Math.ceil(totalReports / limit);
 
-        let reports = await MaintenanceReport.find(matchCondition)
+        const reports = await MaintenanceReport.find(matchCondition)
             .populate('submittedBy', 'name')
             .populate('rejectedBy', 'name')
-            .sort({ completedAt: -1 });
-        
-        // Filter by floor name after fetching from DB
-        if (floor !== 'all') {
-             const floorDoc = await Floor.findById(floor);
-             if(floorDoc){
-                  reports = reports.filter(r => r.assetSnapshot && r.assetSnapshot.floor === floorDoc.name);
-             }
-        }
+            .sort({ completedAt: -1 })
+            .skip(skip)
+            .limit(limit);
         
         // Fetch all necessary data in parallel
         const [divisions, floors, technicians, activities] = await Promise.all([
@@ -70,7 +78,11 @@ router.get('/dashboard', async (req, res) => {
             currentFloor: floor,
             technicians,
             currentSubmittedBy: submittedBy,
-            activities // Pass activities to the view
+            activities, // Pass activities to the view
+            currentPage: page,
+            totalPages,
+            totalReports,
+            limit
         });
     } catch (err) {
         console.error('Manager Dashboard Error:', err);

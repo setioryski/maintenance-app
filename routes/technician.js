@@ -24,17 +24,21 @@ const User = mongoose.model('User');
 /**
  * GET /technician/dashboard
  * Displays the main dashboard for the technician, showing all available assignments.
- * No ensureTechnician middleware here to allow for client-side role-based redirection.
  */
 router.get('/dashboard', async (req, res) => {
     try {
         const divisionId = req.session.userDivision;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10; // Number of assets per page
+        const skip = (page - 1) * limit;
 
-        // Find all assets within the technician's division
-        const assetsInDivision = await Asset.find({ division: divisionId }, '_id').lean();
+        // Find all assets within the technician's division with pagination
+        const totalAssets = await Asset.countDocuments({ division: divisionId });
+        const totalPages = Math.ceil(totalAssets / limit);
+        const assetsInDivision = await Asset.find({ division: divisionId }).sort({ name: 1 }).skip(skip).limit(limit).lean();
         const assetIds = assetsInDivision.map(a => a._id);
 
-        // Find all checklist assignments for those assets (no longer filtering by status)
+        // Find all checklist assignments for those assets
         const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
             .populate('checklist')
             .populate({
@@ -62,7 +66,11 @@ router.get('/dashboard', async (req, res) => {
             assetCategories,
             activities,
             checklists,
-            user: req.session // Pass user session data to the view
+            user: req.session, // Pass user session data to the view
+            currentPage: page,
+            totalPages,
+            totalAssets,
+            limit
         });
     } catch (err) {
         console.error("Technician Dashboard Error:", err);
@@ -210,17 +218,39 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
  */
 router.get('/report', ensureTechnician, async (req, res) => {
     try {
-        // Only show reports submitted by the currently logged-in technician
-        const reports = await MaintenanceReport.find({ submittedBy: req.session.userId })
-            .sort({ completedAt: -1 });
+        const page = parseInt(req.query.page) || 1;
+        const limit = 15;
+        const skip = (page - 1) * limit;
+        const currentSubmittedBy = req.query.submittedBy || 'all';
 
-        // Pass the current user to the template for the filter dropdown
-        const currentUser = await User.findById(req.session.userId).lean();
+        // Base query for reports submitted by the logged-in user or a specific technician in their division
+        const query = { division: req.session.userDivision };
+
+        if (currentSubmittedBy === 'all') {
+            // 'All' defaults to the current user's reports.
+            query.submittedBy = req.session.userId;
+        } else {
+            query.submittedBy = new mongoose.Types.ObjectId(currentSubmittedBy);
+        }
+
+        const totalReports = await MaintenanceReport.countDocuments(query);
+        const totalPages = Math.ceil(totalReports / limit);
+
+        const reports = await MaintenanceReport.find(query)
+            .sort({ completedAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const technicians = await User.find({ role: 'technician', division: req.session.userDivision }).sort({ name: 1 }).lean();
 
         res.render('technicianReport', {
             assignments: reports,
-            technicians: [currentUser], 
-            currentSubmittedBy: 'all' 
+            technicians,
+            currentSubmittedBy,
+            currentPage: page,
+            totalPages,
+            totalReports,
+            limit
         });
     } catch (err) {
         console.error("Technician Report List Error:", err);
@@ -236,8 +266,8 @@ router.get('/report/:reportId', ensureTechnician, async (req, res) => {
     try {
         const report = await MaintenanceReport.findById(req.params.reportId);
 
-        // Security check: ensure the report belongs to the user trying to view it
-        if (!report || report.submittedBy.toString() !== req.session.userId) {
+        // Security check: ensure the report was submitted by someone in the user's division
+        if (!report || report.division.toString() !== req.session.userDivision) {
             return res.status(404).send('Report not found or you do not have permission to view it.');
         }
 
