@@ -6,8 +6,8 @@ const { logActivity } = require('../utils/helpers');
 
 const router = express.Router();
 
-// Apply middleware to all technician routes to ensure the user is an authenticated technician
-router.use(ensureAuthenticated, ensureTechnician);
+// Apply ensureAuthenticated to all technician routes
+router.use(ensureAuthenticated);
 
 // --- Mongoose Models ---
 const Asset = mongoose.model('Asset');
@@ -24,6 +24,7 @@ const User = mongoose.model('User');
 /**
  * GET /technician/dashboard
  * Displays the main dashboard for the technician, showing all available assignments.
+ * No ensureTechnician middleware here to allow for client-side role-based redirection.
  */
 router.get('/dashboard', async (req, res) => {
     try {
@@ -60,7 +61,8 @@ router.get('/dashboard', async (req, res) => {
             floors,
             assetCategories,
             activities,
-            checklists
+            checklists,
+            user: req.session // Pass user session data to the view
         });
     } catch (err) {
         console.error("Technician Dashboard Error:", err);
@@ -72,7 +74,7 @@ router.get('/dashboard', async (req, res) => {
  * GET /technician/checklist/:assignmentId
  * Displays a specific checklist for the technician to fill out.
  */
-router.get('/checklist/:assignmentId', async (req, res) => {
+router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
             .populate('checklist')
@@ -102,7 +104,7 @@ router.get('/checklist/:assignmentId', async (req, res) => {
  * POST /technician/checklist/:assignmentId/submit
  * Handles the submission of a completed checklist and creates a report.
  */
-router.post('/checklist/:assignmentId/submit', upload.any(), async (req, res) => {
+router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
             .populate('checklist')
@@ -206,7 +208,7 @@ router.post('/checklist/:assignmentId/submit', upload.any(), async (req, res) =>
  * GET /technician/report
  * Displays a list of reports submitted by the technician.
  */
-router.get('/report', async (req, res) => {
+router.get('/report', ensureTechnician, async (req, res) => {
     try {
         // Only show reports submitted by the currently logged-in technician
         const reports = await MaintenanceReport.find({ submittedBy: req.session.userId })
@@ -230,7 +232,7 @@ router.get('/report', async (req, res) => {
  * GET /technician/report/:reportId
  * Displays the detail of a single submitted report.
  */
-router.get('/report/:reportId', async (req, res) => {
+router.get('/report/:reportId', ensureTechnician, async (req, res) => {
     try {
         const report = await MaintenanceReport.findById(req.params.reportId);
 
@@ -251,7 +253,7 @@ router.get('/report/:reportId', async (req, res) => {
  * GET /technician/asset/:id
  * Displays details for a specific asset, typically after a QR code scan.
  */
-router.get('/asset/:id', async (req, res) => {
+router.get('/asset/:id', ensureTechnician, async (req, res) => {
     try {
         const asset = await Asset.findById(req.params.id)
             .populate('floor category zone');
