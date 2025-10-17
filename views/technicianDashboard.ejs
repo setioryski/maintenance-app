@@ -20,15 +20,15 @@
   <script>
     // Redirect non-technician users to their correct dashboard when online
     const userRole = "<%= locals.user ? user.userRole : '' %>";
- if (navigator.onLine && userRole && userRole !== 'technician') {
+    if (navigator.onLine && userRole && userRole !== 'technician') {
         const dashboardUrls = {
             'superuser': '/admin/dashboard',
             'manager': '/manager/dashboard',
             'spv': '/spv/dashboard'
         };
- if (dashboardUrls[userRole]) {
+        if (dashboardUrls[userRole]) {
             window.location.href = dashboardUrls[userRole];
- }
+        }
     }
   </script>
   
@@ -53,7 +53,7 @@
 
         <div class="hidden md:flex items-center space-x-4">
 
-        
+       
     <div id="status-indicator-desktop" class="flex items-center space-x-2 px-3 py-1 rounded-full">
              <span id="status-dot-desktop" class="w-3 h-3 rounded-full"></span>
              <span id="status-text-desktop" class="text-sm font-semibold"></span>
@@ -85,7 +85,7 @@
  
     </div>
             <button id="sync-now-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-           
+            
       Sync Now
             </button>
         </div>
@@ -115,11 +115,11 @@
  
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2">
-           
-     <div class="bg-white p-6 rounded-lg shadow-lg">
+            
+     <div id="tasks-container" class="bg-white p-6 rounded-lg shadow-lg">
                     <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
 
-                    <form id="asset-filter-form" method="GET" action="/technician/dashboard" class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                    <form id="asset-filter-form" class="mb-6 p-4 bg-gray-50 rounded-lg border">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                             <input type="text" name="search" value="<%= filters.search %>" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Search asset name...">
                             <select name="floor" id="floor-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
@@ -138,162 +138,109 @@
                         </div>
                     </form>
 
-                    <%
-        
- 
-            const getAssetIcon = (name) => {
-                        name = (name || '').toLowerCase();
- if (name.includes('cctv')) return '📷';
-                        if (name.includes('panoramic')) return '🌅';
-                        if (name.includes('smoke') || name.includes('fire')) return '🔥';
-                        if (name.includes('ahu')) return '💨';
- if (name.includes('elevator')) return '↕️';
-                        if (name.includes('generator')) return '⚡️';
-                        return '📦';
-                    };
-                    const validAssignments = assignments.filter(a => a.checklist && a.asset);
- if (validAssignments.length === 0) {
-                    %>
-                    <div class="text-center py-12">
-                        <h3 class="text-lg font-medium text-gray-700">No maintenance tasks found.</h3>
-                        
- 
-
-<p class="text-gray-500 mt-1">Try adjusting your filters or check back later.</p>
+                    <div id="assignments-list">
+                      <%
+                          const getAssetIcon = (name) => {
+                              name = (name || '').toLowerCase();
+                              if (name.includes('cctv')) return '📷';
+                              if (name.includes('panoramic')) return '🌅';
+                              if (name.includes('smoke') || name.includes('fire')) return '🔥';
+                              if (name.includes('ahu')) return '💨';
+                              if (name.includes('elevator')) return '↕️';
+                              if (name.includes('generator')) return '⚡️';
+                              return '📦';
+                          };
+                          const validAssignments = assignments.filter(a => a.checklist && a.asset);
+                          if (validAssignments.length === 0) {
+                      %>
+                      <div class="text-center py-12">
+                          <h3 class="text-lg font-medium text-gray-700">No maintenance tasks found.</h3>
+                          <p class="text-gray-500 mt-1">Try adjusting your filters or check back later.</p>
+                      </div>
+                      <% } else {
+                          const groupedAssignments = {};
+                          validAssignments.forEach(function(assignment) {
+                              const assetId = assignment.asset._id.toString();
+                              if (!groupedAssignments[assetId]) {
+                                  groupedAssignments[assetId] = {
+                                      asset: assignment.asset,
+                                      checklists: []
+                                  };
+                              }
+                              groupedAssignments[assetId].checklists.push(assignment);
+                          });
+                      %>
+                      <div class="space-y-4">
+                          <% Object.keys(groupedAssignments).forEach(function(assetId) {
+                              const group = groupedAssignments[assetId];
+                              const asset = group.asset;
+                              const assetName = asset.name;
+                              const uniqueGroupId = `asset-group-${assetId}`;
+                          %>
+                          <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
+                              data-name="<%= assetName.toLowerCase() %>"
+                              data-floor-id="<%= asset.floor?._id?.toString() || '' %>"
+                              data-zone-id="<%= asset.zone?._id?.toString() || '' %>"
+                              data-category-id="<%= asset.category?._id?.toString() || '' %>">
+                              <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
+                                  onclick="toggleDropdown('<%= uniqueGroupId %>')">
+                                  <div class="flex items-center">
+                                      <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
+                                      <div>
+                                          <p class="text-md text-gray-800"><%= assetName %></p>
+                                          <p class="text-xs text-gray-500">
+                                              Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location %>
+                                          </p>
+                                      </div>
+                                  </div>
+                                  <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
+                              </div>
+                              <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
+                                  <% group.checklists.forEach(function(assignment) { %>
+                                  <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
+                                      <div>
+                                          <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
+                                          <p class="text-xs text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
+                                      </div>
+                                      <button onclick="startChecklist('<%= assignment._id %>')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
+                                          Start Checklist
+                                      </button>
+                                  </div>
+                                  <% }); %>
+                              </div>
+                          </div>
+                          <% }); %>
+                      </div>
+                      <% } %>
                     </div>
-                    <% } else {
-                    const groupedAssignments = {};
- validAssignments.forEach(function(assignment) {
-                        const assetId = assignment.asset._id.toString();
-                        if (!groupedAssignments[assetId]) {
-                        groupedAssignments[assetId] = {
-                    
- 
-
-        asset: assignment.asset,
-                            checklists: []
-                        };
-                        }
-             
-  
- 
-          groupedAssignments[assetId].checklists.push(assignment);
-                    });
- %>
-                    <div class="space-y-4">
-                        <% Object.keys(groupedAssignments).forEach(function(assetId) {
-                        const group = groupedAssignments[assetId];
-                        const asset 
- 
-= group.asset;
-                        const assetName = asset.name;
-            
-                        const uniqueGroupId = `asset-group-${assetId}`;
-                        %>
-        
-  
- 
-               <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
-                            data-name="<%= assetName.toLowerCase() %>"
-                            data-floor="<%= asset.floor?.name?.toLowerCase() || '' %>"
-               
-  
- 
-           data-category="<%= asset.category?.name?.toLowerCase() || '' %>">
-
-                            <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
-                            onclick="toggleDropdown('<%= uniqueGroupId %>')">
-              
-    
- 
-           <div class="flex items-center">
-                                <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
-                                <div>
-               
-     
- 
-             <p class="text-md text-gray-800"><%= assetName %></p>
-            
-                                <p class="text-xs text-gray-500">
-                                
-     Fl.
- <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location %>
-                                </p>
+                    <div id="pagination-container">
+                        <% if (totalPages > 1) { %>
+                            <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
+                                <span class="text-xs xs:text-sm text-gray-700">
+                                    Showing page <%= currentPage %> of <%= totalPages %>
+                                </span>
+                                <div class="inline-flex mt-2 xs:mt-0">
+                                    <% const queryParams = new URLSearchParams(filters); %>
+                                    <% if (parseInt(currentPage) > 1) { %>
+                                        <% queryParams.set('page', parseInt(currentPage) - 1) %>
+                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
+                                            Prev
+                                        </a>
+                                    <% } %>
+                                    <% if (parseInt(currentPage) < totalPages) { %>
+                                        <% queryParams.set('page', parseInt(currentPage) + 1) %>
+                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
+                                            Next
+                                        </a>
+                                    <% } %>
                                 </div>
                             </div>
-   
- 
- 
-                         <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
-                            </div>
-
-                            <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
-    
-  
- 
-                       <% group.checklists.forEach(function(assignment) { %>
-                                <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
-                               
-  <div>
- 
- 
-                                   <p class="font-semibold text-gray-800"><%= assignment.checklist.title %></p>
-                                    <p class="text-xs text-gray-500">Assigned: <%= new Date(assignment.assignedAt).toLocaleDateString() %></p>
-                
-    
- 
-             </div>
-                                <button
-                                    onclick="startChecklist('<%= assignment._id %>')"
-             
-     
- 
-                   class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
-                                    Start Checklist
-                            
-     </button>
- 
- 
-                               </div>
-                            <% });
- %>
-                            </div>
-                        </div>
-                        <% });
- %>
+                        <% } %>
                     </div>
-
-                    <% if (totalPages > 1) { %>
-                        <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
-                     
-       <span class="text-xs xs:text-sm text-gray-700">
-                                Showing page <%= currentPage %> of <%= totalPages %>
-                            </span>
-                      
-       <div class="inline-flex mt-2 xs:mt-0">
-                                <% const queryParams = new URLSearchParams(filters); %>
-                                <% if (parseInt(currentPage) > 1) { %>
-                                    <% queryParams.set('page', parseInt(currentPage) - 1) %>
-                                    <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
-                                        Prev
-                                    </a>
-                                <% } %>
-                                <% if (parseInt(currentPage) < totalPages) { %>
-                                    <% queryParams.set('page', parseInt(currentPage) + 1) %>
-                                    <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
-                                        Next
-                                    </a>
-                                <% } %>
-                            </div>
-                        </div>
-                    <% } %>
-
-                    <% } %>
- 
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-lg shadow-lg">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
               
  
   <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
@@ -306,19 +253,21 @@
     <% activities.forEach(function(activity) { %>
                             <li class="border-b last:border-b-0 py-3">
    
-                             <p class="text-sm text-gray-800"><strong><%= (activity.user && activity.user.name) || (activity.user.id && activity.user.id.name) || 'System' %></strong> (<%= activity.role %>) <%= activity.action %></p>
+                             
+ <p class="text-sm text-gray-800"><strong><%= (activity.user && activity.user.name) || (activity.user.id && activity.user.id.name) || 'System' %></strong> (<%= activity.role %>) <%= activity.action %></p>
             
  
                     <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
                             </li>
                       
-       <% });
- %>
+    
+    <% }); %>
                         <% } else { %>
                             <p class="text-gray-500">No recent activities.</p>
                         <% } %>
        
-         
+   
+           
  
      </ul>
                 </div>
@@ -327,21 +276,19 @@
     </div>
   </main>
 
-  <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden">
+  <div class="fixed inset-x-0 bottom-0 bg-white border-t 
+ 
+ shadow-lg md:hidden">
     <div class="flex justify-around py-2">
       <a href="/technician/dashboard" class="flex flex-col items-center text-blue-600">
-        <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path 
- d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 
- 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
         <span class="text-xs">Dashboard</span>
       </a>
       <a id="my-reports-link-mobile" href="/technician/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
-      
-   <span class="text-xs">My Reports</span>
-      
- 
-</a>
+  
+     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
+        <span class="text-xs">My Reports</span>
+      </a>
     </div>
   </div>
   
@@ -352,6 +299,7 @@
     <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
       <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
         <div class="sm:flex 
+ 
  sm:items-start">
           <div 
  id="sync-modal-icon" class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -359,7 +307,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 12L3 12m4 4l4-4m6 0v12m0-12l4 4m-4-4l-4 4" />
             </svg>
           </div>
-      
+     
      <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
    
          <h3 class="text-lg leading-6 font-medium text-gray-900" id="sync-modal-title">
@@ -367,7 +315,7 @@
             </h3>
             <div class="mt-2">
               <p class="text-sm text-gray-500" id="sync-modal-body">
-                Are 
+                 Are 
  you sure you want to sync your offline data with the server?
  </p>
             </div>
@@ -397,84 +345,225 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js');
- });
+      });
     }
 
     async function syncWithServer() {
         if (!navigator.onLine) return;
- try {
+        try {
             const response = await fetch('/api/technician/sync-data');
- if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+            if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
             const data = await response.json();
             await cacheData(data.assets, data.assignments, data.checklists);
- console.log("Successfully synced with server.");
+            console.log("Successfully synced with server.");
         } catch (error) {
             console.error("Failed to sync with server:", error);
- }
+        }
     }
 
-    document.addEventListener('DOMContentLoaded', (event) => {
-      syncWithServer();
+    // --- START OF OFFLINE RENDERING LOGIC ---
+    let allOfflineAssignments = [];
+    const ITEMS_PER_PAGE = 10;
 
+    const getAssetIcon = (name) => {
+        name = (name || '').toLowerCase();
+        if (name.includes('cctv')) return '📷';
+        if (name.includes('panoramic')) return '🌅';
+        if (name.includes('smoke') || name.includes('fire')) return '🔥';
+        if (name.includes('ahu')) return '💨';
+        if (name.includes('elevator')) return '↕️';
+        if (name.includes('generator')) return '⚡️';
+        return '📦';
+    };
+
+    function renderAssignments(assignmentsToRender, currentPage) {
+        const listEl = document.getElementById('assignments-list');
+        const paginationEl = document.getElementById('pagination-container');
+        listEl.innerHTML = '';
+        paginationEl.innerHTML = '';
+
+        if (assignmentsToRender.length === 0) {
+            listEl.innerHTML = `
+                <div class="text-center py-12">
+                    <h3 class="text-lg font-medium text-gray-700">No maintenance tasks found.</h3>
+                    <p class="text-gray-500 mt-1">Try adjusting your filters or check back later.</p>
+                </div>`;
+            return;
+        }
+
+        const totalPages = Math.ceil(assignmentsToRender.length / ITEMS_PER_PAGE);
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedAssignments = assignmentsToRender.slice(startIndex, endIndex);
+
+        const groupedAssignments = {};
+        paginatedAssignments.forEach(function(assignment) {
+            const assetId = assignment.asset._id.toString();
+            if (!groupedAssignments[assetId]) {
+                groupedAssignments[assetId] = {
+                    asset: assignment.asset,
+                    checklists: []
+                };
+            }
+            groupedAssignments[assetId].checklists.push(assignment);
+        });
+
+        let html = '<div class="space-y-4">';
+        Object.values(groupedAssignments).forEach(group => {
+            const asset = group.asset;
+            const uniqueGroupId = `asset-group-${asset._id}`;
+            html += `
+                <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card">
+                    <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
+                        onclick="toggleDropdown('${uniqueGroupId}')">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-3">${getAssetIcon(asset.name)}</span>
+                            <div>
+                                <p class="text-md text-gray-800">${asset.name}</p>
+                                <p class="text-xs text-gray-500">
+                                    Fl. ${asset.floor?.name || 'N/A'} / Zone ${asset.zone?.name || 'N/A'} / ${asset.location}
+                                </p>
+                            </div>
+                        </div>
+                        <span id="arrow-${uniqueGroupId}" class="transition-transform duration-200 transform text-gray-500">▼</span>
+                    </div>
+                    <div id="${uniqueGroupId}" class="dropdown-content hidden p-4 space-y-3">
+                        ${group.checklists.map(assignment => `
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
+                            <div>
+                                <p class="font-semibold text-gray-800">${assignment.checklist.title}</p>
+                                <p class="text-xs text-gray-500">Assigned: ${new Date(assignment.assignedAt).toLocaleDateString()}</p>
+                            </div>
+                            <button onclick="startChecklist('${assignment._id}')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
+                                Start Checklist
+                            </button>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+        listEl.innerHTML = html;
+
+        // Render pagination
+        if (totalPages > 1) {
+            let paginationHTML = `
+                <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
+                    <span class="text-xs xs:text-sm text-gray-700">
+                        Showing page ${currentPage} of ${totalPages}
+                    </span>
+                    <div class="inline-flex mt-2 xs:mt-0">`;
+            if (currentPage > 1) {
+                paginationHTML += `<button onclick="handleOfflinePageChange(${currentPage - 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">Prev</button>`;
+            }
+            if (currentPage < totalPages) {
+                paginationHTML += `<button onclick="handleOfflinePageChange(${currentPage + 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">Next</button>`;
+            }
+            paginationHTML += `</div></div>`;
+            paginationEl.innerHTML = paginationHTML;
+        }
+    }
+
+    function handleOfflineFilter() {
+        const search = document.querySelector('input[name="search"]').value.toLowerCase();
+        const floor = document.getElementById('floor-filter').value;
+        const zone = document.getElementById('zone-filter').value;
+        const category = document.querySelector('select[name="category"]').value;
+
+        const filtered = allOfflineAssignments.filter(a => {
+            const asset = a.asset;
+            const nameMatch = asset.name.toLowerCase().includes(search);
+            const floorMatch = floor === 'all' || asset.floor?._id === floor;
+            const zoneMatch = zone === 'all' || asset.zone?._id === zone;
+            const categoryMatch = category === 'all' || asset.category?._id === category;
+            return nameMatch && floorMatch && zoneMatch && categoryMatch;
+        });
+
+        renderAssignments(filtered, 1); // Reset to page 1 on new filter
+    }
+
+    function handleOfflinePageChange(newPage) {
+        // We need to re-apply filters to get the full list before paginating
+        const search = document.querySelector('input[name="search"]').value.toLowerCase();
+        const floor = document.getElementById('floor-filter').value;
+        const zone = document.getElementById('zone-filter').value;
+        const category = document.querySelector('select[name="category"]').value;
+
+        const filtered = allOfflineAssignments.filter(a => {
+            const asset = a.asset;
+            const nameMatch = asset.name.toLowerCase().includes(search);
+            const floorMatch = floor === 'all' || asset.floor?._id === floor;
+            const zoneMatch = zone === 'all' || asset.zone?._id === zone;
+            const categoryMatch = category === 'all' || asset.category?._id === category;
+            return nameMatch && floorMatch && zoneMatch && categoryMatch;
+        });
+        
+        renderAssignments(filtered, newPage);
+    }
+    
+    async function renderOfflineDashboard() {
+        const { assignments } = await getAllOfflineData();
+        allOfflineAssignments = assignments; // Store globally for filtering
+        document.getElementById('asset-filter-form').removeEventListener('submit', handleOnlineSubmit);
+        document.getElementById('asset-filter-form').addEventListener('submit', (e) => {
+             e.preventDefault();
+             handleOfflineFilter();
+        });
+        renderAssignments(allOfflineAssignments, 1);
+    }
+    
+    function handleOnlineSubmit(e) {
+        e.target.submit();
+    }
+    // --- END OF OFFLINE RENDERING LOGIC ---
+
+    document.addEventListener('DOMContentLoaded', (event) => {
       const updateOnlineStatus = async () => {
         const online = navigator.onLine;
-
         const indicators = [
-            {
-                indicator: document.getElementById('status-indicator-desktop'),
-                dot: document.getElementById('status-dot-desktop'),
-   
- 
-             text: document.getElementById('status-text-desktop'),
-                dotClass: 'w-3 h-3'
-            },
-            {
-                indicator: document.getElementById('status-indicator-mobile'),
-                dot: document.getElementById('status-dot-mobile'),
-         
-  
- 
-      text: document.getElementById('status-text-mobile'),
-                dotClass: 'w-2 h-2'
-            }
+            { indicator: document.getElementById('status-indicator-desktop'), dot: document.getElementById('status-dot-desktop'), text: document.getElementById('status-text-desktop'), dotClass: 'w-3 h-3' },
+            { indicator: document.getElementById('status-indicator-mobile'), dot: document.getElementById('status-dot-mobile'), text: document.getElementById('status-text-mobile'), dotClass: 'w-2 h-2' }
         ];
-
         const syncNowBtn = document.getElementById('sync-now-btn');
         const pendingSyncAlert = document.getElementById('pending-sync-alert');
         const pendingSyncCount = document.getElementById('pending-sync-count');
- const desktopReportLink = document.getElementById('my-reports-link-desktop');
+        const desktopReportLink = document.getElementById('my-reports-link-desktop');
         const mobileReportLink = document.getElementById('my-reports-link-mobile');
+        const filterForm = document.getElementById('asset-filter-form');
 
         indicators.forEach(({ indicator, dot, text, dotClass }) => {
             if (online) {
                 dot.className = `${dotClass} rounded-full bg-green-500`;
                 text.textContent = 'Online';
                 indicator.className = indicator.className.replace(/bg-red-100 text-red-800/g, 'bg-green-100 text-green-800');
-            
- 
- 
-} else {
+            } else {
                 dot.className = `${dotClass} rounded-full bg-red-500`;
                 text.textContent = 'Offline';
                 indicator.className = indicator.className.replace(/bg-green-100 text-green-800/g, 'bg-red-100 text-red-800');
             }
         });
- if (online) {
+        
+        if (online) {
             syncNowBtn.classList.remove('hidden');
             if (desktopReportLink) desktopReportLink.href = '/technician/report';
- if (mobileReportLink) mobileReportLink.href = '/technician/report';
+            if (mobileReportLink) mobileReportLink.href = '/technician/report';
+            filterForm.removeEventListener('submit', handleOfflineFilter);
+            filterForm.addEventListener('submit', handleOnlineSubmit);
             await syncWithServer(); 
             forceSync();
+            // Reload to get fresh server data
+            // window.location.reload(); 
         } else {
             syncNowBtn.classList.add('hidden');
- if (desktopReportLink) desktopReportLink.href = '/offline-report.html';
+            if (desktopReportLink) desktopReportLink.href = '/offline-report.html';
             if (mobileReportLink) mobileReportLink.href = '/offline-report.html';
- }
+            renderOfflineDashboard();
+        }
 
         const pendingCount = await countPendingSubmissions();
         pendingSyncAlert.classList.toggle('hidden', pendingCount === 0);
         pendingSyncCount.textContent = pendingCount;
- };
+      };
 
       window.addEventListener('online', updateOnlineStatus);
       window.addEventListener('offline', updateOnlineStatus);
@@ -483,11 +572,11 @@
       const scanBtn = document.getElementById('scan-qr-btn');
       const qrReaderElement = document.getElementById('qr-reader');
       const html5QrCode = new Html5Qrcode("qr-reader");
- const onScanSuccess = (decodedText, decodedResult) => {
+      const onScanSuccess = (decodedText, decodedResult) => {
         html5QrCode.stop().then(() => {
           window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`;
         }).catch(err => console.error("Error stopping scanner:", err));
- };
+      };
       
       scanBtn.addEventListener('click', () => {
         const isHidden = qrReaderElement.classList.contains('hidden');
@@ -496,26 +585,24 @@
           html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, () => {})
             .catch(err => alert(`Could not start camera. Error: ${err}`));
         } else {
-        
- 
- 
-  html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden'));
+            html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden'));
         }
       });
-      
       
     const syncModal = document.getElementById('sync-modal');
     const syncNowBtn = document.getElementById('sync-now-btn');
     const confirmSyncBtn = document.getElementById('confirm-sync-btn');
- const cancelSyncBtn = document.getElementById('cancel-sync-btn');
+    const cancelSyncBtn = document.getElementById('cancel-sync-btn');
 
     syncNowBtn.addEventListener('click', () => {
         syncModal.classList.remove('hidden');
     });
- cancelSyncBtn.addEventListener('click', () => {
+
+    cancelSyncBtn.addEventListener('click', () => {
         syncModal.classList.add('hidden');
     });
- confirmSyncBtn.addEventListener('click', async () => {
+
+    confirmSyncBtn.addEventListener('click', async () => {
         const modalTitle = document.getElementById('sync-modal-title');
         const modalBody = document.getElementById('sync-modal-body');
         const modalIcon = document.getElementById('sync-modal-icon');
@@ -528,21 +615,19 @@
         const result = await forceSync();
 
      
- 
     if (result.failed > 0) {
             modalTitle.textContent = 'Sync Failed';
             modalBody.textContent = `Could not sync ${result.failed} submission(s). Please check your connection and try again.`;
             modalIcon.innerHTML = `<svg class="h-6 w-6 text-red-600" ... >...</svg>`; // Error icon
         } else {
             modalTitle.textContent = 'Sync Complete';
-     
-  
+    
        modalBody.textContent = `${result.successful} offline submission(s) have been successfully uploaded.`;
- modalIcon.innerHTML = `<svg class="h-6 w-6 text-green-600" ... >...</svg>`; // Success icon
+       modalIcon.innerHTML = `<svg class="h-6 w-6 text-green-600" ... >...</svg>`; // Success icon
         }
 
         confirmSyncBtn.disabled = false;
- cancelSyncBtn.textContent = 'Close';
+        cancelSyncBtn.textContent = 'Close';
         cancelSyncBtn.disabled = false;
         confirmSyncBtn.classList.add('hidden');
         
@@ -556,18 +641,17 @@
     function updateZoneFilter() {
         const selectedFloorId = floorFilter.value;
         const currentZoneId = new URLSearchParams(window.location.search).get('zone');
-
         zoneFilter.innerHTML = '';
         allZones.forEach(option => {
             if (option.value === 'all' || option.dataset.floor === selectedFloorId) {
                 const newOption = option.cloneNode(true);
                 if (newOption.value === currentZoneId) {
                     newOption.selected = true;
-                }
+              
+   }
                 zoneFilter.add(newOption);
             }
         });
-
         if (selectedFloorId === 'all') {
             zoneFilter.disabled = true;
             if (currentZoneId !== 'all' && currentZoneId !== null) {
@@ -580,9 +664,8 @@
     }
 
     floorFilter.addEventListener('change', () => {
-        // Don't auto-submit, let the user click the filter button
+        updateZoneFilter();
     });
-
     // Initial filter state
     updateZoneFilter();
     });
@@ -592,7 +675,8 @@
  }
 
     function startChecklist(assignmentId) {
-      window.location.href = navigator.onLine ? `/technician/checklist/${assignmentId}` : `/offline-checklist.html#${assignmentId}`;
+      window.location.href = navigator.onLine ?
+      `/technician/checklist/${assignmentId}` : `/offline-checklist.html#${assignmentId}`;
  }
   </script>
 </body>

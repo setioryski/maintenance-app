@@ -1,14 +1,14 @@
 // public/js/db.js
 const db = new Dexie('maintenanceApp');
 
-// CRITICAL FIX: Incremented DB version to 7 to force a schema update for all users.
-// This ensures the removal of the old 'completedReports' table is correctly applied.
-db.version(7).stores({
-  pendingSubmissions: '++id, assignmentId, timestamp', // Added timestamp index for sorting
-  assets: '&_id, name, floor',
+// CRITICAL FIX: Incremented DB version to 8 to add indexes for filtering.
+db.version(8).stores({
+  pendingSubmissions: '++id, assignmentId, timestamp',
+  assets: '&_id, name, floor, category, zone', // Added category and zone for filtering
   assignments: '&_id, asset, checklist',
   checklists: '&_id, title',
 });
+
 
 async function cacheData(assets, assignments, checklists) {
   try {
@@ -32,6 +32,44 @@ async function cacheData(assets, assignments, checklists) {
     console.error('Failed to cache data:', error);
   }
 }
+
+// NEW FUNCTION to get all data for offline dashboard rendering
+async function getAllOfflineData() {
+    try {
+        const [assets, assignments, checklists] = await db.transaction('r', db.assets, db.assignments, db.checklists, async () => {
+            const assets = await db.assets.toArray();
+            const assignments = await db.assignments.toArray();
+            const checklists = await db.checklists.toArray();
+            return [assets, assignments, checklists];
+        });
+
+        // Create maps for quick lookups
+        const checklistMap = new Map(checklists.map(c => [c._id, c]));
+        
+        // Add full asset objects to a map, including their category, floor, and zone names which are already populated from the server sync
+        const assetMap = new Map(assets.map(a => [a._id, a]));
+
+        // Augment assignments with full checklist and asset data
+        const augmentedAssignments = assignments.map(assign => {
+            const checklistId = typeof assign.checklist === 'string' ? assign.checklist : assign.checklist?._id;
+            const assetId = typeof assign.asset === 'string' ? assign.asset : assign.asset?._id;
+            
+            return {
+                ...assign,
+                checklist: checklistMap.get(checklistId),
+                asset: assetMap.get(assetId)
+            };
+        }).filter(a => a.checklist && a.asset); // Filter out any assignments with missing data
+
+        return {
+            assignments: augmentedAssignments,
+        };
+    } catch (error) {
+        console.error('Failed to get all offline data:', error);
+        return { assignments: [] };
+    }
+}
+
 
 async function getAssetAndAssignmentsOffline(assetId) {
     try {
