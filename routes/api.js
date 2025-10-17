@@ -11,6 +11,7 @@ const Checklist = mongoose.model('Checklist');
 const ChecklistAssignment = mongoose.model('ChecklistAssignment');
 const MaintenanceReport = mongoose.model('MaintenanceReport');
 const User = mongoose.model('User');
+const Zone = mongoose.model('Zone');
 
 // =================================================================
 //                      TECHNICIAN SYNC ROUTES
@@ -149,6 +150,20 @@ router.get('/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req, 
         res.json(checklist.tasks);
     } catch (err) {
         console.error('API Fetch Checklist Tasks Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * GET /api/zones/:floorId
+ * [NEW] Fetches zones for a specific floor.
+ */
+router.get('/zones/:floorId', ensureAuthenticated, async (req, res) => {
+    try {
+        const zones = await Zone.find({ floor: req.params.floorId }).sort({ name: 1 });
+        res.json(zones);
+    } catch (err) {
+        console.error('API Fetch Zones Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

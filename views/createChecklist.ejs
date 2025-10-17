@@ -35,13 +35,15 @@
           <option value="measurement" ${type==='measurement'?'selected':''}>Measurement</option>
         </select>
         <div class="unit-container flex items-center gap-2 ${isMeasurement ? '' : 'hidden'}">
+          
           <input type="number" name="taskMinRanges" placeholder="Min" class="border border-gray-300 rounded p-2 w-20" value="${minRange}">
           <input type="number" name="taskMaxRanges" placeholder="Max" class="border border-gray-300 rounded p-2 w-20" value="${maxRange}">
           <select name="taskExpectedUnits" class="unit-select border border-gray-300 rounded p-2">
             <option value="">-- pilih satuan --</option>
             <option value="°C" ${expUnit==='°C'?'selected':''}>Celsius (°C)</option>
             <option value="N" ${expUnit==='N'?'selected':''}>Newton (N)</option>
-            <option value="cd" ${expUnit==='cd'?'selected':''}>Candela (cd)</option>
+          
+           <option value="cd" ${expUnit==='cd'?'selected':''}>Candela (cd)</option>
             <option value="other" ${isCustom?'selected':''}>Other…</option>
           </select>
           <input type="text" name="taskExpectedUnitsCustom" class="unit-custom border border-gray-300 rounded p-2 ${isCustom ? '' : 'hidden'}" placeholder="Custom unit" value="${isCustom ? expUnit : ''}" />
@@ -56,7 +58,8 @@
 
       typeSelect.addEventListener('change', () => {
         unitContainer.classList.toggle('hidden', typeSelect.value !== 'measurement');
-      });
+     
+       });
 
       unitSelect.addEventListener('change', () => {
         customInput.classList.toggle('hidden', unitSelect.value !== 'other');
@@ -93,6 +96,12 @@
   <div class="max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Buat Checklist Baru</h1>
     
+    <% if (message && message.text) { %>
+      <div class="p-4 mb-4 text-sm rounded-lg <%= message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>" role="alert">
+        <%= message.text %>
+      </div>
+    <% } %>
+
     <% /* --- CORRECTED FORM ACTION AND BACK LINK --- */ %>
     <form action="/spv/checklists" method="POST">
       <div class="mb-4">
@@ -100,7 +109,8 @@
         <input type="text" name="title" class="w-full border border-gray-300 rounded p-2" required />
       </div>
       <div class="mb-4">
-        <label class="block font-semibold mb-1">Gunakan Template</label>
+       
+       <label class="block font-semibold mb-1">Gunakan Template</label>
         <select name="templateChecklist" class="w-full border border-gray-300 rounded p-2">
           <option value="">-- Pilih Template --</option>
           <% existingChecklists.forEach(ch => { %>
@@ -118,7 +128,8 @@
       
       <div class="flex justify-between items-center mt-6">
           <a href="/spv/dashboard" class="text-gray-600 hover:text-gray-800">Back to Dashboard</a>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan Checklist</button>
+    
+           <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan Checklist</button>
       </div>
     </form>
   </div>

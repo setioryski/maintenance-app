@@ -31,17 +31,35 @@ const User = mongoose.model('User');
 router.get('/dashboard', async (req, res) => {
     try {
         const divisionId = req.session.userDivision;
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10; // Assets per page
-        const skip = (page - 1) * limit;
+        const { assetPage = 1, checklistPage = 1, search = '', floor = 'all', zone = 'all', category = 'all' } = req.query;
+        const assetLimit = 10; // Assets per page
+        const checklistLimit = 10; // Checklists per page
+        const assetSkip = (assetPage - 1) * assetLimit;
+        const checklistSkip = (checklistPage - 1) * checklistLimit;
+
+        const assetFilter = { division: divisionId };
+        if (search) {
+            assetFilter.name = { $regex: new RegExp(escapeRegex(search), 'i') };
+        }
+        if (floor !== 'all') {
+            assetFilter.floor = floor;
+        }
+        if (zone !== 'all') {
+            assetFilter.zone = zone;
+        }
+        if (category !== 'all') {
+            assetFilter.category = category;
+        }
 
         // Fetch all necessary data in parallel for better performance
-        const [checklists, totalAssets, assets, assetCategories, floors, activities] = await Promise.all([
-            Checklist.find({ division: divisionId }).sort({ order: 1 }).lean(),
-            Asset.countDocuments({ division: divisionId }),
-            Asset.find({ division: divisionId }).sort({ order: 1 }).skip(skip).limit(limit).populate('category floor zone').lean(),
+        const [totalChecklists, checklists, totalAssets, assets, assetCategories, floors, zones, activities] = await Promise.all([
+            Checklist.countDocuments({ division: divisionId }),
+            Checklist.find({ division: divisionId }).sort({ order: 1 }).skip(checklistSkip).limit(checklistLimit).lean(),
+            Asset.countDocuments(assetFilter),
+            Asset.find(assetFilter).sort({ order: 1 }).skip(assetSkip).limit(assetLimit).populate('category floor zone').lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
             Floor.find({}).sort({ name: 1 }).lean(),
+            Zone.find({}).sort({ name: 1 }).lean(),
             Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] })
                 .sort({ timestamp: -1 })
                 .limit(20)
@@ -49,7 +67,8 @@ router.get('/dashboard', async (req, res) => {
                 .lean()
         ]);
         
-        const totalPages = Math.ceil(totalAssets / limit);
+        const totalAssetPages = Math.ceil(totalAssets / assetLimit);
+        const totalChecklistPages = Math.ceil(totalChecklists / checklistLimit);
 
         // Augment checklists with the count of assets they are assigned to
         const checklistData = await Promise.all(checklists.map(async c => ({
@@ -62,12 +81,22 @@ router.get('/dashboard', async (req, res) => {
             assets,
             assetCategories,
             floors,
+            zones,
             activities,
             user: req.session, // Pass session info to the view
-            currentPage: page,
-            totalPages,
-            totalAssets,
-            limit
+            assetPagination: {
+                currentPage: assetPage,
+                totalPages: totalAssetPages,
+                totalItems: totalAssets,
+                limit: assetLimit
+            },
+            checklistPagination: {
+                currentPage: checklistPage,
+                totalPages: totalChecklistPages,
+                totalItems: totalChecklists,
+                limit: checklistLimit
+            },
+            filters: { search, floor, zone, category }
         });
     } catch (err) {
         console.error("SPV Dashboard Error:", err);
@@ -75,13 +104,14 @@ router.get('/dashboard', async (req, res) => {
     }
 });
 
+
 /**
  * GET /spv/report
  * Displays a list of maintenance reports for the SPV's division with filtering.
  */
 router.get('/report', async (req, res) => {
     try {
-        const { filter = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+        const { filter = 'all', floor = 'all', zone = 'all', submittedBy = 'all' } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = 15;
         const skip = (page - 1) * limit;
@@ -105,6 +135,12 @@ router.get('/report', async (req, res) => {
                   query['assetSnapshot.floor'] = floorDoc.name;
              }
         }
+        if (zone !== 'all') {
+            const zoneDoc = await Zone.findById(zone);
+            if(zoneDoc){
+                 query['assetSnapshot.zone'] = zoneDoc.name;
+            }
+       }
 
         const totalReports = await MaintenanceReport.countDocuments(query);
         const totalPages = Math.ceil(totalReports / limit);
@@ -116,8 +152,9 @@ router.get('/report', async (req, res) => {
             .skip(skip)
             .limit(limit);
 
-        const [floors, technicians] = await Promise.all([
+        const [floors, zones, technicians] = await Promise.all([
             Floor.find({}).sort({ name: 1 }),
+            Zone.find({}).sort({ name: 1 }),
             User.find({ role: 'technician', division: req.session.userDivision }).sort({ name: 1 })
         ]);
 
@@ -126,6 +163,8 @@ router.get('/report', async (req, res) => {
             currentFilter: filter,
             floors,
             currentFloor: floor,
+            zones,
+            currentZone: zone,
             technicians,
             currentSubmittedBy: submittedBy,
             currentPage: page,
@@ -249,7 +288,13 @@ router.get('/assets/:id/edit', ensureAssetBelongsToUser, async (req, res) => {
             Floor.find({}).sort({ name: 1 }),
             Zone.find({}).sort({ name: 1 })
         ]);
-        res.render('editAsset', { asset: req.asset, assetCategories, floors, zones });
+        res.render('editAsset', { 
+            asset: req.asset, 
+            assetCategories, 
+            floors, 
+            zones,
+            filters: req.query // Pass query params to the view
+        });
     } catch (err) {
         res.status(500).send(err.message);
     }
@@ -260,10 +305,27 @@ router.post('/assets/:id/edit', ensureAssetBelongsToUser, async (req, res) => {
         await Asset.findByIdAndUpdate(req.params.id, req.body);
         await logActivity(req.session.userId, `edited asset: ${req.body.name}.`);
         req.session.message = { type: 'success', text: 'Asset updated successfully.' };
-        res.redirect('/spv/dashboard');
+
+        const { search, floor, zone, category, assetPage, checklistPage } = req.body;
+        const query = new URLSearchParams();
+        if (search) query.append('search', search);
+        if (floor) query.append('floor', floor);
+        if (zone) query.append('zone', zone);
+        if (category) query.append('category', category);
+        if (assetPage) query.append('assetPage', assetPage);
+        if (checklistPage) query.append('checklistPage', checklistPage);
+        res.redirect(`/spv/dashboard?${query.toString()}`);
     } catch (err) {
         req.session.message = { type: 'error', text: `Error updating asset: ${err.message}` };
-        res.redirect(`/spv/assets/${req.params.id}/edit`);
+        const { search, floor, zone, category, assetPage, checklistPage } = req.body;
+        const query = new URLSearchParams();
+        if (search) query.append('search', search);
+        if (floor) query.append('floor', floor);
+        if (zone) query.append('zone', zone);
+        if (category) query.append('category', category);
+        if (assetPage) query.append('assetPage', assetPage);
+        if (checklistPage) query.append('checklistPage', checklistPage);
+        res.redirect(`/spv/assets/${req.params.id}/edit?${query.toString()}`);
     }
 });
 
@@ -305,19 +367,35 @@ router.post('/assets/:id/duplicate', ensureAssetBelongsToUser, async (req, res) 
     } catch (err) {
         req.session.message = { type: 'error', text: 'Failed to duplicate asset.' };
     }
-    res.redirect('/spv/dashboard');
+    const { search, floor, zone, category, assetPage, checklistPage } = req.body;
+    const query = new URLSearchParams();
+    if (search) query.append('search', search);
+    if (floor) query.append('floor', floor);
+    if (zone) query.append('zone', zone);
+    if (category) query.append('category', category);
+    if (assetPage) query.append('assetPage', assetPage);
+    if (checklistPage) query.append('checklistPage', checklistPage);
+    res.redirect(`/spv/dashboard?${query.toString()}`);
 });
 
 
-router.get('/assets/:id/delete', ensureAssetBelongsToUser, async (req, res) => {
+router.post('/assets/:id/delete', ensureAssetBelongsToUser, async (req, res) => {
     try {
         const assetName = req.asset.name;
-        // The pre-hook on the Asset model will handle deleting related assignments
         await Asset.findByIdAndDelete(req.params.id);
 
         await logActivity(req.session.userId, `deleted asset: ${assetName}.`);
         req.session.message = { type: 'success', text: 'Asset deleted successfully.' };
-        res.redirect('/spv/dashboard');
+        
+        const { search, floor, zone, category, assetPage, checklistPage } = req.body;
+        const query = new URLSearchParams();
+        if (search) query.append('search', search);
+        if (floor) query.append('floor', floor);
+        if (zone) query.append('zone', zone);
+        if (category) query.append('category', category);
+        if (assetPage) query.append('assetPage', assetPage);
+        if (checklistPage) query.append('checklistPage', checklistPage);
+        res.redirect(`/spv/dashboard?${query.toString()}`);
     } catch (err) {
         res.status(500).send(err.message);
     }
@@ -327,11 +405,22 @@ router.get('/assets/:id/delete', ensureAssetBelongsToUser, async (req, res) => {
 router.get('/asset/:id/qr', ensureAssetBelongsToUser, async (req, res) => {
     try {
         const qrCodeDataUrl = await qrcode.toDataURL(req.params.id, { errorCorrectionLevel: 'H' });
+        const { search, floor, zone, category, assetPage, checklistPage } = req.query;
+        const query = new URLSearchParams();
+        if (search) query.append('search', search);
+        if (floor) query.append('floor', floor);
+        if (zone) query.append('zone', zone);
+        if (category) query.append('category', category);
+        if (assetPage) query.append('assetPage', assetPage);
+        if (checklistPage) query.append('checklistPage', checklistPage);
+
         res.send(`
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif;">
                 <h2>${req.asset.name}</h2>
                 <img src="${qrCodeDataUrl}" alt="QR Code for ${req.asset.name}" style="margin: 2rem;"/>
                 <p>Print this QR Code and attach it to the asset.</p>
+                <br>
+                <a href="/spv/dashboard?${query.toString()}">Back to Dashboard</a>
             </div>
         `);
     } catch (err) {
@@ -382,12 +471,18 @@ router.post('/checklists', async (req, res) => {
             };
         });
 
-        await Checklist.create({ title, tasks, createdBy: req.session.userId, division: req.session.userDivision });
+        const newChecklist = new Checklist({ title, tasks, createdBy: req.session.userId, division: req.session.userDivision });
+        await newChecklist.save();
+        
         await logActivity(req.session.userId, `created a new checklist: ${title}.`);
         req.session.message = { type: 'success', text: 'Checklist created successfully.' };
         res.redirect('/spv/dashboard');
     } catch (err) {
-        req.session.message = { type: 'error', text: `Error creating checklist: ${err.message}` };
+        if (err.code === 11000 || err.name === 'DuplicateChecklistError') { // Handle both DB index error and pre-save validation error
+            req.session.message = { type: 'error', text: `A checklist with the name "${req.body.title}" already exists in your division.` };
+        } else {
+            req.session.message = { type: 'error', text: `Error creating checklist: ${err.message}` };
+        }
         res.redirect('/spv/checklists/new');
     }
 });
@@ -420,23 +515,41 @@ router.post('/checklists/:id/edit', ensureChecklistBelongsToDivision, async (req
 
 router.get('/checklists/:id/assign', ensureChecklistBelongsToDivision, async (req, res) => {
     try {
-        const [assets, assignments] = await Promise.all([
-            Asset.find({ division: req.session.userDivision }).populate('category').sort({ name: 1 }),
-            ChecklistAssignment.find({ checklist: req.params.id }, 'asset')
+        const [assets, assignments, floors, zones] = await Promise.all([
+            Asset.find({ division: req.session.userDivision }).populate('category floor zone').sort({ 'floor.name': 1, 'zone.name': 1, name: 1 }),
+            ChecklistAssignment.find({ checklist: req.params.id }, 'asset'),
+            Floor.find().sort({ name: 1 }),
+            Zone.find().sort({ name: 1 })
         ]);
 
-        const assetsByCategory = assets.reduce((acc, asset) => {
+        const assetsByHierarchy = {};
+        assets.forEach(asset => {
             const categoryName = asset.category ? asset.category.name : 'Uncategorized';
-            if (!acc[categoryName]) {
-                acc[categoryName] = [];
+            const floorName = asset.floor ? asset.floor.name : 'No Floor';
+            const zoneName = asset.zone ? asset.zone.name : 'No Zone';
+
+            if (!assetsByHierarchy[categoryName]) {
+                assetsByHierarchy[categoryName] = {};
             }
-            acc[categoryName].push(asset);
-            return acc;
-        }, {});
+            if (!assetsByHierarchy[categoryName][floorName]) {
+                assetsByHierarchy[categoryName][floorName] = {};
+            }
+            if (!assetsByHierarchy[categoryName][floorName][zoneName]) {
+                assetsByHierarchy[categoryName][floorName][zoneName] = [];
+            }
+            assetsByHierarchy[categoryName][floorName][zoneName].push(asset);
+        });
 
         const assignedAssetIds = assignments.map(a => a.asset.toString());
-        res.render('assignChecklist', { checklist: req.checklist, assetsByCategory, assignedAssetIds });
+        res.render('assignChecklist', { 
+            checklist: req.checklist, 
+            assetsByHierarchy, 
+            assignedAssetIds,
+            floors,
+            zones
+        });
     } catch (err) {
+        console.error("Assign Checklist Error:", err);
         res.status(500).send(err.message);
     }
 });

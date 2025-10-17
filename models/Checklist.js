@@ -30,6 +30,9 @@ const checklistSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Add a compound index to ensure checklist titles are unique per division
+checklistSchema.index({ title: 1, division: 1 }, { unique: true });
+
 // MODIFIED HOOK: When a checklist is deleted, remove all assignments that use it.
 // This will NOT delete the historical MaintenanceReports.
 checklistSchema.pre('deleteOne', { document: false, query: true }, async function(next) {

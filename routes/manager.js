@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { ensureAuthenticated, ensureManager } = require('../middleware/auth');
-const { logActivity } = require('../utils/helpers');
+const { logActivity, escapeRegex } = require('../utils/helpers');
 
 const router = express.Router();
 router.use(ensureAuthenticated, ensureManager);
@@ -10,6 +10,7 @@ router.use(ensureAuthenticated, ensureManager);
 const MaintenanceReport = mongoose.model('MaintenanceReport');
 const Division = mongoose.model('Division');
 const Floor = mongoose.model('Floor');
+const Zone = mongoose.model('Zone');
 const User = mongoose.model('User');
 const Activity = mongoose.model('Activity');
 
@@ -17,7 +18,7 @@ const Activity = mongoose.model('Activity');
 // Manager Dashboard & Report List
 router.get('/dashboard', async (req, res) => {
     try {
-        const { filter = 'all', division = 'all', floor = 'all', submittedBy = 'all' } = req.query;
+        const { filter = 'all', division = 'all', floor = 'all', zone = 'all', submittedBy = 'all', search = '' } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = 15; // Number of items per page
         const skip = (page - 1) * limit;
@@ -34,7 +35,11 @@ router.get('/dashboard', async (req, res) => {
             matchCondition.verifiedByManager = true;
         } else if (filter === 'has_alert') {
             matchCondition.hasAlert = true;
+        } else if (filter === 'pending_spv') {
+            matchCondition.verifiedBySpv = false;
+            matchCondition.verifiedStatus = { $ne: 'rejected' };
         }
+
 
         if (filter !== 'all' && filter !== 'rejected') {
             matchCondition.verifiedStatus = { $ne: 'rejected' };
@@ -49,7 +54,22 @@ router.get('/dashboard', async (req, res) => {
                 matchCondition['assetSnapshot.floor'] = floorDoc.name;
             }
         }
+
+        if (zone !== 'all') {
+            const zoneDoc = await Zone.findById(zone);
+            if(zoneDoc) {
+                matchCondition['assetSnapshot.zone'] = zoneDoc.name;
+            }
+        }
         
+        if (search) {
+            const searchRegex = new RegExp(escapeRegex(search), 'i');
+            matchCondition.$or = [
+                { 'assetSnapshot.name': searchRegex },
+                { checklistTitle: searchRegex }
+            ];
+        }
+
         const totalReports = await MaintenanceReport.countDocuments(matchCondition);
         const totalPages = Math.ceil(totalReports / limit);
 
@@ -61,9 +81,10 @@ router.get('/dashboard', async (req, res) => {
             .limit(limit);
         
         // Fetch all necessary data in parallel
-        const [divisions, floors, technicians, activities] = await Promise.all([
+        const [divisions, floors, zones, technicians, activities] = await Promise.all([
             Division.find({}).sort({ name: 1 }),
             Floor.find({}).sort({ name: 1 }),
+            Zone.find({}).sort({ name: 1 }),
             User.find({ role: 'technician' }).sort({ name: 1 }),
             // Fetches all activities for the manager view
             Activity.find({}).sort({ timestamp: -1 }).limit(30).populate('division user.id')
@@ -71,18 +92,16 @@ router.get('/dashboard', async (req, res) => {
 
         res.render('managerDashboard', {
             assignments: reports,
-            currentFilter: filter,
             divisions,
-            currentDivision: division,
             floors,
-            currentFloor: floor,
+            zones,
             technicians,
-            currentSubmittedBy: submittedBy,
             activities, // Pass activities to the view
             currentPage: page,
             totalPages,
             totalReports,
-            limit
+            limit,
+            filters: { filter, division, floor, zone, submittedBy, search }
         });
     } catch (err) {
         console.error('Manager Dashboard Error:', err);

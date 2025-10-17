@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { ensureAuthenticated, ensureTechnician } = require('../middleware/auth');
 const { upload, imageProcessingQueue } = require('../middleware/fileUpload');
-const { logActivity } = require('../utils/helpers');
+const { logActivity, escapeRegex } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -16,6 +16,7 @@ const ChecklistAssignment = mongoose.model('ChecklistAssignment');
 const MaintenanceReport = mongoose.model('MaintenanceReport');
 const Floor = mongoose.model('Floor');
 const AssetCategory = mongoose.model('AssetCategory');
+const Zone = mongoose.model('Zone');
 const Activity = mongoose.model('Activity');
 const User = mongoose.model('User');
 
@@ -28,14 +29,28 @@ const User = mongoose.model('User');
 router.get('/dashboard', async (req, res) => {
     try {
         const divisionId = req.session.userDivision;
-        const page = parseInt(req.query.page) || 1;
+        const { page = 1, search = '', floor = 'all', zone = 'all', category = 'all' } = req.query;
         const limit = 10; // Number of assets per page
         const skip = (page - 1) * limit;
 
+        const assetFilter = { division: divisionId };
+        if (search) {
+            assetFilter.name = { $regex: new RegExp(escapeRegex(search), 'i') };
+        }
+        if (floor !== 'all') {
+            assetFilter.floor = floor;
+        }
+        if (zone !== 'all') {
+            assetFilter.zone = zone;
+        }
+        if (category !== 'all') {
+            assetFilter.category = category;
+        }
+
         // Find all assets within the technician's division with pagination
-        const totalAssets = await Asset.countDocuments({ division: divisionId });
+        const totalAssets = await Asset.countDocuments(assetFilter);
         const totalPages = Math.ceil(totalAssets / limit);
-        const assetsInDivision = await Asset.find({ division: divisionId }).sort({ name: 1 }).skip(skip).limit(limit).lean();
+        const assetsInDivision = await Asset.find(assetFilter).sort({ name: 1 }).skip(skip).limit(limit).lean();
         const assetIds = assetsInDivision.map(a => a._id);
 
         // Find all checklist assignments for those assets
@@ -50,9 +65,10 @@ router.get('/dashboard', async (req, res) => {
         const checklistIds = [...new Set(assignments.map(a => a.checklist?._id).filter(Boolean))];
 
         // Fetch all necessary data in parallel for efficiency
-        const [floors, assetCategories, activities, checklists] = await Promise.all([
+        const [floors, assetCategories, zones, activities, checklists] = await Promise.all([
             Floor.find({}).sort({ name: 1 }).lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
+            Zone.find({}).sort({ name: 1 }).lean(),
             Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] })
                 .sort({ timestamp: -1 })
                 .limit(20)
@@ -64,13 +80,15 @@ router.get('/dashboard', async (req, res) => {
             assignments,
             floors,
             assetCategories,
+            zones,
             activities,
             checklists,
             user: req.session, // Pass user session data to the view
             currentPage: page,
             totalPages,
             totalAssets,
-            limit
+            limit,
+            filters: { search, floor, zone, category }
         });
     } catch (err) {
         console.error("Technician Dashboard Error:", err);
