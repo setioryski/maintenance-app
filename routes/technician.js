@@ -302,5 +302,6 @@ router.get('/asset/:id', ensureTechnician, async (req, res) => {
     }
 });
 
+//
 
 module.exports = router;
