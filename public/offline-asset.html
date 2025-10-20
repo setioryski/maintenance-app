@@ -18,15 +18,17 @@
   </header>
 
   <div class="max-w-6xl mx-auto p-4">
-    <div id="loading" class="text-center p-6">Loading asset data...</div>
+    <div id="loading" class="text-center p-6 text-gray-600">Loading asset data...</div>
     <div id="content" class="bg-white rounded-lg shadow p-6 hidden">
       <h2 id="asset-name" class="text-2xl font-bold text-gray-800 mb-2"></h2>
-      <p id="asset-location" class="text-sm text-gray-500 mb-4"></p>
+      <%# Updated to show Floor/Zone/Location similar to online version %>
+      <p id="asset-location-detail" class="text-sm text-gray-500 mb-4"></p>
       <p id="asset-description" class="text-gray-700 mb-6"></p>
 
       <h3 class="text-xl font-bold text-gray-800 mb-4">Assigned Checklists</h3>
       <div id="assignments-list" class="space-y-4">
-        </div>
+        <%# Checklist items will be dynamically inserted here %>
+      </div>
     </div>
   </div>
 
@@ -43,6 +45,7 @@
         return;
       }
 
+      // Fetch asset and its assignments using the updated db function
       const { asset, assignments } = await getAssetAndAssignmentsOffline(assetId);
 
       if (!asset) {
@@ -52,21 +55,28 @@
 
       // Populate asset details
       document.getElementById('asset-name').textContent = asset.name;
-      document.getElementById('asset-location').textContent = asset.location || 'Location not available';
-      document.getElementById('asset-description').textContent = asset.description;
+      // Construct location string similar to online view (using populated data from sync)
+      const floorName = asset.floor?.name || 'N/A';
+      const zoneName = asset.zone?.name || 'N/A';
+      document.getElementById('asset-location-detail').textContent = `Fl. ${floorName} / Zone ${zoneName} / ${asset.location || 'N/A'}`;
+      document.getElementById('asset-description').textContent = asset.description || '';
 
       // Populate assignments list
       const assignmentsList = document.getElementById('assignments-list');
-      if (assignments.length > 0) {
-        assignmentsList.innerHTML = ''; // Clear previous entries
+      assignmentsList.innerHTML = ''; // Clear previous entries
+
+      if (assignments && assignments.length > 0) {
         assignments.forEach(assignment => {
-          const checklist = assignment.checklist;
+          const checklist = assignment.checklist; // Checklist object is now correctly populated by getAssetAndAssignmentsOffline
           const assignmentEl = document.createElement('div');
-          assignmentEl.className = 'flex justify-between items-center p-4 border rounded-md hover:bg-gray-50';
-          // CORRECTED: Link to the new offline checklist page
+          assignmentEl.className = 'flex flex-col sm:flex-row justify-between sm:items-center p-4 border rounded-md hover:bg-gray-50';
+          // Link to the offline checklist page
           assignmentEl.innerHTML = `
-            <p class="font-semibold text-gray-800">${checklist ? checklist.title : 'Checklist not found offline'}</p>
-            <a href="/offline-checklist.html#${assignment._id}" class="text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
+            <div>
+                 <p class="font-semibold text-gray-800">${checklist ? checklist.title : 'Checklist Title Missing'}</p>
+                 <p class="text-xs text-gray-500">Assigned: ${assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'N/A'}</p>
+            </div>
+            <a href="/offline-checklist.html#${assignment._id}" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
               Start Checklist
             </a>
           `;

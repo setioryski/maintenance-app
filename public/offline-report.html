@@ -29,7 +29,8 @@
                 </tr>
             </thead>
             <tbody id="report-tbody" class="bg-white divide-y divide-gray-200">
-                </tbody>
+                <%# Rows will be dynamically inserted here %>
+            </tbody>
         </table>
     </div>
 </div>
@@ -42,20 +43,28 @@
         const reportListEl = document.getElementById('report-list');
         const tbody = document.getElementById('report-tbody');
 
-        // Fetch PENDING submissions, not completed reports
-        const pendingSubmissions = await getPendingSubmissions();
+        // Fetch PENDING submissions from IndexedDB
+        const pendingSubmissions = await getPendingSubmissions(); // Assumes getPendingSubmissions is defined in db.js
 
-        if (pendingSubmissions.length === 0) {
-            loadingEl.innerHTML = `
-                <div class="text-center py-12">
+        loadingEl.classList.add('hidden'); // Hide loading indicator
+
+        if (!pendingSubmissions || pendingSubmissions.length === 0) {
+             // Display message directly in the main container if no reports
+            const container = document.querySelector('.container');
+            container.innerHTML = `
+                <div class="text-center py-12 bg-white shadow-lg rounded-lg">
                     <h3 class="text-lg font-medium text-gray-700">No Pending Reports</h3>
-                    <p class="text-gray-500 mt-1">All your offline reports have been synced.</p>
+                    <p class="text-gray-500 mt-1">All your offline reports seem to be synced.</p>
+                     <div class="mt-4">
+                       <a href="/technician/dashboard" class="text-sm font-medium text-blue-600 hover:text-blue-800">&larr; Back to Dashboard</a>
+                    </div>
                 </div>
             `;
+            // reportListEl.classList.add('hidden'); // Already hidden initially
             return;
         }
 
-        tbody.innerHTML = ''; // Clear existing content
+        tbody.innerHTML = ''; // Clear existing content just in case
 
         pendingSubmissions.forEach(report => {
             const tr = document.createElement('tr');
@@ -69,7 +78,7 @@
                     <div class="text-sm text-gray-500">${report.checklistTitle || 'N/A'}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${new Date(report.timestamp).toLocaleString()}
+                    ${report.timestamp ? new Date(report.timestamp).toLocaleString() : 'N/A'}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${statusHTML}
@@ -78,7 +87,7 @@
             tbody.appendChild(tr);
         });
 
-        loadingEl.classList.add('hidden');
+        // Show the table now that it has content
         reportListEl.classList.remove('hidden');
     });
 </script>

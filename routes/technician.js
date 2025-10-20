@@ -1,3 +1,4 @@
+// routes/technician.js
 const express = require('express');
 const mongoose = require('mongoose');
 const { ensureAuthenticated, ensureTechnician } = require('../middleware/auth');
@@ -29,6 +30,14 @@ const User = mongoose.model('User');
 router.get('/dashboard', async (req, res) => {
     try {
         const divisionId = req.session.userDivision;
+        // Ensure divisionId exists, otherwise technician cannot see data.
+        if (!divisionId) {
+             console.error("Technician Dashboard Error: User division ID not found in session.");
+             // Redirect to login or show an error page
+             req.session.message = { type: 'error', text: 'Your user account is not properly configured with a division. Please contact an administrator.' };
+             return res.redirect('/login');
+        }
+
         const { page = 1, search = '', floor = 'all', zone = 'all', category = 'all' } = req.query;
         const limit = 10; // Number of assets per page
         const skip = (page - 1) * limit;
@@ -50,43 +59,89 @@ router.get('/dashboard', async (req, res) => {
         // Find all assets within the technician's division with pagination
         const totalAssets = await Asset.countDocuments(assetFilter);
         const totalPages = Math.ceil(totalAssets / limit);
-        const assetsInDivision = await Asset.find(assetFilter).sort({ name: 1 }).skip(skip).limit(limit).lean();
+        // Populate necessary fields for display and filtering
+        const assetsInDivision = await Asset.find(assetFilter)
+            .sort({ name: 1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('category floor zone') // Populate for display and JS filtering
+            .lean();
         const assetIds = assetsInDivision.map(a => a._id);
 
         // Find all checklist assignments for those assets
-        const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
-            .populate('checklist')
+        // Populate necessary fields
+        const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds }, division: divisionId }) // Filter assignments by division too
+            .populate('checklist', 'title') // Only need title for display
             .populate({
                 path: 'asset',
-                populate: ['floor', 'category', 'zone']
-            });
+                // Select fields needed for display and grouping
+                select: 'name location floor zone category',
+                populate: [
+                    { path: 'floor', select: 'name' },
+                    { path: 'category', select: 'name' },
+                    { path: 'zone', select: 'name' }
+                ]
+            })
+            .lean(); // Use lean for performance
 
-        // Get unique checklist IDs to fetch checklist data
-        const checklistIds = [...new Set(assignments.map(a => a.checklist?._id).filter(Boolean))];
+        // Get unique checklist IDs to fetch checklist data (if needed elsewhere, otherwise checklist title is populated)
+        // const checklistIds = [...new Set(assignments.map(a => a.checklist?._id).filter(Boolean))];
 
         // Fetch all necessary data in parallel for efficiency
-        const [floors, assetCategories, zones, activities, checklists] = await Promise.all([
+        const [floorsData, assetCategoriesData, zonesData, activitiesData /*, checklistsData*/] = await Promise.all([
             Floor.find({}).sort({ name: 1 }).lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
-            Zone.find({}).sort({ name: 1 }).lean(),
-            Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] })
+            // *** FIX: Fetch only zones relevant to the technician's division ***
+            Zone.find({ division: divisionId }).sort({ name: 1 }).lean(),
+            Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] }) // Show own division + manager activity
                 .sort({ timestamp: -1 })
                 .limit(20)
+                .populate('user', 'name') // Populate user name from Activity model if needed
                 .lean(),
-            Checklist.find({ _id: { $in: checklistIds } }).lean()
+            // Checklist.find({ _id: { $in: checklistIds } }).lean() // Only needed if more checklist data is required
         ]);
 
+        // Group assignments by asset ID for easier rendering
+        const groupedAssignments = {};
+        assignments.forEach(assignment => {
+            // Ensure asset exists (it should, based on query)
+            if (!assignment.asset || !assignment.asset._id) return;
+
+            const assetId = assignment.asset._id.toString();
+            if (!groupedAssignments[assetId]) {
+                // Store the fully populated asset object once
+                groupedAssignments[assetId] = {
+                    asset: assignment.asset,
+                    checklists: []
+                };
+            }
+            // Add the assignment (with populated checklist title)
+            groupedAssignments[assetId].checklists.push(assignment);
+        });
+
+        // Convert groupedAssignments object to an array of assets with their checklists for rendering
+        // Sort assets alphabetically by name before passing to the view
+        const assetsForView = Object.values(groupedAssignments).sort((a, b) => {
+             // Basic alphabetical sort
+             if (a.asset.name < b.asset.name) return -1;
+             if (a.asset.name > b.asset.name) return 1;
+             return 0;
+             // Add more complex sorting based on floor/zone/order if needed later
+         });
+
+
         res.render('technicianDashboard', {
-            assignments,
-            floors,
-            assetCategories,
-            zones,
-            activities,
-            checklists,
+            // assignments, // Pass grouped data instead
+            assetsForView, // Pass the sorted array of assets with checklists
+            floors: floorsData,
+            assetCategories: assetCategoriesData,
+            zones: zonesData, // Now contains only technician's division zones
+            activities: activitiesData,
+            // checklists: checklistsData,
             user: req.session, // Pass user session data to the view
             currentPage: page,
             totalPages,
-            totalAssets,
+            totalAssets, // Use totalAssets for pagination info if paginating assets
             limit,
             filters: { search, floor, zone, category }
         });
@@ -96,10 +151,7 @@ router.get('/dashboard', async (req, res) => {
     }
 });
 
-/**
- * GET /technician/checklist/:assignmentId
- * Displays a specific checklist for the technician to fill out.
- */
+// ...(Rest of the technician routes remain the same)...
 router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
@@ -115,9 +167,14 @@ router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
         }
 
         // Ensure the assignment belongs to the technician's division
-        if (assignment.asset.division._id.toString() !== req.session.userDivision) {
-            return res.status(403).send('Access Denied: This assignment is not in your division.');
+        // Check assignment's division field directly
+        if (!assignment.division || assignment.division.toString() !== req.session.userDivision) {
+             // Or check via the asset if assignment doesn't store division (though it should)
+            // if (!assignment.asset || !assignment.asset.division || assignment.asset.division._id.toString() !== req.session.userDivision) {
+                return res.status(403).send('Access Denied: This assignment is not in your division.');
+            // }
         }
+
 
         res.render('technicianChecklist', { assignment });
     } catch (err) {
@@ -126,10 +183,6 @@ router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
     }
 });
 
-/**
- * POST /technician/checklist/:assignmentId/submit
- * Handles the submission of a completed checklist and creates a report.
- */
 router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
@@ -143,6 +196,13 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
             return res.status(404).send('Assignment or associated asset not found.');
         }
 
+        // Double-check division consistency
+         if (!assignment.division || assignment.division.toString() !== req.session.userDivision ||
+             !assignment.asset.division || assignment.asset.division._id.toString() !== req.session.userDivision) {
+              console.error(`Division mismatch: User ${req.session.userDivision}, Assignment ${assignment.division}, Asset ${assignment.asset.division?._id}`);
+              return res.status(403).send('Access Denied: Division mismatch during submission.');
+         }
+
         const user = await User.findById(req.session.userId);
         let hasAlert = false;
         const responses = { ...req.body.results };
@@ -151,25 +211,33 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
         if (req.files && req.files.length > 0) {
             const processingPromises = req.files.map(file => {
                 return new Promise((resolve, reject) => {
-                    const taskId = file.fieldname.match(/\[(.*?)\]/)[1];
+                    const taskIdMatch = file.fieldname.match(/\[(.*?)\]/);
+                     if (!taskIdMatch || !taskIdMatch[1]) {
+                          console.warn(`Could not extract task ID from fieldname: ${file.fieldname}`);
+                          return reject(new Error(`Invalid fieldname for file upload: ${file.fieldname}`));
+                     }
+                    const taskId = taskIdMatch[1];
                     imageProcessingQueue.push({ filePath: file.path }, (err, processedPath) => {
                         if (err) return reject(err);
                         if (!responses[taskId]) responses[taskId] = [];
-                        responses[taskId].push(processedPath);
+                        // Store relative path for web access
+                        const webPath = `/processed/${path.basename(processedPath)}`;
+                        responses[taskId].push(webPath);
                         resolve();
                     });
                 });
             });
             await Promise.all(processingPromises);
         }
-        
+
         // Snapshot the tasks and check for alerts
         const tasksSnapshot = assignment.checklist.tasks.map(task => {
             const responseValue = responses[task._id.toString()];
             if (task.inputType === 'functional' && responseValue === 'fail') {
                 hasAlert = true;
-            } else if (task.inputType === 'measurement' && responseValue) {
+            } else if (task.inputType === 'measurement' && responseValue != null && responseValue !== '') { // Check specifically for measurement responses
                 const value = parseFloat(responseValue);
+                // Check if min/max are defined AND if value is outside range
                 if (!isNaN(value) && (task.minRange != null && task.maxRange != null) && (value < task.minRange || value > task.maxRange)) {
                     hasAlert = true;
                 }
@@ -192,7 +260,7 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
             category: assignment.asset.category?.name || 'N/A',
             floor: assignment.asset.floor?.name || 'N/A',
             zone: assignment.asset.zone?.name || 'N/A',
-            division: assignment.asset.division?.name || 'N/A'
+            division: assignment.asset.division?.name || 'N/A' // Use populated division name
         };
 
         // Create the maintenance report
@@ -200,56 +268,73 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
             assignment: assignment._id,
             checklistTitle: assignment.checklist.title,
             assetSnapshot: assetSnapshot,
-            division: assignment.asset.division._id,
+            division: assignment.division, // Use division from assignment
             tasksSnapshot,
             responses,
             submittedBy: user._id,
             submittedByName: user.name,
             note: req.body.note || '',
-            hasAlert: hasAlert
+            hasAlert: hasAlert,
+             completedAt: new Date() // Explicitly set completion time
         });
-        
+
         // Save the new report. The assignment itself is not modified.
         await newReport.save();
         await logActivity(user._id, `submitted a report for asset: ${assetSnapshot.name}.`);
 
         // Emit a socket event if there's an alert
         if (hasAlert) {
+            // Emit to a room specific to managers/SPVs of this division?
+            // For now, emitting globally or consider targeting specific roles/rooms.
+            // Example: io.to(`division_${assignment.division.toString()}`).emit(...)
             req.io.emit('alert', {
                 message: `Alert: Checklist for asset ${assetSnapshot.name} requires attention!`,
-                reportId: newReport._id
+                reportId: newReport._id,
+                divisionId: assignment.division.toString() // Include division ID
             });
         }
-        
+
         req.session.message = { type: 'success', text: 'Checklist submitted successfully!' };
         res.redirect('/technician/dashboard');
 
     } catch (err) {
         console.error('Checklist Submission Error:', err);
-        res.status(500).send("An error occurred during submission.");
+        req.session.message = { type: 'error', text: `An error occurred during submission: ${err.message}` };
+        // Redirect back to the checklist form on error? Or dashboard?
+        res.redirect(`/technician/checklist/${req.params.assignmentId}`); // Redirect back to form
     }
 });
 
-/**
- * GET /technician/report
- * Displays a list of reports submitted by the technician.
- */
+
 router.get('/report', ensureTechnician, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 15;
         const skip = (page - 1) * limit;
-        const currentSubmittedBy = req.query.submittedBy || 'all';
+        const currentSubmittedBy = req.query.submittedBy || 'my'; // Default to 'my' reports
+        const divisionId = req.session.userDivision;
 
-        // Base query for reports submitted by the logged-in user or a specific technician in their division
-        const query = { division: req.session.userDivision };
+        // Base query for reports submitted within the technician's division
+        const query = { division: divisionId };
 
-        if (currentSubmittedBy === 'all') {
-            // 'All' defaults to the current user's reports.
+        if (currentSubmittedBy === 'my') {
+            // 'my' defaults to the current user's reports.
             query.submittedBy = req.session.userId;
-        } else {
-            query.submittedBy = new mongoose.Types.ObjectId(currentSubmittedBy);
+        } else if (currentSubmittedBy !== 'all') {
+             // If a specific technician ID is provided
+             // Optional: Ensure the selected technician is actually in the user's division for security?
+             const technicianUser = await User.findOne({ _id: currentSubmittedBy, division: divisionId, role: 'technician' });
+             if (technicianUser) {
+                 query.submittedBy = new mongoose.Types.ObjectId(currentSubmittedBy);
+             } else {
+                  // If selected technician not valid, default back to 'my' reports? Or show error?
+                  // For now, defaulting back to 'my' reports to avoid showing nothing.
+                  query.submittedBy = req.session.userId;
+                  req.session.message = { type: 'warning', text: 'Selected technician not found in your division. Showing your reports.' };
+             }
         }
+        // If 'all', the query remains { division: divisionId }, showing all reports in the division.
+
 
         const totalReports = await MaintenanceReport.countDocuments(query);
         const totalPages = Math.ceil(totalReports / limit);
@@ -257,9 +342,13 @@ router.get('/report', ensureTechnician, async (req, res) => {
         const reports = await MaintenanceReport.find(query)
             .sort({ completedAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+             .populate('submittedBy', 'name') // Populate submitter name for display
+             .populate('rejectedBy', 'name') // Populate rejecter name
+             .lean(); // Use lean for performance in list views
 
-        const technicians = await User.find({ role: 'technician', division: req.session.userDivision }).sort({ name: 1 }).lean();
+        // Fetch technicians only from the current user's division
+        const technicians = await User.find({ role: 'technician', division: divisionId }).sort({ name: 1 }).lean();
 
         res.render('technicianReport', {
             assignments: reports,
@@ -276,18 +365,22 @@ router.get('/report', ensureTechnician, async (req, res) => {
     }
 });
 
-/**
- * GET /technician/report/:reportId
- * Displays the detail of a single submitted report.
- */
 router.get('/report/:reportId', ensureTechnician, async (req, res) => {
     try {
-        const report = await MaintenanceReport.findById(req.params.reportId);
+        const report = await MaintenanceReport.findOne({_id: req.params.reportId, division: req.session.userDivision }); // Ensure report is in user's division
 
-        // Security check: ensure the report was submitted by someone in the user's division
-        if (!report || report.division.toString() !== req.session.userDivision) {
+        if (!report) {
             return res.status(404).send('Report not found or you do not have permission to view it.');
         }
+
+         // Populate details needed for the view (if not already done or if lean was used previously)
+         await report.populate([
+             { path: 'submittedBy', select: 'name' },
+             { path: 'verifiedBySpvUser', select: 'name' },
+             { path: 'verifiedByManagerUser', select: 'name' },
+             { path: 'rejectedBy', select: 'name' }
+         ]);
+
 
         res.render('technicianChecklistReportDetail', { assignment: report });
     } catch (err) {
@@ -297,21 +390,18 @@ router.get('/report/:reportId', ensureTechnician, async (req, res) => {
 });
 
 
-/**
- * GET /technician/asset/:id
- * Displays details for a specific asset, typically after a QR code scan.
- */
 router.get('/asset/:id', ensureTechnician, async (req, res) => {
     try {
-        const asset = await Asset.findById(req.params.id)
-            .populate('floor category zone');
+        const asset = await Asset.findOne({_id: req.params.id, division: req.session.userDivision }) // Ensure asset is in user's division
+            .populate('floor category zone'); // Populate details
 
-        if (!asset || asset.division.toString() !== req.session.userDivision) {
+        if (!asset) {
             return res.status(404).send('Asset not found or not in your division.');
         }
 
-        const assignments = await ChecklistAssignment.find({ asset: asset._id })
-            .populate('checklist');
+        // Fetch assignments for this specific asset and division
+        const assignments = await ChecklistAssignment.find({ asset: asset._id, division: req.session.userDivision })
+            .populate('checklist', 'title'); // Populate checklist title
 
         res.render('assetDetail', { asset, assignments });
     } catch (err) {
@@ -320,6 +410,5 @@ router.get('/asset/:id', ensureTechnician, async (req, res) => {
     }
 });
 
-//
 
 module.exports = router;
