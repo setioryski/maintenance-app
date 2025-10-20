@@ -12,6 +12,18 @@
       position: sticky;
       top: 0;
       z-index: 10;
+      background-color: white; /* Add background to prevent content overlap */
+    }
+    .tab-button.active {
+      border-color: #3b82f6; /* blue-500 */
+      color: #1d4ed8; /* blue-700 */
+      background-color: #eff6ff; /* blue-50 */
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
     }
   </style>
 </head>
@@ -21,48 +33,90 @@
     <p class="mb-4">
       Checklist: <strong><%= checklist.title %></strong>
     </p>
-    
+
     <form action="/spv/checklists/<%= checklist._id %>/assign" method="POST">
       <h2 class="text-md font-semibold mb-2">Pilih Asset (hanya asset divisi Anda):</h2>
-      <div class="mb-4 h-[60vh] overflow-auto border rounded-md p-2">
-        <% Object.keys(assetsByHierarchy).sort().forEach(categoryName => { %>
-          <div class="mb-6">
-            <h3 class="text-lg font-bold my-2 p-2 bg-gray-200 rounded-md sticky-header flex items-center">
-              <input type="checkbox" class="mr-2 h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500" onclick="toggleCategory(this, '<%= categoryName %>')">
+
+      <div class="mb-4 border-b border-gray-200">
+        <nav id="category-tabs" class="flex flex-wrap -mb-px" aria-label="Tabs">
+          <% Object.keys(assetsByHierarchy).forEach((categoryName, index) => { %>
+            <button
+              type="button"
+              class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none <%= index === 0 ? 'active' : '' %>"
+              onclick="changeTab(this, '<%= categoryName.replace(/[^a-zA-Z0-9]/g, '-') %>-tab-content')"
+              data-category="<%= categoryName %>"
+            >
               <%= categoryName %>
-            </h3>
-            <% Object.keys(assetsByHierarchy[categoryName]).sort().forEach(floorName => { %>
-              <div class="mb-4 pl-4">
-                <h4 class="font-semibold text-md my-2 p-2 bg-gray-100 rounded-md sticky-header"><%= floorName %></h4>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  <% Object.keys(assetsByHierarchy[categoryName][floorName]).sort().forEach(zoneName => { %>
-                    <div>
-                      <h5 class="font-bold text-sm text-center bg-blue-100 text-blue-800 rounded-t-md py-1"><%= zoneName %></h5>
-                      <div class="border rounded-b-md p-2">
-                        <% assetsByHierarchy[categoryName][floorName][zoneName].forEach(asset => { %>
-                          <div class="flex items-center mb-1 asset-checkbox-container" data-category="<%= categoryName %>">
-                            <input
-                              type="checkbox"
-                              name="assetIds"
-                              value="<%= asset._id %>"
-                              id="asset-<%= asset._id %>"
-                              class="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                              <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %>
-                            />
-                            <label for="asset-<%= asset._id %>" class="w-full cursor-pointer text-sm">
-                              <%= asset.name %>
-                            </label>
-                          </div>
-                        <% }); %>
+            </button>
+          <% }); %>
+        </nav>
+      </div>
+
+      <div id="tab-content-container" class="mb-4 h-[60vh] overflow-auto border rounded-md p-2">
+         <% Object.keys(assetsByHierarchy).forEach((categoryName, index) => { %>
+          <div
+            id="<%= categoryName.replace(/[^a-zA-Z0-9]/g, '-') %>-tab-content"
+            class="tab-content <%= index === 0 ? 'active' : '' %>"
+          >
+             <div class="mb-2 p-2 bg-gray-100 rounded-md sticky-header flex items-center">
+               <input type="checkbox" class="mr-2 h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 category-toggle-all" data-category="<%= categoryName %>" onclick="toggleCategoryAssets(this, '<%= categoryName %>')">
+               <label class="font-semibold text-sm cursor-pointer" onclick="this.previousElementSibling.click()">Select/Deselect All in <%= categoryName %></label>
+             </div>
+
+             <%# *** START: Modified Floor Loop Logic *** %>
+             <%
+               // Get all floor names available within this category
+               const availableFloorsInCategory = Object.keys(assetsByHierarchy[categoryName]);
+               // Filter mallFloorOrder to only include floors that actually exist in this category's data
+               const orderedFloors = mallFloorOrder.filter(f => availableFloorsInCategory.includes(f));
+               // Get floors that exist in the data but are not in mallFloorOrder, and sort them
+               const otherFloors = availableFloorsInCategory
+                 .filter(f => !mallFloorOrder.includes(f))
+                 .sort((a, b) => a.localeCompare(b)); // Sort remaining floors alphabetically/numerically
+               // Combine the ordered floors with the other floors
+               const finalFloorOrder = [...orderedFloors, ...otherFloors];
+             %>
+
+             <% finalFloorOrder.forEach(floorName => { %>
+                <%# Check if floorName actually has data (it should, based on logic above) %>
+                <% if (assetsByHierarchy[categoryName][floorName]) { %>
+                    <div class="mb-4 pl-4">
+                        <h4 class="font-semibold text-md my-2 p-2 bg-gray-50 rounded-md sticky-header"><%= floorName %></h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                          <%# Zone keys are already sorted in the controller %>
+                          <% Object.keys(assetsByHierarchy[categoryName][floorName]).forEach(zoneName => { %>
+                           <div>
+                              <h5 class="font-bold text-sm text-center bg-blue-100 text-blue-800 rounded-t-md py-1"><%= zoneName %></h5>
+                              <div class="border rounded-b-md p-2">
+                                <%# Assets within zone are already sorted in the controller %>
+                                <% assetsByHierarchy[categoryName][floorName][zoneName].forEach(asset => { %>
+                                   <div class="flex items-center mb-1 asset-checkbox-container" data-category="<%= categoryName %>">
+                                    <input
+                                      type="checkbox"
+                                      name="assetIds"
+                                      value="<%= asset._id %>"
+                                      id="asset-<%= asset._id %>"
+                                      class="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 asset-checkbox"
+                                      <%= assignedAssetIds.includes(asset._id.toString()) ? 'checked' : '' %>
+                                    />
+                                    <label for="asset-<%= asset._id %>" class="w-full cursor-pointer text-sm">
+                                      <%= asset.name %>
+                                    </label>
+                                  </div>
+                                <% }); %>
+                              </div>
+                            </div>
+                          <% }); %>
+                        </div>
                       </div>
-                    </div>
-                  <% }); %>
-                </div>
-              </div>
-            <% }); %>
+                <% } %>
+             <% }); %>
+             <%# *** END: Modified Floor Loop Logic *** %>
+
           </div>
         <% }); %>
       </div>
+
       <div class="flex items-center justify-end space-x-4">
         <a href="/spv/dashboard" class="text-gray-600 hover:text-gray-800">
           Batal
@@ -78,13 +132,38 @@
   </div>
 
   <script>
-    function toggleCategory(checkbox, categoryName) {
-      const isChecked = checkbox.checked;
-      const assetCheckboxes = document.querySelectorAll(`.asset-checkbox-container[data-category="${categoryName}"] input[type="checkbox"]`);
-      assetCheckboxes.forEach(box => {
-        box.checked = isChecked;
-      });
+    function changeTab(button, tabContentId) {
+      // Deactivate all buttons and content
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      // Activate the clicked button and corresponding content
+      button.classList.add('active');
+      document.getElementById(tabContentId).classList.add('active');
     }
+
+    // Renamed the function to avoid conflict
+    function toggleCategoryAssets(checkbox, categoryName) {
+      const isChecked = checkbox.checked;
+      // Select only checkboxes within the currently active tab content associated with this category
+      const activeTabContent = document.querySelector(`.tab-content.active`);
+      if (activeTabContent && activeTabContent.id.startsWith(categoryName.replace(/[^a-zA-Z0-9]/g, '-'))) {
+          const assetCheckboxes = activeTabContent.querySelectorAll(`.asset-checkbox-container[data-category="${categoryName}"] input[type="checkbox"]`);
+          assetCheckboxes.forEach(box => {
+            box.checked = isChecked;
+          });
+      } else {
+        // Fallback or handle cases where the active tab might not match (shouldn't happen with correct structure)
+        console.warn("Could not find active tab content for category:", categoryName);
+      }
+    }
+
+     // Ensure the correct tab is shown on load if needed (optional)
+     document.addEventListener('DOMContentLoaded', () => {
+         // Optionally find the first active button and trigger its click if needed,
+         // but the EJS already sets the first one active.
+         // Example: document.querySelector('.tab-button.active')?.click();
+     });
   </script>
 
 </body>

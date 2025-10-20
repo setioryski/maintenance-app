@@ -9,7 +9,7 @@
         <h1 class="text-3xl font-bold mb-6">Manage Floors & Zones</h1>
 
         <% if (message && message.text) { %>
-            <div class="p-4 mb-4 text-sm rounded-lg bg-green-100 text-green-700">
+            <div class="p-4 mb-4 text-sm rounded-lg <%= message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
                 <%= message.text %>
             </div>
         <% } %>
@@ -24,45 +24,100 @@
                         <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r-md">Add Floor</button>
                     </div>
                 </form>
+
+                <hr class="my-6">
+
                 <form action="/admin/zones" method="POST">
-                    <label for="zone-name" class="block text-gray-700 font-bold">New Zone</label>
-                    <div class="flex mt-1">
-                        <input type="text" name="name" id="zone-name" required class="flex-grow rounded-l-md border-gray-300 shadow-sm" placeholder="e.g., Zona E">
-                        <select name="floorId" required class="border-gray-300 shadow-sm">
-                            <option value="" disabled selected>Select Floor</option>
-                            <% floors.forEach(function(floor) { %>
-                                <option value="<%= floor._id %>"><%= floor.name %></option>
-                            <% }); %>
-                        </select>
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r-md">Add Zone</button>
-                    </div>
+                    <label for="zone-name" class="block text-gray-700 font-bold mb-1">New Zone</label>
+                    <input type="text" name="name" id="zone-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm mb-3" placeholder="e.g., Zona E / Electrical Room 1">
+
+                    <label for="zone-floor" class="block text-gray-700 font-bold mb-1">Floor for Zone</label>
+                    <select name="floorId" id="zone-floor" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm mb-3">
+                        <option value="" disabled selected>-- Select Floor --</option>
+                        <% floors.forEach(function(floor) { %>
+                            <option value="<%= floor._id %>"><%= floor.name %></option>
+                        <% }); %>
+                    </select>
+
+                    <label for="zone-division" class="block text-gray-700 font-bold mb-1">Division for Zone</label>
+                    <select name="divisionId" id="zone-division" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm mb-4">
+                        <option value="" disabled selected>-- Select Division --</option>
+                        <% divisions.forEach(function(division) { %>
+                            <option value="<%= division._id %>"><%= division.name %></option>
+                        <% }); %>
+                    </select>
+
+                    <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Add Zone</button>
                 </form>
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-semibold mb-4">Existing Layout</h2>
                 <div class="h-96 overflow-y-auto">
+                    <%
+                        // Group zones by floor ID first
+                        const zonesByFloor = allZones.reduce((acc, zone) => {
+                            const floorId = zone.floor.toString();
+                            if (!acc[floorId]) {
+                                acc[floorId] = [];
+                            }
+                            acc[floorId].push(zone);
+                            return acc;
+                        }, {});
+
+                        // Within each floor, group by division ID
+                        Object.keys(zonesByFloor).forEach(floorId => {
+                            zonesByFloor[floorId] = zonesByFloor[floorId].reduce((acc, zone) => {
+                                const divisionId = zone.division?._id?.toString(); // Use populated division ID Safely
+                                if (!divisionId) return acc; // Skip zones with missing division data
+                                if (!acc[divisionId]) {
+                                    acc[divisionId] = { name: zone.division.name || 'Unknown Division', zones: [] }; // Store division name safely
+                                }
+                                acc[divisionId].zones.push(zone);
+                                // Sort zones within the division alphabetically
+                                acc[divisionId].zones.sort((a, b) => a.name.localeCompare(b.name));
+                                return acc;
+                            }, {});
+                             // Sort divisions alphabetically by name
+                             zonesByFloor[floorId] = Object.entries(zonesByFloor[floorId])
+                                .sort(([, divA], [, divB]) => divA.name.localeCompare(divB.name))
+                                .reduce((acc, [divId, divData]) => {
+                                    acc[divId] = divData;
+                                    return acc;
+                                }, {});
+                        });
+                    %>
+
                     <% floors.forEach(function(floor) { %>
-                        <div class="mb-4">
+                      <div class="mb-4">
                             <div class="flex justify-between items-center bg-gray-100 p-2 rounded-t-md">
                                 <h3 class="font-bold"><%= floor.name %></h3>
-                                <form action="/admin/floors/<%= floor._id %>/delete" method="POST" onsubmit="return confirm('Are you sure? This will delete the floor and all zones within it.');">
+                                <form action="/admin/floors/<%= floor._id %>/delete" method="POST" onsubmit="return confirm('Are you sure? Deleting a floor also deletes its zones.');">
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Delete Floor</button>
                                 </form>
                             </div>
-                            <ul class="border rounded-b-md p-2">
-                                <% allZones.filter(z => z.floor.toString() === floor._id.toString()).forEach(function(zone) { %>
-                                    <li class="flex justify-between items-center py-1">
-                                        <span>- <%= zone.name %></span>
-                                        <form action="/admin/zones/<%= zone._id %>/delete" method="POST" onsubmit="return confirm('Are you sure?');">
-                                            <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete Zone</button>
-                                        </form>
-                                    </li>
-                                <% }); %>
-                                <% if (allZones.filter(z => z.floor.toString() === floor._id.toString()).length === 0) { %>
-                                    <li class="text-gray-500 text-sm">No zones added.</li>
+                            <div class="border rounded-b-md p-3 space-y-3">
+                                <% const floorZonesGrouped = zonesByFloor[floor._id.toString()]; %>
+                                <% if (floorZonesGrouped && Object.keys(floorZonesGrouped).length > 0) { %>
+                                    <% Object.values(floorZonesGrouped).forEach(divisionGroup => { %>
+                                        <div class="ml-2">
+                                            <h4 class="font-semibold text-sm text-gray-600 border-b mb-1 pb-1"><%= divisionGroup.name %></h4>
+                                            <ul class="list-disc list-inside ml-2">
+                                                <% divisionGroup.zones.forEach(function(zone) { %>
+                                                  <li class="flex justify-between items-center py-1 text-sm">
+                                                        <span><%= zone.name %></span>
+                                                        <form action="/admin/zones/<%= zone._id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this zone?');">
+                                                            <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete Zone</button>
+                                                        </form>
+                                                    </li>
+                                                <% }); %>
+                                            </ul>
+                                        </div>
+                                    <% }); %>
+                                <% } else { %>
+                                    <p class="text-gray-500 text-sm italic">No zones added for this floor.</p>
                                 <% } %>
-                            </ul>
+                            </div>
                         </div>
                     <% }); %>
                 </div>

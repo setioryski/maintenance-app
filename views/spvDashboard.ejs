@@ -45,7 +45,6 @@
             <p class="text-sm text-gray-500">Manage checklists, assets, and view recent activity.</p>
           </div>
           <div class="flex space-x-2 mt-4 md:mt-0">
-            <% /* --- CORRECTED LINKS --- */ %>
             <a href="/spv/checklists/new" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center">
                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
               New Checklist
@@ -65,7 +64,6 @@
               <table class="w-full text-left table-auto">
                 <thead>
                   <tr class="bg-gray-50">
-         
            <th class="p-3 border-b text-sm font-semibold text-gray-600">Checklist Name</th>
                     <th class="p-3 border-b text-sm font-semibold text-gray-600">Assigned Assets</th>
                     <th class="p-3 border-b text-sm font-semibold text-gray-600">Actions</th>
@@ -77,12 +75,10 @@
                     <tr data-id="<%= checklist._id %>" class="cursor-move hover:bg-gray-50">
                       <td class="p-3 border-b border-gray-200"><%= checklist.title %></td>
     
-               <td class="p-3 border-b border-gray-200"><%= checklist.assignmentCount || 0 %></td>
+             <td class="p-3 border-b border-gray-200"><%= checklist.assignmentCount || 0 %></td>
                       <td class="p-3 border-b border-gray-200">
                         <div class="flex gap-2">
-                          <% /* --- CORRECTED LINKS --- */ %>
-               
-          <a href="/spv/checklists/<%= checklist._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
+                          <a href="/spv/checklists/<%= checklist._id %>/edit" class="text-yellow-600 hover:text-yellow-800">Edit</a>
                           <a href="/spv/checklists/<%= checklist._id %>/assign" class="text-green-600 hover:text-green-800">Assign</a>
                           <a href="/spv/checklists/<%= checklist._id %>/delete" class="text-red-600 hover:text-red-800" onclick="return confirm('Are you sure you want to delete this checklist?')">Delete</a>
             
@@ -96,12 +92,9 @@
             <div class="md:hidden space-y-3">
                <% checklists.forEach(checklist => { %>
                  <div class="border rounded-lg p-4 bg-gray-50">
-    
                <p class="font-bold text-gray-800"><%= checklist.title %></p>
                    <p class="text-sm text-gray-600 mt-1">Assigned Assets: <%= checklist.assignmentCount || 0 %></p>
                    <div class="flex gap-2 mt-3">
-                     <% /* --- CORRECTED LINKS --- */ %>
-   
                    <a href="/spv/checklists/<%= checklist._id %>/edit" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
                      <a href="/spv/checklists/<%= checklist._id %>/assign" class="flex-1 text-center bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">Assign</a>
                      <a href="/spv/checklists/<%= checklist._id %>/delete" class="flex-1 text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Are you sure you want to delete this checklist?')">Delete</a>
@@ -112,23 +105,27 @@
             <% if (checklistPagination.totalItems > 0 && checklistPagination.totalPages > 1) { %>
                 <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
                     <span class="text-xs xs:text-sm text-gray-700">
-                        Showing <%= Math.min(((parseInt(checklistPagination.currentPage) - 1) * checklistPagination.limit) + 1, checklistPagination.totalItems) %> to <%= Math.min(parseInt(checklistPagination.currentPage) * checklistPagination.limit, checklistPagination.totalItems) %> of <%= checklistPagination.totalItems %> Checklists
+                 Showing <%= Math.min(((parseInt(checklistPagination.currentPage) - 1) * checklistPagination.limit) + 1, checklistPagination.totalItems) %> to <%= Math.min(parseInt(checklistPagination.currentPage) * checklistPagination.limit, checklistPagination.totalItems) %> of <%= checklistPagination.totalItems %> Checklists
                     </span>
                     <div class="inline-flex mt-2 xs:mt-0">
                         <% const queryParams = new URLSearchParams(filters); %>
                         <% queryParams.set('assetPage', assetPagination.currentPage) %>
                         <% if (parseInt(checklistPagination.currentPage) > 1) { %>
                             <% queryParams.set('checklistPage', parseInt(checklistPagination.currentPage) - 1) %>
-                            <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
+        
+                     <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
                                 Prev
                             </a>
-                        <% } %>
+         
+                 <% } %>
                         <% if (parseInt(checklistPagination.currentPage) < checklistPagination.totalPages) { %>
                             <% queryParams.set('checklistPage', parseInt(checklistPagination.currentPage) + 1) %>
-                            <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
+                    
+         <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
                                 Next
                             </a>
-                        <% } %>
+                     
+    <% } %>
                     </div>
                 </div>
             <% } %>
@@ -136,17 +133,22 @@
 
           <div class="bg-white p-6 rounded-lg shadow-lg">
             <h2 class="text-xl font-bold mb-4">Asset Management</h2>
-            <form id="asset-filter-form" method="GET" action="/spv/dashboard" class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+     
+         <form id="asset-filter-form" method="GET" action="/spv/dashboard" class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                 <input type="text" name="search" value="<%= filters.search %>" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Search asset name...">
                 <select name="floor" id="floor-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="all">All Floors</option>
-                    <% floors.forEach(function(floor) { %><option value="<%= floor._id %>" <%= filters.floor === floor._id.toString() ? 'selected' : '' %>><%= floor.name %></option><% }); %>
+      
+                <% floors.forEach(function(floor) { %><option value="<%= floor._id %>" <%= filters.floor === floor._id.toString() ? 'selected' : '' %>><%= floor.name %></option><% }); %>
                 </select>
                 <select name="zone" id="zone-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="all">All Zones</option>
-                    <% zones.forEach(function(zone) { %><option value="<%= zone._id %>" <%= filters.zone === zone._id.toString() ? 'selected' : '' %> data-floor="<%= zone.floor %>"><%= zone.name %></option><% }); %>
+                     <%# Options will be populated by JS, but render server-side ones for initial load %>
+                    <% zones.forEach(function(zone) { %>
+                        <option value="<%= zone._id %>" <%= filters.zone === zone._id.toString() ? 'selected' : '' %> data-floor="<%= zone.floor %>"><%= zone.name %></option>
+                    <% }); %>
                 </select>
-                <select name="category" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" onchange="this.form.submit()">
+                <select name="category" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="all">All Categories</option>
                     <% assetCategories.forEach(function(cat) { %><option value="<%= cat._id %>" <%= filters.category === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option><% }); %>
                 </select>
@@ -155,29 +157,34 @@
             
             <div class="hidden md:block h-96 overflow-y-auto">
               <table class="w-full text-left table-auto">
+  
                 <thead>
              
      <tr class="bg-gray-50">
                     <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Asset Name</th>
                     <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Category</th>
-                    <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Actions</th>
+          
+            <th class="p-3 border-b text-sm font-semibold text-gray-600 sticky top-0 bg-gray-50">Actions</th>
          
           </tr>
                 </thead>
                 <tbody id="asset-tbody">
                   <% assets.forEach(asset => { %>
-                    <tr class="asset-item cursor-move hover:bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>">
+        
+              <tr class="asset-item cursor-move hover:bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor?._id.toString() || '' %>" data-zone="<%= asset.zone?._id.toString() || '' %>">
                       <td class="p-3 border-b border-gray-200">
                         <div class="font-medium text-gray-900"><%= asset.name %></div>
                         <div class="text-xs text-gray-500"><%= asset.location %>, Fl. <%= asset.floor ? asset.floor.name : 'N/A' %>, Zone <%= asset.zone ? asset.zone.name : 'N/A' %></div>
                       </td>
                       <td class="p-3 border-b border-gray-200"><%= asset.category ? asset.category.name : 'N/A' %></td>
                       <td class="p-3 border-b border-gray-200">
-                        <% const queryParams = new URLSearchParams(filters); %>
+             
+             <% const queryParams = new URLSearchParams(filters); %>
                         <% queryParams.set('assetPage', assetPagination.currentPage) %>
                         <% queryParams.set('checklistPage', checklistPagination.currentPage) %>
                         <div class="flex gap-2">
-                          <a href="/spv/assets/<%= asset._id %>/edit?<%= queryParams.toString() %>" class="text-yellow-600 hover:text-yellow-800">Edit</a>
+   
+                         <a href="/spv/assets/<%= asset._id %>/edit?<%= queryParams.toString() %>" class="text-yellow-600 hover:text-yellow-800">Edit</a>
                           <form action="/spv/assets/<%= asset._id %>/delete" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this asset?')">
                             <input type="hidden" name="search" value="<%= filters.search %>">
                             <input type="hidden" name="floor" value="<%= filters.floor %>">
@@ -189,15 +196,19 @@
                           </form>
                           <a href="/spv/asset/<%= asset._id %>/qr?<%= queryParams.toString() %>" class="text-blue-600 hover:text-blue-800" target="_blank">QR</a>
                            <form action="/spv/assets/<%= asset._id %>/duplicate" method="POST" class="inline">
-                                <input type="hidden" name="search" value="<%= filters.search %>">
+    
+                              <input type="hidden" name="search" value="<%= filters.search %>">
                                 <input type="hidden" name="floor" value="<%= filters.floor %>">
-                                <input type="hidden" name="zone" value="<%= filters.zone %>">
+                              
+    <input type="hidden" name="zone" value="<%= filters.zone %>">
                                 <input type="hidden" name="category" value="<%= filters.category %>">
                                 <input type="hidden" name="assetPage" value="<%= assetPagination.currentPage %>">
-                                <input type="hidden" name="checklistPage" value="<%= checklistPagination.currentPage %>">
+                   
+               <input type="hidden" name="checklistPage" value="<%= checklistPagination.currentPage %>">
                                 <button type="submit" class="text-blue-600 hover:text-blue-800 bg-transparent p-0 border-none cursor-pointer">Duplicate</button>
                            </form>
-                        </div>
+                
+          </div>
                       </td>
                     </tr>
                    <% }); %>
@@ -207,7 +218,7 @@
 
             <div id="asset-card-container" class="md:hidden space-y-3 h-96 overflow-y-auto">
               <% assets.forEach(asset => { %>
-                <div class="asset-item border rounded-lg p-4 bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor && asset.floor.name ? asset.floor.name.toLowerCase() : '' %>" data-zone="<%= asset.zone ? asset.zone._id.toString() : '' %>">
+                <div class="asset-item border rounded-lg p-4 bg-gray-50" data-id="<%= asset._id %>" data-name="<%= asset.name.toLowerCase() %>" data-category="<%= asset.category ? asset.category._id.toString() : '' %>" data-floor="<%= asset.floor ? asset.floor._id.toString() : '' %>" data-zone="<%= asset.zone ? asset.zone._id.toString() : '' %>">
                     <p class="font-bold text-gray-800"><%= asset.name %></p>
                     <p class="text-sm text-gray-600"><%= asset.category ? asset.category.name : 'N/A' %></p>
                     <p class="text-sm text-gray-600"><%= asset.location %>, Floor <%= asset.floor ? asset.floor.name : 'N/A' %>, Zone <%= asset.zone ? asset.zone.name : 'N/A' %></p>
@@ -216,26 +227,33 @@
                         <% queryParams.set('assetPage', assetPagination.currentPage) %>
                         <% queryParams.set('checklistPage', checklistPagination.currentPage) %>
                         <a href="/spv/assets/<%= asset._id %>/edit?<%= queryParams.toString() %>" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
-                        <form action="/spv/assets/<%= asset._id %>/delete" method="POST" class="flex-1" onsubmit="return confirm('Are you sure you want to delete this asset?')">
+        
+                  <form action="/spv/assets/<%= asset._id %>/delete" method="POST" class="flex-1" onsubmit="return confirm('Are you sure you want to delete this asset?')">
                             <input type="hidden" name="search" value="<%= filters.search %>">
                             <input type="hidden" name="floor" value="<%= filters.floor %>">
-                            <input type="hidden" name="zone" value="<%= filters.zone %>">
+   
+                           <input type="hidden" name="zone" value="<%= filters.zone %>">
                             <input type="hidden" name="category" value="<%= filters.category %>">
                             <input type="hidden" name="assetPage" value="<%= assetPagination.currentPage %>">
-                            <input type="hidden" name="checklistPage" value="<%= checklistPagination.currentPage %>">
+    
+                          <input type="hidden" name="checklistPage" value="<%= checklistPagination.currentPage %>">
                             <button type="submit" class="w-full text-center bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
                         </form>
-                        <a href="/spv/asset/<%= asset._id %>/qr?<%= queryParams.toString() %>" class="flex-1 text-center bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm" target="_blank">QR</a>
+         
+                 <a href="/spv/asset/<%= asset._id %>/qr?<%= queryParams.toString() %>" class="flex-1 text-center bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm" target="_blank">QR</a>
             
              <form action="/spv/assets/<%= asset._id %>/duplicate" method="POST" class="flex-1">
                           <input type="hidden" name="search" value="<%= filters.search %>">
-                          <input type="hidden" name="floor" value="<%= filters.floor %>">
+         
+                   <input type="hidden" name="floor" value="<%= filters.floor %>">
                           <input type="hidden" name="zone" value="<%= filters.zone %>">
                           <input type="hidden" name="category" value="<%= filters.category %>">
-                          <input type="hidden" name="assetPage" value="<%= assetPagination.currentPage %>">
+                
+            <input type="hidden" name="assetPage" value="<%= assetPagination.currentPage %>">
                           <input type="hidden" name="checklistPage" value="<%= checklistPagination.currentPage %>">
                           <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Duplicate</button>
-                         </form>
+                   
+        </form>
                     </div>
   
              </div>
@@ -245,23 +263,29 @@
             <% if (assetPagination.totalItems > 0 && assetPagination.totalPages > 1) { %>
                 <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
                     <span class="text-xs xs:text-sm text-gray-700">
-                        Showing <%= Math.min(((parseInt(assetPagination.currentPage) - 1) * assetPagination.limit) + 1, assetPagination.totalItems) %> to <%= Math.min(parseInt(assetPagination.currentPage) * assetPagination.limit, assetPagination.totalItems) %> of <%= assetPagination.totalItems %> Assets
+      
+                    Showing <%= Math.min(((parseInt(assetPagination.currentPage) - 1) * assetPagination.limit) + 1, assetPagination.totalItems) %> to <%= Math.min(parseInt(assetPagination.currentPage) * assetPagination.limit, assetPagination.totalItems) %> of <%= assetPagination.totalItems %> Assets
                     </span>
                     <div class="inline-flex mt-2 xs:mt-0">
-                        <% const queryParams = new URLSearchParams(filters); %>
+                 
+         <% const queryParams = new URLSearchParams(filters); %>
                         <% queryParams.set('checklistPage', checklistPagination.currentPage) %>
                         <% if (parseInt(assetPagination.currentPage) > 1) { %>
                             <% queryParams.set('assetPage', parseInt(assetPagination.currentPage) - 1) %>
-                            <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
+          
+                    <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
                                 Prev
                             </a>
-                        <% } %>
+           
+               <% } %>
                         <% if (parseInt(assetPagination.currentPage) < assetPagination.totalPages) { %>
                             <% queryParams.set('assetPage', parseInt(assetPagination.currentPage) + 1) %>
-                            <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
+                      
+        <a href="/spv/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
                                 Next
                             </a>
-                        <% } %>
+                       
+   <% } %>
                     </div>
                 </div>
             <% } %>
@@ -270,13 +294,15 @@
 
         <div class="mt-8 bg-white p-6 rounded-lg shadow-lg">
           <h2 class="text-xl font-bold mb-4">Recent Activities</h2>
-        
+  
+       
    <div class="h-64 overflow-y-auto">
             <ul>
               <% if (locals.activities && activities.length > 0) { %>
                 <% activities.forEach(function(activity) { %>
                   <li class="border-b last:border-b-0 py-3">
-                    <p class="text-sm 
+               
+       <p class="text-sm 
  text-gray-800">
                       <strong><%= activity.user.name || (activity.user.id && activity.user.id.name) || 'N/A' %></strong> (<%= activity.role %>) <%= activity.action %>
                     </p>
@@ -293,6 +319,7 @@
   </main>
 
   <div class="fixed inset-x-0 bottom-0 bg-white border-t 
+ 
  shadow-lg md:hidden">
     <div class="flex justify-around py-2">
       <a href="/spv/dashboard" class="flex flex-col items-center text-blue-600">
@@ -300,6 +327,7 @@
         <span class="text-xs">Dashboard</span>
       </a>
       <a href="/spv/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
+  
    
      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
         <span class="text-xs">Reports</span>
@@ -310,71 +338,94 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      // SortableJS setup (remains the same)
       if (window.innerWidth >= 768) {
         var checklistTbody = document.getElementById('checklist-tbody');
-        Sortable.create(checklistTbody, { 
-          animation: 150, 
-          ghostClass: 'dragging', 
-          onEnd: function(evt) { 
-            var order = Array.from(checklistTbody.querySelectorAll('tr')).map(row => row.getAttribute('data-id'));
-            fetch('/spv/checklists/sort', { 
-              method: 'POST', 
-              headers: { 'Content-Type': 'application/json' }, 
-              body: JSON.stringify({ order: order }) 
-            }).catch(err => console.error('Checklist sort error:', err));
-          } 
-        });
-        var assetTbody = document.getElementById('asset-tbody');
-        Sortable.create(assetTbody, { 
-          animation: 150, 
-          ghostClass: 'dragging', 
-          onEnd: function(evt) { 
-            var order = Array.from(assetTbody.querySelectorAll('tr')).map(row => row.getAttribute('data-id'));
-            fetch('/spv/assets/sort', { 
-              method: 'POST', 
-              headers: { 'Content-Type': 'application/json' }, 
-              body: JSON.stringify({ order: order }) 
-            }).catch(err => console.error('Asset sort error:', err));
-          } 
-        });
-      }
-
-      const floorFilter = document.getElementById('floor-filter');
-      const zoneFilter = document.getElementById('zone-filter');
-      const allZones = Array.from(zoneFilter.options);
-
-      function updateZoneFilter() {
-        const selectedFloorId = floorFilter.value;
-        const currentZoneId = new URLSearchParams(window.location.search).get('zone');
-
-        zoneFilter.innerHTML = '';
-        allZones.forEach(option => {
-            if (option.value === 'all' || option.dataset.floor === selectedFloorId) {
-                const newOption = option.cloneNode(true);
-                if (newOption.value === currentZoneId) {
-                    newOption.selected = true;
+        if(checklistTbody) { // Add null check for safety
+            Sortable.create(checklistTbody, {
+                animation: 150,
+                ghostClass: 'dragging',
+                onEnd: function(evt) {
+                    var order = Array.from(checklistTbody.querySelectorAll('tr')).map(row => row.getAttribute('data-id'));
+                    fetch('/spv/checklists/sort', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order: order })
+                    }).catch(err => console.error('Checklist sort error:', err));
                 }
-                zoneFilter.add(newOption);
-            }
-        });
-
-        if (selectedFloorId === 'all') {
-            zoneFilter.disabled = true;
-            if (currentZoneId !== 'all' && currentZoneId !== null) {
-              // If a zone is selected without a floor, reset it.
-              zoneFilter.value = 'all';
-            }
-        } else {
-            zoneFilter.disabled = false;
+            });
+        }
+        var assetTbody = document.getElementById('asset-tbody');
+         if(assetTbody) { // Add null check for safety
+            Sortable.create(assetTbody, {
+                animation: 150,
+                ghostClass: 'dragging',
+                onEnd: function(evt) {
+                    var order = Array.from(assetTbody.querySelectorAll('tr')).map(row => row.getAttribute('data-id'));
+                    fetch('/spv/assets/sort', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order: order })
+                    }).catch(err => console.error('Asset sort error:', err));
+                }
+            });
         }
       }
 
+      // Filter logic update
+      const floorFilter = document.getElementById('floor-filter');
+      const zoneFilter = document.getElementById('zone-filter');
+       // **Crucial:** Store the original options passed from the server
+      const allServerZoneOptions = Array.from(zoneFilter.options);
+
+      function updateZoneFilter() {
+          const selectedFloorId = floorFilter.value;
+          const previouslySelectedZoneValue = zoneFilter.value;
+
+          zoneFilter.innerHTML = ''; // Clear current options
+
+          // Always add "All Zones" first
+          const allZonesOption = document.createElement('option');
+          allZonesOption.value = 'all';
+          allZonesOption.textContent = 'All Zones';
+          zoneFilter.appendChild(allZonesOption);
+
+          let isPreviouslySelectedZoneValid = false;
+
+          // Iterate through the *original* server-provided options
+          allServerZoneOptions.forEach(option => {
+              if (option.value === 'all') return; // Skip the placeholder
+
+              // Check if the zone belongs to the selected floor OR if 'All Floors' is selected
+              if (selectedFloorId === 'all' || option.dataset.floor === selectedFloorId) {
+                  const newOption = option.cloneNode(true);
+                  zoneFilter.appendChild(newOption);
+                  // Check if this re-added option matches the one selected before clearing
+                  if (newOption.value === previouslySelectedZoneValue) {
+                      isPreviouslySelectedZoneValid = true;
+                  }
+              }
+          });
+
+          // Set the state and selected value correctly
+          if (selectedFloorId === 'all') {
+              zoneFilter.disabled = true;
+              zoneFilter.value = 'all'; // Ensure 'All Zones' is selected
+          } else {
+              zoneFilter.disabled = false;
+              // If the previous selection is valid for this floor, re-select it. Otherwise, default to 'All Zones'.
+              zoneFilter.value = isPreviouslySelectedZoneValid ? previouslySelectedZoneValue : 'all';
+          }
+      }
+
       floorFilter.addEventListener('change', () => {
-        // Don't auto-submit, let the user click the filter button
+          updateZoneFilter();
+          // User still needs to click Filter button
       });
 
-      // Initial filter state
+      // Initial setup on page load
       updateZoneFilter();
+
     });
   </script>
 </body>

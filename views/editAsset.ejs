@@ -10,8 +10,14 @@
   <div class="max-w-2xl mx-auto mt-8 p-4 bg-white shadow-md rounded">
     <h1 class="text-xl font-bold mb-6">Edit Asset</h1>
     
-    <% /* --- CORRECTED FORM ACTION --- */ %>
     <form action="/spv/assets/<%= asset._id %>/edit" method="POST">
+       <input type="hidden" name="search" value="<%= filters.search || '' %>">
+       <input type="hidden" name="floorFilterParam" value="<%= filters.floor || 'all' %>">
+       <input type="hidden" name="zoneFilterParam" value="<%= filters.zone || 'all' %>">
+       <input type="hidden" name="categoryFilterParam" value="<%= filters.category || 'all' %>">
+       <input type="hidden" name="assetPage" value="<%= filters.assetPage || 1 %>">
+       <input type="hidden" name="checklistPage" value="<%= filters.checklistPage || 1 %>">
+
       <div class="mb-4">
         <label for="name" class="block text-gray-700 font-semibold mb-1">Nama Asset</label>
         <input type="text" name="name" id="name" class="w-full border border-gray-300 rounded p-2" value="<%= asset.name %>" required>
@@ -32,7 +38,7 @@
         <select name="category" id="category" class="w-full border border-gray-300 rounded p-2" required>
           <option value="" disabled>-- Pilih Kategori --</option>
           <% assetCategories.forEach(function(cat) { %>
-            <option value="<%= cat._id %>" <%= asset.category.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+            <option value="<%= cat._id %>" <%= asset.category && asset.category.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
           <% }); %>
         </select>
       </div>
@@ -51,10 +57,28 @@
         <label for="zone" class="block text-gray-700 font-semibold mb-1">Zona</label>
         <select name="zone" id="zone" class="w-full border border-gray-300 rounded p-2" required>
           <option value="">-- Pilih Zona --</option>
+           <%# Pre-populate zones passed from server for the initial floor/division %>
+           <% zones.forEach(function(zone) { %>
+             <option value="<%= zone._id %>" <%= asset.zone && asset.zone.toString() === zone._id.toString() ? 'selected' : '' %>><%= zone.name %></option>
+           <% }); %>
         </select>
       </div>
       
-      <div class="flex justify-end">
+      <div class="flex justify-between items-center">
+         <%# Construct the cancel link using filter params %>
+         <%
+            const cancelQueryParams = new URLSearchParams({
+                search: filters.search || '',
+                floor: filters.floor || 'all',
+                zone: filters.zone || 'all',
+                category: filters.category || 'all',
+                assetPage: filters.assetPage || 1,
+                checklistPage: filters.checklistPage || 1
+            }).toString();
+         %>
+        <a href="/spv/dashboard?<%= cancelQueryParams %>" class="text-gray-600 hover:text-gray-800">
+             Cancel
+        </a>
         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
           Update Asset
         </button>
@@ -63,36 +87,69 @@
   </div>
   
   <script>
-    var zonesData = '<%- JSON.stringify(zones || []) %>';
-    const zones = JSON.parse(zonesData);
-
     const floorDropdown = document.getElementById('floor');
     const zoneDropdown = document.getElementById('zone');
+    const spvDivisionId = '<%= locals.spvDivisionId || "" %>';
+    const initialAssetZoneId = '<%= asset.zone ? asset.zone.toString() : "" %>'; // Asset's currently saved zone ID
 
-    function populateZones(selectedFloorId, preselectedZoneId) {
-      zoneDropdown.innerHTML = '<option value="">-- Pilih Zona --</option>';
-      zones.forEach(function(zone) {
-        if (zone.floor && zone.floor.toString() === selectedFloorId) {
-          const option = document.createElement('option');
-          option.value = zone._id;
-          option.textContent = zone.name;
-          if (preselectedZoneId && zone._id.toString() === preselectedZoneId.toString()) {
-            option.selected = true;
-          }
-          zoneDropdown.appendChild(option);
+    async function fetchAndPopulateZones(selectedFloorId, preselectedZoneId) {
+      zoneDropdown.innerHTML = '<option value="">Loading zones...</option>';
+      zoneDropdown.disabled = true;
+
+      if (!selectedFloorId || !spvDivisionId) {
+        zoneDropdown.innerHTML = '<option value="">-- Pilih Lantai Dahulu --</option>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/zones/${selectedFloorId}?divisionId=${spvDivisionId}`);
+        if (!response.ok) throw new Error(`Failed to fetch zones: ${response.statusText}`);
+        const zones = await response.json();
+
+        zoneDropdown.innerHTML = '<option value="">-- Pilih Zona --</option>';
+        if (zones.length > 0) {
+          zones.forEach(function(zone) {
+            const option = document.createElement('option');
+            option.value = zone._id;
+            option.textContent = zone.name;
+            // Pre-select if it matches the ID passed in (either initial or if floor changed back)
+            if (preselectedZoneId && zone._id.toString() === preselectedZoneId) {
+              option.selected = true;
+            }
+            zoneDropdown.appendChild(option);
+          });
+          zoneDropdown.disabled = false;
+        } else {
+           zoneDropdown.innerHTML = '<option value="">-- No zones found --</option>';
         }
-      });
+      } catch (error) {
+        console.error('Error fetching zones:', error);
+        zoneDropdown.innerHTML = '<option value="">Error loading zones</option>';
+      }
     }
 
     floorDropdown.addEventListener('change', function() {
-      populateZones(this.value);
+      // When floor changes, check if the asset's original zone exists on the new floor.
+      // Pass the original zone ID to potentially pre-select it if it's valid.
+      fetchAndPopulateZones(this.value, initialAssetZoneId);
     });
 
+    // On initial page load:
+    // The server already rendered the correct zones for the asset's *current* floor and division.
+    // We just need to ensure the dropdown is enabled/disabled correctly.
     window.addEventListener('DOMContentLoaded', function() {
-      const selectedFloorId = floorDropdown.value;
-      if (selectedFloorId) {
-        populateZones(selectedFloorId, '<%= asset.zone ? asset.zone.toString() : "" %>');
-      }
+       const initialFloorSelected = floorDropdown.value;
+       const hasInitialZones = zoneDropdown.options.length > 1 && zoneDropdown.options[0].value === ''; // Check if more than just the placeholder
+
+       if (initialFloorSelected && hasInitialZones) {
+           zoneDropdown.disabled = false;
+       } else if (!initialFloorSelected) {
+           zoneDropdown.innerHTML = '<option value="">-- Pilih Lantai Dahulu --</option>';
+           zoneDropdown.disabled = true;
+       } else { // Floor selected, but no zones were pre-populated (maybe none exist)
+           zoneDropdown.innerHTML = '<option value="">-- No zones found --</option>';
+           zoneDropdown.disabled = true;
+       }
     });
   </script>
 </body>

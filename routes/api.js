@@ -12,7 +12,7 @@ const Checklist = mongoose.model('Checklist');
 const ChecklistAssignment = mongoose.model('ChecklistAssignment');
 const MaintenanceReport = mongoose.model('MaintenanceReport');
 const User = mongoose.model('User');
-const Zone = mongoose.model('Zone');
+const Zone = mongoose.model('Zone'); // Make sure Zone is required
 
 // =================================================================
 //                      TECHNICIAN SYNC ROUTES
@@ -26,12 +26,12 @@ router.get('/technician/sync-data', ensureAuthenticated, ensureTechnician, async
     try {
         const divisionId = req.session.userDivision;
         const assets = await Asset.find({ division: divisionId })
-            .populate('floor').populate('category').populate('zone').lean();
+            .populate('floor').populate('category').populate('zone').lean(); // Ensure zone is populated if needed offline
         const assetIds = assets.map(a => a._id);
 
         const assignments = await ChecklistAssignment.find({ asset: { $in: assetIds } })
             .populate('checklist')
-            .populate({ path: 'asset', select: '_id name' }) // Keep it light for sync
+            .populate({ path: 'asset', select: '_id name' }) // Keep asset light for sync
             .lean();
 
         const checklistIds = [...new Set(assignments.map(a => a.checklist?._id).filter(Boolean))];
@@ -56,7 +56,7 @@ router.post('/sync/checklist', async (req, res) => {
             .populate('checklist')
             .populate({
                 path: 'asset',
-                populate: ['floor', 'category', 'zone', 'division']
+                populate: ['floor', 'category', 'zone', 'division'] // Ensure all needed fields are populated
             });
 
         if (!assignment || !assignment.asset) {
@@ -95,7 +95,7 @@ router.post('/sync/checklist', async (req, res) => {
             location: assignment.asset.location,
             category: assignment.asset.category?.name || 'N/A',
             floor: assignment.asset.floor?.name || 'N/A',
-            zone: assignment.asset.zone?.name || 'N/A',
+            zone: assignment.asset.zone?.name || 'N/A', // Make sure zone name is captured
             division: assignment.asset.division?.name || 'N/A'
         };
 
@@ -136,18 +136,14 @@ router.post('/sync/checklist', async (req, res) => {
 
 /**
  * GET /api/checklists/:id/tasks
- * [NEW] Fetches the tasks for a specific checklist template.
- * This is used in the "Create Checklist" page to populate tasks when a template is selected.
+ * Fetches the tasks for a specific checklist template.
  */
 router.get('/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req, res) => {
     try {
         const checklist = await Checklist.findById(req.params.id);
-
-        // Security check: ensure the checklist exists and belongs to the SPV's division
         if (!checklist || checklist.division.toString() !== req.session.userDivision) {
             return res.status(404).json({ error: 'Checklist template not found or not in your division.' });
         }
-
         res.json(checklist.tasks);
     } catch (err) {
         console.error('API Fetch Checklist Tasks Error:', err);
@@ -157,11 +153,21 @@ router.get('/checklists/:id/tasks', ensureAuthenticated, ensureSpv, async (req, 
 
 /**
  * GET /api/zones/:floorId
- * [NEW] Fetches zones for a specific floor.
+ * Fetches zones for a specific floor, optionally filtered by division.
  */
 router.get('/zones/:floorId', ensureAuthenticated, async (req, res) => {
     try {
-        const zones = await Zone.find({ floor: req.params.floorId }).sort({ name: 1 });
+        const query = { floor: req.params.floorId };
+        // Check for divisionId query parameter - crucial for SPV asset forms
+        if (req.query.divisionId) {
+            query.division = req.query.divisionId;
+        } else if (req.session.userRole === 'spv' || req.session.userRole === 'technician') {
+             // If accessed by SPV/Technician without explicit query param, use their division
+             query.division = req.session.userDivision;
+        }
+        // If accessed by Superuser/Manager without query param, it will fetch for all divisions on that floor
+
+        const zones = await Zone.find(query).sort({ name: 1 });
         res.json(zones);
     } catch (err) {
         console.error('API Fetch Zones Error:', err);
