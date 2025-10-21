@@ -20,7 +20,7 @@
         <p class="text-sm text-gray-700 mt-1">
           Asset: <strong id="asset-name"></strong>
         </p>
-         <%# Display location detail similar to online version %>
+
         <p class="text-xs text-gray-500" id="asset-location-detail"></p>
       </div>
 
@@ -55,7 +55,7 @@
       </button>
     </div>
   </footer>
-  
+
   <%# Standard Modal Structure %>
   <div id="modal" class="fixed z-50 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -83,7 +83,7 @@
                     <button id="modal-confirm-btn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm">
                         OK
                     </button>
-                    <%# Optional Cancel Button if needed %>
+
                     <%# <button id="modal-cancel-btn" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">Cancel</button> %>
                 </div>
             </div>
@@ -98,7 +98,7 @@
       const assignmentId = window.location.hash.substring(1);
       const loadingEl = document.getElementById('loading');
       const contentEl = document.getElementById('content');
-      
+
       if (!assignmentId) {
         loadingEl.textContent = 'Error: No Assignment ID provided.';
         return;
@@ -128,11 +128,13 @@
       if (checklist.tasks && checklist.tasks.length > 0) {
         checklist.tasks.forEach((task, index) => {
           const taskEl = document.createElement('div');
+          // Use task._id if available, otherwise fallback to index (less reliable for submission key)
+          const taskId = task._id || `task-${index}`;
           taskEl.className = 'border p-4 rounded-lg shadow-sm task-item bg-white';
-          taskEl.dataset.taskId = task._id; // Use _id if available, otherwise index might be fallback
+          taskEl.dataset.taskId = taskId;
 
           let taskHTML = `
-            <input type="hidden" name="taskIds[]" value="${task._id}">
+            <input type="hidden" name="taskIds[]" value="${taskId}">
             <label class="block text-gray-800 font-semibold mb-3">
               <span class="text-blue-600 mr-2">${index + 1}.</span>${task.description}
           `;
@@ -145,15 +147,15 @@
             taskHTML += `
               <div class="flex space-x-4">
                 <div class="flex-1 p-3 text-center text-green-800 bg-green-100 rounded-lg border-2 border-green-200 cursor-pointer transition-colors duration-200 functional-button" data-value="pass">
-                  <input type="radio" name="results[${task._id}]" value="pass" required class="sr-only"/> Pass
+                  <input type="radio" name="results[${taskId}]" value="pass" required class="sr-only"/> Pass
                 </div>
                 <div class="flex-1 p-3 text-center text-red-800 bg-red-100 rounded-lg border-2 border-red-200 cursor-pointer transition-colors duration-200 functional-button" data-value="fail">
-                  <input type="radio" name="results[${task._id}]" value="fail" required class="sr-only"/> Fail
+                  <input type="radio" name="results[${taskId}]" value="fail" required class="sr-only"/> Fail
                 </div>
               </div>`;
           } else if (task.inputType === 'measurement') {
             taskHTML += `
-              <input type="number" step="any" name="results[${task._id}]" placeholder="Enter value..." class="shadow-sm border rounded w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required />`;
+              <input type="number" step="any" name="results[${taskId}]" placeholder="Enter value..." class="shadow-sm border rounded w-full py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required />`;
           }
           taskEl.innerHTML = taskHTML;
           taskList.appendChild(taskEl);
@@ -244,7 +246,7 @@
           // --- End Validation ---
 
           if (!allTasksCompleted) {
-            showModal('Attention', 'Please complete all checklist items before submitting.', 'error');
+            showModal('Attention', 'Please complete all checklist items.', 'error');
             submitBtn.disabled = false; // Re-enable button
             submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             return;
@@ -273,58 +275,24 @@
 
           try {
               await addPendingSubmission(submissionData);
-              showModal('Submission Saved', 'You are offline. Your submission has been saved and will be synced automatically when you are back online.', 'success', () => {
+              // *** SET LOCALSTORAGE FLAG FOR TOAST ***
+              localStorage.setItem('showOfflineSaveToast', 'true');
+              showModal('Submission Saved', 'Saved locally. Will sync when online.', 'success', () => {
                  window.location.href = '/technician/dashboard'; // Redirect after modal OK
               });
           } catch (error) {
                console.error("Failed to save submission locally:", error);
-               showModal('Error Saving', 'Could not save the submission locally. Please check storage space and try again.', 'error');
+               showModal('Error Saving', 'Could not save locally.', 'error');
                submitBtn.disabled = false; // Re-enable button on error
                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
           }
         });
       }
-    }
+    } // End setupFormSubmission
       
+    // showModal function remains the same
     function showModal(title, body, type = 'info', onConfirmCallback) {
-        const modal = document.getElementById('modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalBody = document.getElementById('modal-body');
-        const modalIcon = document.getElementById('modal-icon');
-        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-
-        modalTitle.textContent = title;
-        modalBody.textContent = body;
-
-        let iconHtml = '';
-        let iconBgClass = 'bg-blue-100'; // Default info
-        if (type === 'error') {
-            iconHtml = '<svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
-            iconBgClass = 'bg-red-100';
-        } else if (type === 'success') {
-            iconHtml = '<svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-             iconBgClass = 'bg-green-100';
-        } else { // Info icon
-             iconHtml = '<svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
-        }
-        modalIcon.innerHTML = iconHtml;
-         // Update icon background color
-        modalIcon.className = `mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${iconBgClass} sm:mx-0 sm:h-10 sm:w-10`;
-
-        
-        // Clone and replace button to remove old listeners
-        const newConfirmBtn = modalConfirmBtn.cloneNode(true);
-        modalConfirmBtn.parentNode.replaceChild(newConfirmBtn, modalConfirmBtn);
-
-        // Add the new listener
-        newConfirmBtn.addEventListener('click', () => {
-             modal.classList.add('hidden'); // Hide modal first
-             if (typeof onConfirmCallback === 'function') {
-                 onConfirmCallback(); // Execute callback if provided
-             }
-        }, { once: true }); // Use once to auto-remove listener
-
-        modal.classList.remove('hidden'); // Show modal
+         const modal = document.getElementById('modal'); const modalTitle = document.getElementById('modal-title'); const modalBody = document.getElementById('modal-body'); const modalIcon = document.getElementById('modal-icon'); const modalConfirmBtn = document.getElementById('modal-confirm-btn'); modalTitle.textContent = title; modalBody.textContent = body; let iconHtml = ''; let iconBgClass = 'bg-blue-100'; if (type === 'error') { iconHtml = '<svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>'; iconBgClass = 'bg-red-100'; } else if (type === 'success') { iconHtml = '<svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>'; iconBgClass = 'bg-green-100'; } else { iconHtml = '<svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'; } modalIcon.innerHTML = iconHtml; modalIcon.className = `mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${iconBgClass} sm:mx-0 sm:h-10 sm:w-10`; const newConfirmBtn = modalConfirmBtn.cloneNode(true); modalConfirmBtn.parentNode.replaceChild(newConfirmBtn, modalConfirmBtn); newConfirmBtn.addEventListener('click', () => { modal.classList.add('hidden'); if (typeof onConfirmCallback === 'function') { onConfirmCallback(); } }, { once: true }); modal.classList.remove('hidden');
     }
 
   </script>

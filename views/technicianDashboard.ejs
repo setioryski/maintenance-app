@@ -17,6 +17,13 @@
 </head>
 <body class="bg-gray-50">
 
+  <div id="toast-notification" class="fixed top-20 right-5 z-50 hidden px-4 py-3 rounded-lg shadow-lg text-white transition-opacity duration-300 max-w-sm" role="alert">
+    <span id="toast-message" class="text-sm"></span>
+    <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white bg-opacity-20 text-white hover:bg-opacity-30 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 inline-flex h-8 w-8" aria-label="Close" onclick="this.parentElement.classList.add('hidden')">
+      <span class="sr-only">Close</span>
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+    </button>
+  </div>
   <script>
     // Redirect non-technician users to their correct dashboard when online
     const userRole = "<%= locals.user ? user.userRole : '' %>";
@@ -33,36 +40,25 @@
   </script>
   
   <header class="bg-white shadow-sm sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center">
-            <div class="flex-shrink-0">
-             <img src="/image/logo.png" alt="Company Logo" class="h-8">
-            </div>
-            <div id="status-indicator-mobile" class="md:hidden flex items-center space-x-2 ml-4 px-2 py-1 rounded-full text-xs">
-                <span id="status-dot-mobile" class="w-2 h-2 rounded-full"></span>
-                <span id="status-text-mobile" class="font-semibold"></span>
-            </div>
+             <div class="flex-shrink-0"><img src="/image/logo.png" alt="Company Logo" class="h-8"></div>
+             <div id="status-indicator-mobile" class="md:hidden flex items-center space-x-2 ml-4 px-2 py-1 rounded-full text-xs"> <span id="status-dot-mobile" class="w-2 h-2 rounded-full"></span><span id="status-text-mobile" class="font-semibold"></span></div>
         </div>
-
         <div class="hidden md:flex items-center space-x-4">
-            <div id="status-indicator-desktop" class="flex items-center space-x-2 px-3 py-1 rounded-full">
-                <span id="status-dot-desktop" class="w-3 h-3 rounded-full"></span>
-                <span id="status-text-desktop" class="text-sm font-semibold"></span>
-            </div>
-            <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-            <a id="my-reports-link-desktop" href="/technician/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">My Reports</a>
-            <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
+             <div id="status-indicator-desktop" class="flex items-center space-x-2 px-3 py-1 rounded-full"><span id="status-dot-desktop" class="w-3 h-3 rounded-full"></span><span id="status-text-desktop" class="text-sm font-semibold"></span></div>
+             <a href="/technician/dashboard" class="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+             <a id="my-reports-link-desktop" href="/technician/report" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">My Reports</a>
+             <a href="/logout" class="text-gray-500 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</a>
         </div>
-        <div class="md:hidden">
-          <a href="/logout" class="text-gray-500 text-sm">Logout</a>
-        </div>
+        <div class="md:hidden"><a href="/logout" class="text-gray-500 text-sm">Logout</a></div>
       </div>
     </div>
   </header>
 
   <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="px-4 py-6 sm:px-0">
+     <div class="px-4 py-6 sm:px-0">
         <div id="pending-sync-alert" class="hidden mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-lg flex items-center justify-between">
             <div>
                 <p class="font-bold">Work Saved Offline</p>
@@ -72,9 +68,8 @@
                 Sync Now
             </button>
         </div>
-
         <div class="flex flex-col md:flex-row items-start justify-between mb-6">
-            <div>
+             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
                 <p class="text-sm text-gray-500">Here are your assigned maintenance tasks and recent activities.</p>
             </div>
@@ -85,16 +80,13 @@
                 </button>
             </div>
         </div>
-
         <div id="qr-reader" class="hidden mx-auto md:w-96 mb-6"></div>
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2">
-                <div id="tasks-container" class="bg-white p-6 rounded-lg shadow-lg">
+                 <div id="tasks-container" class="bg-white p-6 rounded-lg shadow-lg">
                     <h2 class="text-xl font-bold mb-4">My Maintenance Tasks</h2>
-
                     <form id="asset-filter-form" class="mb-6 p-4 bg-gray-50 rounded-lg border">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                             <input type="text" name="search" value="<%= filters.search %>" class="col-span-1 sm:col-span-2 border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Search asset name...">
                             <select name="floor" id="floor-filter" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="all">All Floors</option>
@@ -104,7 +96,8 @@
                                 <option value="all">All Zones</option>
                                 <% zones.forEach(function(zone) { %>
                                     <%# Ensure data-floor uses the ID from the zone object %>
-                                    <option value="<%= zone._id %>" <%= filters.zone === zone._id.toString() ? 'selected' : '' %> data-floor="<%= zone.floor %>"><%= zone.name %></option>
+                                    <%# The floor property on the zone object might be an ID or an object depending on populate %>
+                                    <option value="<%= zone._id %>" <%= filters.zone === zone._id.toString() ? 'selected' : '' %> data-floor="<%= typeof zone.floor === 'object' ? zone.floor._id : zone.floor %>"><%= zone.name %></option>
                                 <% }); %>
                             </select>
                             <select name="category" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
@@ -114,22 +107,15 @@
                             <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Filter</button>
                         </div>
                     </form>
-
                     <div id="assignments-list">
                       <%# Initial rendering now uses assetsForView from controller %>
                       <%
                           const getAssetIcon = (name) => {
                               name = (name || '').toLowerCase();
-                              if (name.includes('cctv')) return '📷';
-                              if (name.includes('panoramic')) return '🌅';
-                              if (name.includes('smoke') || name.includes('fire')) return '🔥';
-                              if (name.includes('ahu')) return '💨';
-                              if (name.includes('elevator')) return '↕️';
-                              if (name.includes('generator')) return '⚡️';
-                              return '📦';
+                              if (name.includes('cctv')) return '📷'; if (name.includes('panoramic')) return '🌅'; if (name.includes('smoke') || name.includes('fire')) return '🔥'; if (name.includes('ahu')) return '💨'; if (name.includes('elevator')) return '↕️'; if (name.includes('generator')) return '⚡️'; return '📦';
                           };
 
-                          // *** Use assetsForView passed from controller ***
+                          // Use assetsForView passed from controller
                           if (!assetsForView || assetsForView.length === 0 && !locals.offlineRender) {
                       %>
                       <div class="text-center py-12">
@@ -138,43 +124,20 @@
                       </div>
                       <% } else if (!locals.offlineRender) { %>
                       <div class="space-y-4">
-                           <%# *** Loop over assetsForView *** %>
                           <% assetsForView.forEach(function(group) {
                               const asset = group.asset; // Asset object is already populated
                               if (!asset) return; // Safety check
                               const assetName = asset.name;
                               const uniqueGroupId = `asset-group-${asset._id}`;
                           %>
-                          <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card"
-                              data-name="<%= assetName ? assetName.toLowerCase() : '' %>"
-                              data-floor-id="<%= asset.floor?._id?.toString() || '' %>"
-                              data-zone-id="<%= asset.zone?._id?.toString() || '' %>"
-                              data-category-id="<%= asset.category?._id?.toString() || '' %>">
-                              <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
-                                  onclick="toggleDropdown('<%= uniqueGroupId %>')">
-                                  <div class="flex items-center">
-                                      <span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span>
-                                      <div>
-                                          <p class="text-md text-gray-800"><%= assetName || 'N/A' %></p>
-                                          <p class="text-xs text-gray-500">
-                                              Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location || 'N/A' %>
-                                          </p>
-                                      </div>
-                                  </div>
-                                  <span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
+                          <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card" data-name="<%= assetName ? assetName.toLowerCase() : '' %>" data-floor-id="<%= asset.floor?._id?.toString() || '' %>" data-zone-id="<%= asset.zone?._id?.toString() || '' %>" data-category-id="<%= asset.category?._id?.toString() || '' %>">
+                              <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="toggleDropdown('<%= uniqueGroupId %>')">
+                                  <div class="flex items-center"><span class="text-xl mr-3"><%= getAssetIcon(assetName) %></span><div><p class="text-md text-gray-800"><%= assetName || 'N/A' %></p><p class="text-xs text-gray-500">Fl. <%= asset.floor?.name || 'N/A' %> / Zone <%= asset.zone?.name || 'N/A' %> / <%= asset.location || 'N/A' %></p></div></div><span id="arrow-<%= uniqueGroupId %>" class="transition-transform duration-200 transform text-gray-500">▼</span>
                               </div>
                               <div id="<%= uniqueGroupId %>" class="dropdown-content hidden p-4 space-y-3">
-                                   <%# Loop over checklists within the group %>
                                   <% group.checklists.forEach(function(assignment) { %>
                                   <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
-                                      <div>
-                                           <%# Checklist object now has title populated %>
-                                          <p class="font-semibold text-gray-800"><%= assignment.checklist?.title || 'N/A' %></p>
-                                          <p class="text-xs text-gray-500">Assigned: <%= assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'N/A' %></p>
-                                      </div>
-                                      <button onclick="startChecklist('<%= assignment._id %>')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">
-                                          Start Checklist
-                                      </button>
+                                      <div><p class="font-semibold text-gray-800"><%= assignment.checklist?.title || 'N/A' %></p><p class="text-xs text-gray-500">Assigned: <%= assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'N/A' %></p></div><button onclick="startChecklist('<%= assignment._id %>')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">Start Checklist</button>
                                   </div>
                                   <% }); %>
                               </div>
@@ -190,32 +153,22 @@
                              const currentPageNum = parseInt(currentPage);
                         %>
                             <div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
-                                <span class="text-xs xs:text-sm text-gray-700">
-                                    Showing page <%= currentPageNum %> of <%= totalPages %> (Assets)
-                                </span>
+                                <span class="text-xs xs:text-sm text-gray-700">Showing page <%= currentPageNum %> of <%= totalPages %> (Assets)</span>
                                 <div class="inline-flex mt-2 xs:mt-0">
                                     <% const queryParams = new URLSearchParams(filters); %>
                                     <% if (currentPageNum > 1) { %>
                                         <% queryParams.set('page', currentPageNum - 1) %>
-                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">
-                                            Prev
-                                        </a>
-                                    <% } else { %>
-                                        <span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-l">Prev</span>
-                                    <% } %>
+                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">Prev</a>
+                                    <% } else { %><span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-l">Prev</span><% } %>
                                     <% if (currentPageNum < totalPages) { %>
                                         <% queryParams.set('page', currentPageNum + 1) %>
-                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">
-                                            Next
-                                        </a>
-                                    <% } else { %>
-                                          <span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-r">Next</span>
-                                    <% } %>
+                                        <a href="/technician/dashboard?<%= queryParams.toString() %>" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">Next</a>
+                                    <% } else { %><span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-r">Next</span><% } %>
                                 </div>
                             </div>
                         <% } %>
                     </div>
-                </div>
+                 </div>
             </div>
 
              <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -225,14 +178,11 @@
                         <% if (locals.activities && activities.length > 0) { %>
                             <% activities.forEach(function(activity) { %>
                                 <li class="border-b last:border-b-0 py-3">
-                                     <%# Safely access user name %>
                                     <p class="text-sm text-gray-800"><strong><%= (activity.user && activity.user.name) || (activity.user?.id?.name) || 'System' %></strong> (<%= activity.role %>) <%= activity.action %></p>
                                     <p class="text-xs text-gray-500 mt-1"><%= new Date(activity.timestamp).toLocaleString() %></p>
                                 </li>
                             <% }); %>
-                        <% } else { %>
-                            <p class="text-gray-500">No recent activities.</p>
-                        <% } %>
+                        <% } else { %><p class="text-gray-500">No recent activities.</p><% } %>
                     </ul>
                 </div>
             </div>
@@ -242,51 +192,26 @@
 
   <div class="fixed inset-x-0 bottom-0 bg-white border-t shadow-lg md:hidden">
     <div class="flex justify-around py-2">
-      <a href="/technician/dashboard" class="flex flex-col items-center text-blue-600">
-        <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
-        <span class="text-xs">Dashboard</span>
-      </a>
-      <a id="my-reports-link-mobile" href="/technician/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg>
-        <span class="text-xs">My Reports</span>
-      </a>
+      <a href="/technician/dashboard" class="flex flex-col items-center text-blue-600"><svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg><span class="text-xs">Dashboard</span></a>
+      <a id="my-reports-link-mobile" href="/technician/report" class="flex flex-col items-center text-gray-500 hover:text-blue-600"><svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6"></path></svg><span class="text-xs">My Reports</span></a>
     </div>
   </div>
   
   <div id="sync-modal" class="fixed z-20 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div><span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-            <div id="sync-modal-icon" class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 12L3 12m4 4l4-4m6 0v12m0-12l4 4m-4-4l-4 4" />
-                </svg>
-            </div>
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 class="text-lg leading-6 font-medium text-gray-900" id="sync-modal-title">Confirm Sync</h3>
-                <div class="mt-2">
-                <p class="text-sm text-gray-500" id="sync-modal-body">Are you sure you want to sync your offline data with the server?</p>
-                </div>
-            </div>
-            </div>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button id="confirm-sync-btn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm">Sync</button>
-            <button id="cancel-sync-btn" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">Cancel</button>
-        </div>
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4"><div class="sm:flex sm:items-start"><div id="sync-modal-icon" class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10"><svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 12L3 12m4 4l4-4m6 0v12m0-12l4 4m-4-4l-4 4" /></svg></div><div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left"><h3 class="text-lg leading-6 font-medium text-gray-900" id="sync-modal-title">Confirm Sync</h3><div class="mt-2"><p class="text-sm text-gray-500" id="sync-modal-body">Are you sure you want to sync your offline data with the server?</p></div></div></div></div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse"><button id="confirm-sync-btn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm">Sync</button><button id="cancel-sync-btn" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">Cancel</button></div>
         </div>
     </div>
   </div>
 
-  <%# External Scripts %>
+
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://unpkg.com/dexie@3.2.5/dist/dexie.js"></script>
   <script src="/js/db.js"></script>
 
-  <%# Inline Scripts %>
   <script>
     // Service Worker registration
     if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js'); }); }
@@ -305,238 +230,84 @@
         }
     }
 
-    // --- START OF OFFLINE RENDERING LOGIC ---
-    let allOfflineAssignments = []; // Holds all assignments fetched from IndexedDB
-    const ITEMS_PER_PAGE = 10; // Assets per page for offline view
+    // --- Toast Notification Function ---
+    function showToast(message, type = 'success') {
+        const toastElement = document.getElementById('toast-notification');
+        const messageElement = document.getElementById('toast-message');
+        if (!toastElement || !messageElement) { console.error("Toast elements not found!"); return; }
+        messageElement.textContent = message;
+        toastElement.classList.remove('bg-green-500', 'bg-blue-500', 'bg-red-500', 'bg-gray-700'); // Clear existing
+        switch (type) {
+            case 'success': toastElement.classList.add('bg-green-500'); break;
+            case 'info': toastElement.classList.add('bg-blue-500'); break;
+            case 'error': toastElement.classList.add('bg-red-500'); break;
+            default: toastElement.classList.add('bg-gray-700');
+        }
+        toastElement.classList.remove('hidden'); void toastElement.offsetWidth; toastElement.classList.add('opacity-100'); toastElement.classList.remove('opacity-0');
+        setTimeout(() => { toastElement.classList.remove('opacity-100'); toastElement.classList.add('opacity-0'); setTimeout(() => { toastElement.classList.add('hidden'); }, 300); }, 5000);
+    }
+    // --- End Toast Notification Function ---
 
-    // Helper to get asset icon (same as EJS)
-    const getAssetIcon = (name) => {
-        name = (name || '').toLowerCase();
-        if (name.includes('cctv')) return '📷'; if (name.includes('panoramic')) return '🌅'; if (name.includes('smoke') || name.includes('fire')) return '🔥'; if (name.includes('ahu')) return '💨'; if (name.includes('elevator')) return '↕️'; if (name.includes('generator')) return '⚡️'; return '📦';
-    };
 
-    // Renders the list of assignments and pagination for offline mode
+    // --- Offline Rendering Logic ---
+    let allOfflineAssignments = []; const ITEMS_PER_PAGE = 10;
+    const getAssetIcon = (name) => { name = (name || '').toLowerCase(); if (name.includes('cctv')) return '📷'; if (name.includes('panoramic')) return '🌅'; if (name.includes('smoke') || name.includes('fire')) return '🔥'; if (name.includes('ahu')) return '💨'; if (name.includes('elevator')) return '↕️'; if (name.includes('generator')) return '⚡️'; return '📦'; };
+
     function renderAssignments(assignmentsToRender, currentPage) {
         const listEl = document.getElementById('assignments-list');
         const paginationEl = document.getElementById('pagination-container');
-        listEl.innerHTML = ''; paginationEl.innerHTML = ''; // Clear previous content
-
-        if (!assignmentsToRender || assignmentsToRender.length === 0) {
-            listEl.innerHTML = `<div class="text-center py-12"><h3 class="text-lg font-medium text-gray-700">No maintenance tasks found offline.</h3><p class="text-gray-500 mt-1">Try adjusting filters or sync when online.</p></div>`;
-            return;
-        }
-
-        // Group assignments by asset ID for rendering
-        const groupedByAssetId = {};
-        assignmentsToRender.forEach(assignment => {
-            if (!assignment.asset || !assignment.asset._id) return;
-            const assetId = assignment.asset._id.toString();
-            if (!groupedByAssetId[assetId]) {
-                 // Store the full asset object the first time we see it
-                groupedByAssetId[assetId] = { asset: assignment.asset, checklists: [] };
-            }
-            groupedByAssetId[assetId].checklists.push(assignment);
-        });
-         // Convert grouped object to array and sort assets alphabetically for consistent display
-         const groupedAssetsArray = Object.values(groupedByAssetId).sort((a, b) => a.asset.name.localeCompare(b.asset.name));
-
-
-        // Offline Pagination logic (based on assets, not assignments total)
-        const totalItems = groupedAssetsArray.length; // Paginate based on number of assets
-        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        const endIndex = startIndex + ITEMS_PER_PAGE;
-        const paginatedAssetGroups = groupedAssetsArray.slice(startIndex, endIndex); // Get assets for the current page
-
-
-        // Build HTML for the current page's assets
+        listEl.innerHTML = ''; paginationEl.innerHTML = '';
+        if (!assignmentsToRender || assignmentsToRender.length === 0) { listEl.innerHTML = `<div class="text-center py-12"><h3 class="text-lg font-medium text-gray-700">No maintenance tasks found offline.</h3><p class="text-gray-500 mt-1">Try adjusting filters or sync when online.</p></div>`; return; }
+        const groupedByAssetId = {}; assignmentsToRender.forEach(assignment => { if (!assignment.asset || !assignment.asset._id) return; const assetId = assignment.asset._id.toString(); if (!groupedByAssetId[assetId]) { groupedByAssetId[assetId] = { asset: assignment.asset, checklists: [] }; } groupedByAssetId[assetId].checklists.push(assignment); }); const groupedAssetsArray = Object.values(groupedByAssetId).sort((a, b) => a.asset.name.localeCompare(b.asset.name)); const totalItems = groupedAssetsArray.length; const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE); const startIndex = (currentPage - 1) * ITEMS_PER_PAGE; const endIndex = startIndex + ITEMS_PER_PAGE; const paginatedAssetGroups = groupedAssetsArray.slice(startIndex, endIndex);
         let html = '<div class="space-y-4">';
-        paginatedAssetGroups.forEach(group => {
-            const asset = group.asset;
-            const uniqueGroupId = `asset-group-${asset._id}`;
-            html += `
-                <div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card" data-name="${asset.name ? asset.name.toLowerCase() : ''}" data-floor-id="${asset.floor?._id?.toString() || ''}" data-zone-id="${asset.zone?._id?.toString() || ''}" data-category-id="${asset.category?._id?.toString() || ''}">
-                    <div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="toggleDropdown('${uniqueGroupId}')">
-                        <div class="flex items-center"><span class="text-xl mr-3">${getAssetIcon(asset.name)}</span><div><p class="text-md text-gray-800">${asset.name || 'N/A'}</p><p class="text-xs text-gray-500">Fl. ${asset.floor?.name || 'N/A'} / Zone ${asset.zone?.name || 'N/A'} / ${asset.location || 'N/A'}</p></div></div><span id="arrow-${uniqueGroupId}" class="transition-transform duration-200 transform text-gray-500">▼</span>
-                    </div>
-                    <div id="${uniqueGroupId}" class="dropdown-content hidden p-4 space-y-3">
-                        ${group.checklists.map(assignment => `
-                        <div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50">
-                            <div><p class="font-semibold text-gray-800">${assignment.checklist?.title || 'N/A'}</p><p class="text-xs text-gray-500">Assigned: ${assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'N/A'}</p></div><button onclick="startChecklist('${assignment._id}')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">Start Checklist</button>
-                        </div>`).join('')}
-                    </div>
-                </div>`;
-        });
-        html += '</div>';
-        listEl.innerHTML = html;
-
-        // Render offline pagination controls
-        if (totalPages > 1) {
-            let paginationHTML = `<div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between"><span class="text-xs xs:text-sm text-gray-700">Showing page ${currentPage} of ${totalPages} (Assets Offline)</span><div class="inline-flex mt-2 xs:mt-0">`;
-            paginationHTML += currentPage > 1 ? `<button onclick="handleOfflinePageChange(${currentPage - 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">Prev</button>` : `<span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-l">Prev</span>`;
-            paginationHTML += currentPage < totalPages ? `<button onclick="handleOfflinePageChange(${currentPage + 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">Next</button>` : `<span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-r">Next</span>`;
-            paginationHTML += `</div></div>`;
-            paginationEl.innerHTML = paginationHTML;
-        }
+        paginatedAssetGroups.forEach(group => { const asset = group.asset; if (!asset) return; const uniqueGroupId = `asset-group-${asset._id}`; html += `<div class="rounded-lg shadow-sm bg-white overflow-hidden border asset-card" data-name="${asset.name ? asset.name.toLowerCase() : ''}" data-floor-id="${asset.floor?._id?.toString() || ''}" data-zone-id="${asset.zone?._id?.toString() || ''}" data-category-id="${asset.category?._id?.toString() || ''}"><div class="bg-gray-50 px-4 py-3 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="toggleDropdown('${uniqueGroupId}')"><div class="flex items-center"><span class="text-xl mr-3">${getAssetIcon(asset.name)}</span><div><p class="text-md text-gray-800">${asset.name || 'N/A'}</p><p class="text-xs text-gray-500">Fl. ${asset.floor?.name || 'N/A'} / Zone ${asset.zone?.name || 'N/A'} / ${asset.location || 'N/A'}</p></div></div><span id="arrow-${uniqueGroupId}" class="transition-transform duration-200 transform text-gray-500">▼</span></div><div id="${uniqueGroupId}" class="dropdown-content hidden p-4 space-y-3">${group.checklists.map(assignment => `<div class="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md hover:bg-gray-50"><div><p class="font-semibold text-gray-800">${assignment.checklist?.title || 'N/A'}</p><p class="text-xs text-gray-500">Assigned: ${assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'N/A'}</p></div><button onclick="startChecklist('${assignment._id}')" class="mt-2 sm:mt-0 text-center text-sm px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition">Start Checklist</button></div>`).join('')}</div></div>`; }); html += '</div>'; listEl.innerHTML = html;
+        if (totalPages > 1) { let paginationHTML = `<div class="px-6 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between"><span class="text-xs xs:text-sm text-gray-700">Showing ${startIndex + 1} to ${Math.min(endIndex, totalItems)} of ${totalItems} Assets (Offline)</span><div class="inline-flex mt-2 xs:mt-0">`; paginationHTML += currentPage > 1 ? `<button onclick="handleOfflinePageChange(${currentPage - 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l">Prev</button>` : `<span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-l">Prev</span>`; paginationHTML += currentPage < totalPages ? `<button onclick="handleOfflinePageChange(${currentPage + 1})" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r">Next</button>` : `<span class="text-sm bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-r">Next</span>`; paginationHTML += `</div></div>`; paginationEl.innerHTML = paginationHTML; }
     }
 
-
-    // Filters offline assignments based on dropdown/search values
-    function handleOfflineFilter() {
-        const search = document.querySelector('input[name="search"]').value.toLowerCase();
-        const floor = document.getElementById('floor-filter').value;
-        const zone = document.getElementById('zone-filter').value;
-        const category = document.querySelector('select[name="category"]').value;
-
-        const filtered = allOfflineAssignments.filter(a => {
-            const asset = a.asset;
-             if (!asset) return false;
-            const nameMatch = asset.name ? asset.name.toLowerCase().includes(search) : false;
-            const floorMatch = floor === 'all' || asset.floor?._id === floor;
-            const zoneMatch = zone === 'all' || asset.zone?._id === zone;
-            const categoryMatch = category === 'all' || asset.category?._id === category;
-            return nameMatch && floorMatch && zoneMatch && categoryMatch;
-        });
-        renderAssignments(filtered, 1); // Reset to page 1 on new filter
-    }
-
-    // Handles changing pages in offline mode
-    function handleOfflinePageChange(newPage) {
-        // Re-apply filters to get the full list before paginating for the new page
-        const search = document.querySelector('input[name="search"]').value.toLowerCase();
-        const floor = document.getElementById('floor-filter').value;
-        const zone = document.getElementById('zone-filter').value;
-        const category = document.querySelector('select[name="category"]').value;
-
-        const filtered = allOfflineAssignments.filter(a => {
-            const asset = a.asset;
-            if (!asset) return false;
-            const nameMatch = asset.name ? asset.name.toLowerCase().includes(search) : false;
-            const floorMatch = floor === 'all' || asset.floor?._id === floor;
-            const zoneMatch = zone === 'all' || asset.zone?._id === zone;
-            const categoryMatch = category === 'all' || asset.category?._id === category;
-            return nameMatch && floorMatch && zoneMatch && categoryMatch;
-        });
-        
-        renderAssignments(filtered, newPage); // Render the requested page
-    }
-    
-    // Fetches all data from IndexedDB and triggers the initial offline render
-    async function renderOfflineDashboard() {
-        console.log("Rendering offline dashboard...");
-        try {
-            const data = await getAllOfflineData(); // Fetch all data needed
-            allOfflineAssignments = data.assignments || []; // Store globally for filtering
-            console.log(`Loaded ${allOfflineAssignments.length} assignments offline.`);
-            
-            // Set up offline filter handlers
-            const filterForm = document.getElementById('asset-filter-form');
-            filterForm.removeEventListener('submit', handleOnlineSubmit); // Remove default submit just in case
-            filterForm.onsubmit = (e) => { e.preventDefault(); handleOfflineFilter(); }; // Use onsubmit for simplicity
-            document.getElementById('floor-filter').onchange = handleOfflineFilter;
-            document.getElementById('zone-filter').onchange = handleOfflineFilter;
-            document.querySelector('select[name="category"]').onchange = handleOfflineFilter;
-            document.querySelector('input[name="search"]').oninput = handleOfflineFilter; // Filter as user types
-
-            renderAssignments(allOfflineAssignments, 1); // Initial render of page 1
-        } catch (error) {
-             console.error("Error rendering offline dashboard:", error);
-             document.getElementById('assignments-list').innerHTML = `<div class="text-center py-12 text-red-600">Error loading offline data. Please try syncing online.</div>`;
-        }
-    }
-    
-    // Placeholder for online submit handler (just lets default happen)
+    function handleOfflineFilter() { const search = document.querySelector('input[name="search"]').value.toLowerCase(); const floor = document.getElementById('floor-filter').value; const zone = document.getElementById('zone-filter').value; const category = document.querySelector('select[name="category"]').value; const filtered = allOfflineAssignments.filter(a => { const asset = a.asset; if (!asset) return false; const nameMatch = asset.name ? asset.name.toLowerCase().includes(search) : false; const floorMatch = floor === 'all' || asset.floor?._id === floor; const zoneMatch = zone === 'all' || asset.zone?._id === zone; const categoryMatch = category === 'all' || asset.category?._id === category; return nameMatch && floorMatch && zoneMatch && categoryMatch; }); renderAssignments(filtered, 1); }
+    function handleOfflinePageChange(newPage) { const search = document.querySelector('input[name="search"]').value.toLowerCase(); const floor = document.getElementById('floor-filter').value; const zone = document.getElementById('zone-filter').value; const category = document.querySelector('select[name="category"]').value; const filtered = allOfflineAssignments.filter(a => { const asset = a.asset; if (!asset) return false; const nameMatch = asset.name ? asset.name.toLowerCase().includes(search) : false; const floorMatch = floor === 'all' || asset.floor?._id === floor; const zoneMatch = zone === 'all' || asset.zone?._id === zone; const categoryMatch = category === 'all' || asset.category?._id === category; return nameMatch && floorMatch && zoneMatch && categoryMatch; }); renderAssignments(filtered, newPage); }
+    async function renderOfflineDashboard() { console.log("Rendering offline dashboard..."); try { const data = await getAllOfflineData(); allOfflineAssignments = data.assignments || []; console.log(`Loaded ${allOfflineAssignments.length} assignments offline.`); const filterForm = document.getElementById('asset-filter-form'); filterForm.removeEventListener('submit', handleOnlineSubmit); filterForm.onsubmit = (e) => { e.preventDefault(); handleOfflineFilter(); }; document.getElementById('floor-filter').onchange = handleOfflineFilter; document.getElementById('zone-filter').onchange = handleOfflineFilter; document.querySelector('select[name="category"]').onchange = handleOfflineFilter; document.querySelector('input[name="search"]').oninput = handleOfflineFilter; renderAssignments(allOfflineAssignments, 1); } catch (error) { console.error("Error rendering offline dashboard:", error); document.getElementById('assignments-list').innerHTML = `<div class="text-center py-12 text-red-600">Error loading offline data.</div>`; } }
     function handleOnlineSubmit(e) { /* Let default GET request happen */ }
-    // --- END OF OFFLINE RENDERING LOGIC ---
+    // --- End Offline Rendering Logic ---
 
     // --- Main Initialization ---
     document.addEventListener('DOMContentLoaded', (event) => {
-        const updateOnlineStatus = async () => {
-            const online = navigator.onLine;
-            const indicators = [ /* ... */ ]; // Define indicators
-            const syncNowBtn = document.getElementById('sync-now-btn'); /* ... */
-            const pendingSyncAlert = document.getElementById('pending-sync-alert'); /* ... */
-            const pendingSyncCount = document.getElementById('pending-sync-count'); /* ... */
-            const desktopReportLink = document.getElementById('my-reports-link-desktop'); /* ... */
-            const mobileReportLink = document.getElementById('my-reports-link-mobile'); /* ... */
-            const filterForm = document.getElementById('asset-filter-form'); /* ... */
-            const tasksContainer = document.getElementById('tasks-container'); /* ... */
 
-             indicators.forEach(({ indicator, dot, text, dotClass }) => { if (!indicator || !dot || !text) return; if (online) { dot.className = `${dotClass} rounded-full bg-green-500`; text.textContent = 'Online'; indicator.className = indicator.className.replace(/bg-red-100 text-red-800|bg-gray-100 text-gray-800/g, 'bg-green-100 text-green-800'); } else { dot.className = `${dotClass} rounded-full bg-red-500`; text.textContent = 'Offline'; indicator.className = indicator.className.replace(/bg-green-100 text-green-800|bg-gray-100 text-gray-800/g, 'bg-red-100 text-red-800'); } });
+      // Check for toast messages on load
+      const serverToastMessage = <%- JSON.stringify(locals.toastMessage || null) %>;
+      if (serverToastMessage) { showToast(serverToastMessage.text, serverToastMessage.type); }
+      const showOfflineSave = localStorage.getItem('showOfflineSaveToast');
+      if (showOfflineSave === 'true') { showToast('Checklist saved locally for offline sync.', 'info'); localStorage.removeItem('showOfflineSaveToast'); }
+      const successfulSyncCount = localStorage.getItem('showSyncSuccessToast');
+      if (successfulSyncCount) { const count = parseInt(successfulSyncCount, 10); if (!isNaN(count) && count > 0) { showToast(`${count} offline submission${count > 1 ? 's were' : ' was'} synced successfully.`, 'success'); } localStorage.removeItem('showSyncSuccessToast'); }
 
-            if (online) {
-                console.log("App is online.");
-                if(syncNowBtn) syncNowBtn.classList.remove('hidden');
-                if (desktopReportLink) desktopReportLink.href = '/technician/report';
-                if (mobileReportLink) mobileReportLink.href = '/technician/report';
-                filterForm.onsubmit = handleOnlineSubmit; // Restore default behavior trigger
-                 // Remove offline-specific listeners
-                document.getElementById('floor-filter').onchange = null;
-                document.getElementById('zone-filter').onchange = null;
-                document.querySelector('select[name="category"]').onchange = null;
-                document.querySelector('input[name="search"]').oninput = null;
+      // Online/Offline Status Update Logic
+      const updateOnlineStatus = async () => {
+          const online = navigator.onLine;
+          const indicators = [{ indicator: document.getElementById('status-indicator-desktop'), dot: document.getElementById('status-dot-desktop'), text: document.getElementById('status-text-desktop'), dotClass: 'w-3 h-3' }, { indicator: document.getElementById('status-indicator-mobile'), dot: document.getElementById('status-dot-mobile'), text: document.getElementById('status-text-mobile'), dotClass: 'w-2 h-2' }];
+          const syncNowBtn = document.getElementById('sync-now-btn'); const pendingSyncAlert = document.getElementById('pending-sync-alert'); const pendingSyncCount = document.getElementById('pending-sync-count'); const desktopReportLink = document.getElementById('my-reports-link-desktop'); const mobileReportLink = document.getElementById('my-reports-link-mobile'); const filterForm = document.getElementById('asset-filter-form'); const tasksContainer = document.getElementById('tasks-container');
+          indicators.forEach(({ indicator, dot, text, dotClass }) => { if (!indicator || !dot || !text) return; if (online) { dot.className = `${dotClass} rounded-full bg-green-500`; text.textContent = 'Online'; indicator.className = indicator.className.replace(/bg-red-100 text-red-800|bg-gray-100 text-gray-800/g, 'bg-green-100 text-green-800'); } else { dot.className = `${dotClass} rounded-full bg-red-500`; text.textContent = 'Offline'; indicator.className = indicator.className.replace(/bg-green-100 text-green-800|bg-gray-100 text-gray-800/g, 'bg-red-100 text-red-800'); } });
+          if (online) {
+               console.log("App is online."); if(syncNowBtn) syncNowBtn.classList.remove('hidden'); if (desktopReportLink) desktopReportLink.href = '/technician/report'; if (mobileReportLink) mobileReportLink.href = '/technician/report'; filterForm.onsubmit = handleOnlineSubmit; document.getElementById('floor-filter').onchange = null; document.getElementById('zone-filter').onchange = null; document.querySelector('select[name="category"]').onchange = null; document.querySelector('input[name="search"]').oninput = null; if (tasksContainer.dataset.renderedOffline === 'true') { console.log("Came online, reloading page..."); tasksContainer.dataset.renderedOffline = 'false'; window.location.reload(); } else { await syncWithServer(); forceSync(); }
+          } else {
+               console.log("App is offline."); if(syncNowBtn) syncNowBtn.classList.add('hidden'); if (desktopReportLink) desktopReportLink.href = '/offline-report.html'; if (mobileReportLink) mobileReportLink.href = '/offline-report.html'; tasksContainer.dataset.renderedOffline = 'true'; await renderOfflineDashboard();
+          }
+          const pendingCountVal = await countPendingSubmissions(); if (pendingSyncAlert) { pendingSyncAlert.classList.toggle('hidden', pendingCountVal === 0); if (pendingSyncCount) pendingSyncCount.textContent = pendingCountVal; }
+      };
+      updateOnlineStatus(); // Initial status check
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
 
-                if (tasksContainer.dataset.renderedOffline === 'true') {
-                    console.log("Came online, reloading page...");
-                    tasksContainer.dataset.renderedOffline = 'false';
-                    window.location.reload();
-                } else {
-                    await syncWithServer();
-                    forceSync();
-                }
-            } else {
-                console.log("App is offline.");
-                if(syncNowBtn) syncNowBtn.classList.add('hidden');
-                if (desktopReportLink) desktopReportLink.href = '/offline-report.html';
-                if (mobileReportLink) mobileReportLink.href = '/offline-report.html';
-                tasksContainer.dataset.renderedOffline = 'true';
-                await renderOfflineDashboard(); // Render offline view
-            }
+      // --- Other Event Listeners (QR, Sync Modal, Filters) ---
+      const scanBtn = document.getElementById('scan-qr-btn'); const qrReaderElement = document.getElementById('qr-reader'); let html5QrCode; if (qrReaderElement) { html5QrCode = new Html5Qrcode("qr-reader");} const onScanSuccess = (decodedText, decodedResult) => { if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().then(() => { window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`; }).catch(err => console.error("Scanner stop error:", err)); } else { window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`; }}; if(scanBtn && qrReaderElement && html5QrCode){ scanBtn.addEventListener('click', () => { const isHidden = qrReaderElement.classList.contains('hidden'); if (isHidden) { qrReaderElement.classList.remove('hidden'); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (errorMessage) => {}).catch(err => console.error(`QR Scanner Start Error: ${err}`)); } else { if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden')).catch(err => console.error("Scanner stop error:", err)); } else { qrReaderElement.classList.add('hidden'); } } }); }
+      const syncModal = document.getElementById('sync-modal'); const syncNowBtn = document.getElementById('sync-now-btn'); const confirmSyncBtn = document.getElementById('confirm-sync-btn'); const cancelSyncBtn = document.getElementById('cancel-sync-btn'); if(syncNowBtn && syncModal){ syncNowBtn.addEventListener('click', () => { syncModal.classList.remove('hidden'); }); } if(cancelSyncBtn && syncModal){ cancelSyncBtn.addEventListener('click', () => { syncModal.classList.add('hidden'); document.getElementById('sync-modal-title').textContent = 'Confirm Sync'; document.getElementById('sync-modal-body').textContent = 'Are you sure...?'; document.getElementById('confirm-sync-btn').classList.remove('hidden'); cancelSyncBtn.textContent = 'Cancel'; }); } if(confirmSyncBtn && syncModal && cancelSyncBtn){ confirmSyncBtn.addEventListener('click', async () => { const modalTitle = document.getElementById('sync-modal-title'); const modalBody = document.getElementById('sync-modal-body'); const modalIcon = document.getElementById('sync-modal-icon'); modalTitle.textContent = 'Syncing...'; modalBody.textContent = 'Please wait...'; confirmSyncBtn.disabled = true; cancelSyncBtn.disabled = true; confirmSyncBtn.classList.add('opacity-50', 'cursor-not-allowed'); const result = await forceSync(); const successIconHtml = `<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`; const errorIconHtml = `<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`; if (result.failed > 0) { modalTitle.textContent = 'Sync Failed'; modalBody.textContent = `Could not sync ${result.failed} submission(s). ${result.successful} synced.`; if (modalIcon) modalIcon.innerHTML = errorIconHtml; } else { modalTitle.textContent = 'Sync Complete'; modalBody.textContent = `${result.successful} submission(s) synced.`; if (modalIcon) modalIcon.innerHTML = successIconHtml; } confirmSyncBtn.disabled = false; cancelSyncBtn.textContent = 'Close'; cancelSyncBtn.disabled = false; confirmSyncBtn.classList.add('hidden'); confirmSyncBtn.classList.remove('opacity-50', 'cursor-not-allowed'); updateOnlineStatus(); }); }
 
-            const pendingCount = await countPendingSubmissions();
-            if (pendingSyncAlert) { pendingSyncAlert.classList.toggle('hidden', pendingCount === 0); if (pendingSyncCount) pendingSyncCount.textContent = pendingCount; }
-        }; // End updateOnlineStatus
+      // --- Technician Floor/Zone Filter Logic ---
+      const floorFilterTech = document.getElementById('floor-filter'); const zoneFilterTech = document.getElementById('zone-filter'); let allTechnicianZoneOptions = []; if (zoneFilterTech) { allTechnicianZoneOptions = Array.from(zoneFilterTech.options); }
+      function updateZoneFilterTech() { if (!floorFilterTech || !zoneFilterTech) return; const selectedFloorId = floorFilterTech.value; const previouslySelectedZoneValue = zoneFilterTech.value; zoneFilterTech.innerHTML = ''; const allZonesOption = document.createElement('option'); allZonesOption.value = 'all'; allZonesOption.textContent = 'All Zones'; zoneFilterTech.appendChild(allZonesOption); let isPreviouslySelectedZoneValid = false; allTechnicianZoneOptions.forEach(option => { if (option.value === 'all') return; if (selectedFloorId === 'all' || option.dataset.floor === selectedFloorId) { const newOption = option.cloneNode(true); zoneFilterTech.appendChild(newOption); if (newOption.value === previouslySelectedZoneValue) { isPreviouslySelectedZoneValid = true; } } }); if (selectedFloorId === 'all') { zoneFilterTech.disabled = true; zoneFilterTech.value = 'all'; } else { zoneFilterTech.disabled = false; zoneFilterTech.value = isPreviouslySelectedZoneValid ? previouslySelectedZoneValue : 'all'; } }
+      if(floorFilterTech){ floorFilterTech.addEventListener('change', () => { updateZoneFilterTech(); if (!navigator.onLine) { handleOfflineFilter(); } }); } if(zoneFilterTech){ zoneFilterTech.addEventListener('change', () => { if (!navigator.onLine) { handleOfflineFilter(); } }); } updateZoneFilterTech(); // Initial setup
 
-        // Initial status check and listeners
-        updateOnlineStatus();
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-
-        // --- Other Event Listeners (QR, Sync Modal, Filters) ---
-         // QR Scanner Logic
-        const scanBtn = document.getElementById('scan-qr-btn');
-        const qrReaderElement = document.getElementById('qr-reader');
-        let html5QrCode; if (qrReaderElement) { html5QrCode = new Html5Qrcode("qr-reader");}
-        const onScanSuccess = (decodedText, decodedResult) => { if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().then(() => { window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`; }).catch(err => console.error("Scanner stop error:", err)); } else { window.location.href = navigator.onLine ? `/technician/asset/${decodedText}` : `/offline-asset.html#${decodedText}`; }};
-        if(scanBtn && qrReaderElement && html5QrCode){ scanBtn.addEventListener('click', () => { const isHidden = qrReaderElement.classList.contains('hidden'); if (isHidden) { qrReaderElement.classList.remove('hidden'); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (errorMessage) => {}).catch(err => console.error(`QR Scanner Start Error: ${err}`)); } else { if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().then(() => qrReaderElement.classList.add('hidden')).catch(err => console.error("Scanner stop error:", err)); } else { qrReaderElement.classList.add('hidden'); } } }); }
-
-        // Sync Modal Logic
-        const syncModal = document.getElementById('sync-modal'); const syncNowBtn = document.getElementById('sync-now-btn'); const confirmSyncBtn = document.getElementById('confirm-sync-btn'); const cancelSyncBtn = document.getElementById('cancel-sync-btn');
-        if(syncNowBtn && syncModal){ syncNowBtn.addEventListener('click', () => { syncModal.classList.remove('hidden'); }); }
-        if(cancelSyncBtn && syncModal){ cancelSyncBtn.addEventListener('click', () => { syncModal.classList.add('hidden'); document.getElementById('sync-modal-title').textContent = 'Confirm Sync'; document.getElementById('sync-modal-body').textContent = 'Are you sure...?'; document.getElementById('confirm-sync-btn').classList.remove('hidden'); cancelSyncBtn.textContent = 'Cancel'; }); }
-        if(confirmSyncBtn && syncModal && cancelSyncBtn){ confirmSyncBtn.addEventListener('click', async () => { /* ... (Full confirm sync logic from previous version) ... */
-             const modalTitle = document.getElementById('sync-modal-title'); const modalBody = document.getElementById('sync-modal-body'); const modalIcon = document.getElementById('sync-modal-icon'); modalTitle.textContent = 'Syncing...'; modalBody.textContent = 'Please wait...'; confirmSyncBtn.disabled = true; cancelSyncBtn.disabled = true; confirmSyncBtn.classList.add('opacity-50', 'cursor-not-allowed'); const result = await forceSync(); const successIconHtml = `<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`; const errorIconHtml = `<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`; if (result.failed > 0) { modalTitle.textContent = 'Sync Failed'; modalBody.textContent = `Could not sync ${result.failed} submission(s). ${result.successful} synced.`; if (modalIcon) modalIcon.innerHTML = errorIconHtml; } else { modalTitle.textContent = 'Sync Complete'; modalBody.textContent = `${result.successful} submission(s) synced.`; if (modalIcon) modalIcon.innerHTML = successIconHtml; } confirmSyncBtn.disabled = false; cancelSyncBtn.textContent = 'Close'; cancelSyncBtn.disabled = false; confirmSyncBtn.classList.add('hidden'); confirmSyncBtn.classList.remove('opacity-50', 'cursor-not-allowed'); updateOnlineStatus();
-        }); }
-
-
-        // --- Technician Floor/Zone Filter Logic ---
-        const floorFilterTech = document.getElementById('floor-filter');
-        const zoneFilterTech = document.getElementById('zone-filter');
-        let allTechnicianZoneOptions = [];
-        if (zoneFilterTech) { allTechnicianZoneOptions = Array.from(zoneFilterTech.options); }
-
-        function updateZoneFilterTech() {
-            if (!floorFilterTech || !zoneFilterTech) return;
-            const selectedFloorId = floorFilterTech.value; const previouslySelectedZoneValue = zoneFilterTech.value; zoneFilterTech.innerHTML = ''; const allZonesOption = document.createElement('option'); allZonesOption.value = 'all'; allZonesOption.textContent = 'All Zones'; zoneFilterTech.appendChild(allZonesOption); let isPreviouslySelectedZoneValid = false;
-            allTechnicianZoneOptions.forEach(option => { if (option.value === 'all') return; if (selectedFloorId === 'all' || option.dataset.floor === selectedFloorId) { const newOption = option.cloneNode(true); zoneFilterTech.appendChild(newOption); if (newOption.value === previouslySelectedZoneValue) { isPreviouslySelectedZoneValid = true; } } });
-            if (selectedFloorId === 'all') { zoneFilterTech.disabled = true; zoneFilterTech.value = 'all'; } else { zoneFilterTech.disabled = false; zoneFilterTech.value = isPreviouslySelectedZoneValid ? previouslySelectedZoneValue : 'all'; }
-        }
-
-        if(floorFilterTech){ floorFilterTech.addEventListener('change', () => { updateZoneFilterTech(); if (!navigator.onLine) { handleOfflineFilter(); } }); }
-        if(zoneFilterTech){ zoneFilterTech.addEventListener('change', () => { if (!navigator.onLine) { handleOfflineFilter(); } }); }
-        updateZoneFilterTech(); // Initial setup
-
-     }); // End DOMContentLoaded
+    }); // End DOMContentLoaded
 
      // Global helper functions
      function toggleDropdown(id) { const element = document.getElementById(id); const arrow = document.getElementById('arrow-' + id); if (element) element.classList.toggle('hidden'); if (arrow) arrow.classList.toggle('rotate-180'); }

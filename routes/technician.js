@@ -1,6 +1,7 @@
 // routes/technician.js
 const express = require('express');
 const mongoose = require('mongoose');
+const path = require('path'); // Needed for path.basename
 const { ensureAuthenticated, ensureTechnician } = require('../middleware/auth');
 const { upload, imageProcessingQueue } = require('../middleware/fileUpload');
 const { logActivity, escapeRegex } = require('../utils/helpers');
@@ -79,7 +80,7 @@ router.get('/dashboard', async (req, res) => {
                 populate: [
                     { path: 'floor', select: 'name' },
                     { path: 'category', select: 'name' },
-                    { path: 'zone', select: 'name' }
+                    { path: 'zone', select: 'name _id floor' } // Ensure floor ID is populated within zone for data-* attribute
                 ]
             })
             .lean(); // Use lean for performance
@@ -92,7 +93,8 @@ router.get('/dashboard', async (req, res) => {
             Floor.find({}).sort({ name: 1 }).lean(),
             AssetCategory.find({}).sort({ name: 1 }).lean(),
             // *** FIX: Fetch only zones relevant to the technician's division ***
-            Zone.find({ division: divisionId }).sort({ name: 1 }).lean(),
+             // Also populate floor ID for data-* attribute in the filter dropdown
+            Zone.find({ division: divisionId }).populate('floor', '_id').sort({ name: 1 }).lean(),
             Activity.find({ $or: [{ 'division.id': divisionId }, { role: 'manager' }] }) // Show own division + manager activity
                 .sort({ timestamp: -1 })
                 .limit(20)
@@ -123,12 +125,17 @@ router.get('/dashboard', async (req, res) => {
         // Sort assets alphabetically by name before passing to the view
         const assetsForView = Object.values(groupedAssignments).sort((a, b) => {
              // Basic alphabetical sort
+             if (!a.asset || !b.asset) return 0; // Safety check
              if (a.asset.name < b.asset.name) return -1;
              if (a.asset.name > b.asset.name) return 1;
              return 0;
              // Add more complex sorting based on floor/zone/order if needed later
          });
 
+
+        // Pass toast message from session to locals and clear it
+        const toastMessage = req.session.toastMessage;
+        delete req.session.toastMessage; // Clear after retrieving
 
         res.render('technicianDashboard', {
             // assignments, // Pass grouped data instead
@@ -143,7 +150,8 @@ router.get('/dashboard', async (req, res) => {
             totalPages,
             totalAssets, // Use totalAssets for pagination info if paginating assets
             limit,
-            filters: { search, floor, zone, category }
+            filters: { search, floor, zone, category },
+            toastMessage: toastMessage // Pass toast message to the view
         });
     } catch (err) {
         console.error("Technician Dashboard Error:", err);
@@ -151,7 +159,10 @@ router.get('/dashboard', async (req, res) => {
     }
 });
 
-// ...(Rest of the technician routes remain the same)...
+/**
+ * GET /technician/checklist/:assignmentId
+ * Displays a specific checklist for the technician to fill out.
+ */
 router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
@@ -183,6 +194,10 @@ router.get('/checklist/:assignmentId', ensureTechnician, async (req, res) => {
     }
 });
 
+/**
+ * POST /technician/checklist/:assignmentId/submit
+ * Handles the submission of a completed checklist and creates a report.
+ */
 router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), async (req, res) => {
     try {
         const assignment = await ChecklistAssignment.findById(req.params.assignmentId)
@@ -207,30 +222,39 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
         let hasAlert = false;
         const responses = { ...req.body.results };
 
-        // Process file uploads and add them to responses
+        // Process file uploads
         if (req.files && req.files.length > 0) {
             const processingPromises = req.files.map(file => {
                 return new Promise((resolve, reject) => {
                     const taskIdMatch = file.fieldname.match(/\[(.*?)\]/);
                      if (!taskIdMatch || !taskIdMatch[1]) {
                           console.warn(`Could not extract task ID from fieldname: ${file.fieldname}`);
-                          return reject(new Error(`Invalid fieldname for file upload: ${file.fieldname}`));
+                          // Skip this file instead of rejecting all?
+                          // return reject(new Error(`Invalid fieldname for file upload: ${file.fieldname}`));
+                          return resolve(); // Resolve without adding if fieldname is bad
                      }
                     const taskId = taskIdMatch[1];
                     imageProcessingQueue.push({ filePath: file.path }, (err, processedPath) => {
-                        if (err) return reject(err);
-                        if (!responses[taskId]) responses[taskId] = [];
-                        // Store relative path for web access
-                        const webPath = `/processed/${path.basename(processedPath)}`;
-                        responses[taskId].push(webPath);
+                        if (err) {
+                             console.error("Image processing error:", err);
+                             // Decide if this should reject the whole submission
+                             // For now, let's just skip adding the failed image path
+                             return resolve(); // Resolve even on error to not block others
+                             // return reject(err); // Or reject if one error should stop all
+                        }
+                        if (processedPath) { // Ensure path is valid
+                            const webPath = `/processed/${path.basename(processedPath)}`;
+                            if (!responses[taskId]) responses[taskId] = [];
+                            responses[taskId].push(webPath);
+                        }
                         resolve();
                     });
                 });
             });
             await Promise.all(processingPromises);
         }
-
-        // Snapshot the tasks and check for alerts
+        
+        // Snapshot tasks and check alerts
         const tasksSnapshot = assignment.checklist.tasks.map(task => {
             const responseValue = responses[task._id.toString()];
             if (task.inputType === 'functional' && responseValue === 'fail') {
@@ -242,70 +266,52 @@ router.post('/checklist/:assignmentId/submit', ensureTechnician, upload.any(), a
                     hasAlert = true;
                 }
             }
+            // Ensure task._id is included in the snapshot
             return {
-                originalTaskId: task._id,
-                description: task.description,
-                inputType: task.inputType,
-                expectedUnit: task.expectedUnit,
-                minRange: task.minRange,
-                maxRange: task.maxRange,
-            };
+                originalTaskId: task._id, description: task.description, inputType: task.inputType, expectedUnit: task.expectedUnit, minRange: task.minRange, maxRange: task.maxRange,
+             };
         });
 
-        // Create a snapshot of the asset's state at the time of submission
+        // Asset snapshot
         const assetSnapshot = {
-            name: assignment.asset.name,
-            description: assignment.asset.description,
-            location: assignment.asset.location,
-            category: assignment.asset.category?.name || 'N/A',
-            floor: assignment.asset.floor?.name || 'N/A',
-            zone: assignment.asset.zone?.name || 'N/A',
-            division: assignment.asset.division?.name || 'N/A' // Use populated division name
+            name: assignment.asset.name, description: assignment.asset.description, location: assignment.asset.location, category: assignment.asset.category?.name || 'N/A', floor: assignment.asset.floor?.name || 'N/A', zone: assignment.asset.zone?.name || 'N/A', division: assignment.asset.division?.name || 'N/A' // Use populated division name
         };
 
-        // Create the maintenance report
+        // Create report
         const newReport = new MaintenanceReport({
-            assignment: assignment._id,
-            checklistTitle: assignment.checklist.title,
-            assetSnapshot: assetSnapshot,
-            division: assignment.division, // Use division from assignment
-            tasksSnapshot,
-            responses,
-            submittedBy: user._id,
-            submittedByName: user.name,
-            note: req.body.note || '',
-            hasAlert: hasAlert,
-             completedAt: new Date() // Explicitly set completion time
+            assignment: assignment._id, checklistTitle: assignment.checklist.title, assetSnapshot: assetSnapshot, division: assignment.division, // Use division from assignment
+            tasksSnapshot, responses, submittedBy: user._id, submittedByName: user.name, note: req.body.note || '', hasAlert: hasAlert, completedAt: new Date() // Explicitly set completion time
         });
-
-        // Save the new report. The assignment itself is not modified.
+        
         await newReport.save();
         await logActivity(user._id, `submitted a report for asset: ${assetSnapshot.name}.`);
 
-        // Emit a socket event if there's an alert
+        // Emit alert if needed
         if (hasAlert) {
-            // Emit to a room specific to managers/SPVs of this division?
-            // For now, emitting globally or consider targeting specific roles/rooms.
-            // Example: io.to(`division_${assignment.division.toString()}`).emit(...)
             req.io.emit('alert', {
                 message: `Alert: Checklist for asset ${assetSnapshot.name} requires attention!`,
                 reportId: newReport._id,
                 divisionId: assignment.division.toString() // Include division ID
             });
         }
-
-        req.session.message = { type: 'success', text: 'Checklist submitted successfully!' };
+        
+        // *** SET SUCCESS TOAST MESSAGE ***
+        req.session.toastMessage = { type: 'success', text: 'Checklist submitted successfully!' };
+        
         res.redirect('/technician/dashboard');
 
     } catch (err) {
         console.error('Checklist Submission Error:', err);
-        req.session.message = { type: 'error', text: `An error occurred during submission: ${err.message}` };
-        // Redirect back to the checklist form on error? Or dashboard?
+        // *** SET ERROR TOAST MESSAGE ***
+        req.session.toastMessage = { type: 'error', text: `Submission Error: ${err.message}` };
         res.redirect(`/technician/checklist/${req.params.assignmentId}`); // Redirect back to form
     }
 });
 
-
+/**
+ * GET /technician/report
+ * Displays a list of reports submitted by the technician.
+ */
 router.get('/report', ensureTechnician, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -318,7 +324,6 @@ router.get('/report', ensureTechnician, async (req, res) => {
         const query = { division: divisionId };
 
         if (currentSubmittedBy === 'my') {
-            // 'my' defaults to the current user's reports.
             query.submittedBy = req.session.userId;
         } else if (currentSubmittedBy !== 'all') {
              // If a specific technician ID is provided
@@ -365,22 +370,22 @@ router.get('/report', ensureTechnician, async (req, res) => {
     }
 });
 
+/**
+ * GET /technician/report/:reportId
+ * Displays the detail of a single submitted report.
+ */
 router.get('/report/:reportId', ensureTechnician, async (req, res) => {
     try {
-        const report = await MaintenanceReport.findOne({_id: req.params.reportId, division: req.session.userDivision }); // Ensure report is in user's division
+        const report = await MaintenanceReport.findOne({_id: req.params.reportId, division: req.session.userDivision }) // Ensure report is in user's division
+             .populate('submittedBy', 'name')
+             .populate('verifiedBySpvUser', 'name')
+             .populate('verifiedByManagerUser', 'name')
+             .populate('rejectedBy', 'name');
+
 
         if (!report) {
             return res.status(404).send('Report not found or you do not have permission to view it.');
         }
-
-         // Populate details needed for the view (if not already done or if lean was used previously)
-         await report.populate([
-             { path: 'submittedBy', select: 'name' },
-             { path: 'verifiedBySpvUser', select: 'name' },
-             { path: 'verifiedByManagerUser', select: 'name' },
-             { path: 'rejectedBy', select: 'name' }
-         ]);
-
 
         res.render('technicianChecklistReportDetail', { assignment: report });
     } catch (err) {
@@ -390,6 +395,10 @@ router.get('/report/:reportId', ensureTechnician, async (req, res) => {
 });
 
 
+/**
+ * GET /technician/asset/:id
+ * Displays details for a specific asset, typically after a QR code scan.
+ */
 router.get('/asset/:id', ensureTechnician, async (req, res) => {
     try {
         const asset = await Asset.findOne({_id: req.params.id, division: req.session.userDivision }) // Ensure asset is in user's division
